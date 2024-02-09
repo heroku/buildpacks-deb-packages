@@ -6,9 +6,11 @@ rust-version = "1.75"
 
 [dependencies]
 libcnb = { version = "=0.17.0", features = ["trace"] }
+serde = "1"
 
 [dev-dependencies]
 libcnb-test = "=0.17.0"
+indoc = "2"
 
 [profile.release]
 strip = true
