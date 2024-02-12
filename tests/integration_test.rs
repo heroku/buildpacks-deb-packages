@@ -6,7 +6,8 @@
 
 use libcnb::data::buildpack_id;
 use libcnb_test::{
-    assert_contains, BuildConfig, BuildpackReference, PackResult, TestContext, TestRunner,
+    assert_contains, assert_not_contains, BuildConfig, BuildpackReference, PackResult, TestContext,
+    TestRunner,
 };
 use std::path::PathBuf;
 
@@ -36,10 +37,52 @@ fn test_failed_detection() {
     );
 }
 
+#[test]
+#[ignore = "integration test"]
+fn test_cache_restored() {
+    apt_integration_test("./fixtures/basic", |ctx| {
+        assert_contains!(ctx.pack_stdout, "Heroku Apt Buildpack");
+        assert_contains!(ctx.pack_stdout, "Apt packages cache");
+        assert_contains!(ctx.pack_stdout, "Creating cache directory");
+
+        let config = ctx.config.clone();
+        ctx.rebuild(config, |ctx| {
+            assert_not_contains!(ctx.pack_stdout, "Creating cache directory");
+            assert_contains!(ctx.pack_stdout, "Restoring installed packages");
+        });
+    });
+}
+
+#[test]
+#[ignore = "integration test"]
+fn test_cache_invalidated_when_aptfile_changes() {
+    apt_integration_test("./fixtures/basic", |ctx| {
+        assert_contains!(ctx.pack_stdout, "Heroku Apt Buildpack");
+        assert_contains!(ctx.pack_stdout, "Apt packages cache");
+        assert_contains!(ctx.pack_stdout, "Creating cache directory");
+
+        let mut config = ctx.config.clone();
+        config.app_dir_preprocessor(|app_dir| {
+            std::fs::write(app_dir.join("Aptfile"), "").unwrap();
+        });
+        ctx.rebuild(config, |ctx| {
+            assert_contains!(
+                ctx.pack_stdout,
+                "Invalidating installed packages (Aptfile changed)"
+            );
+            assert_contains!(ctx.pack_stdout, "Creating cache directory");
+        });
+    });
+}
+
 const DEFAULT_BUILDER: &str = "heroku/builder:22";
 
 fn get_integration_test_builder() -> String {
     std::env::var("INTEGRATION_TEST_CNB_BUILDER").unwrap_or(DEFAULT_BUILDER.to_string())
+}
+
+fn apt_integration_test(fixture: &str, test_body: fn(TestContext)) {
+    apt_integration_test_with_config(fixture, |_| {}, test_body);
 }
 
 fn apt_integration_test_with_config(

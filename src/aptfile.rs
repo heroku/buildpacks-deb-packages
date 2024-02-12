@@ -1,8 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::OnceLock;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) struct Aptfile {
     packages: HashSet<DebianPackageName>,
 }
@@ -25,7 +26,7 @@ impl FromStr for Aptfile {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
 pub(crate) struct DebianPackageName(String);
 
 #[derive(Debug, PartialEq)]
