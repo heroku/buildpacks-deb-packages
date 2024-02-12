@@ -5,6 +5,7 @@ edition = "2021"
 rust-version = "1.75"
 
 [dependencies]
+commons = { git = "https://github.com/heroku/buildpacks-ruby", branch = "main" }
 libcnb = { version = "=0.17.0", features = ["trace"] }
 serde = "1"
 
