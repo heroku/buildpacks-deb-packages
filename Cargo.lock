@@ -124,6 +124,7 @@ dependencies = [
  "semver",
  "serde",
  "tempfile",
+ "walkdir",
 ]
 
 [[package]]

@@ -12,6 +12,7 @@ libcnb = { version = "=0.17.0", features = ["trace"] }
 semver = "1"
 serde = "1"
 tempfile = "3"
+walkdir = "2"
 
 [dev-dependencies]
 libcnb-test = "=0.17.0"

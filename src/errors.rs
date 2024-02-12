@@ -13,6 +13,8 @@ pub(crate) enum AptBuildpackError {
     DownloadPackage(DebianPackage, fun_run::CmdError),
     ListDownloadedPackages(std::io::Error),
     InstallPackage(PathBuf, fun_run::CmdError),
+    ReadPackageConfigFile(PathBuf, std::io::Error),
+    WritePackageConfigFile(PathBuf, std::io::Error),
 }
 
 impl From<AptBuildpackError> for libcnb::Error<AptBuildpackError> {

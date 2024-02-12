@@ -16,6 +16,7 @@ use std::fs;
 use std::io::stdout;
 use std::process::Command;
 use std::sync::atomic::AtomicBool;
+use walkdir::WalkDir;
 
 mod aptfile;
 mod commands;
@@ -139,6 +140,40 @@ impl Buildpack for AptBuildpack {
                     |stream| command.stream_output(stream.io(), stream.io()),
                 )
                 .map_err(|e| AptBuildpackError::InstallPackage(archive.clone(), e))?;
+            }
+
+            log_step("Rewrite package-config files");
+            for entry in WalkDir::new(&install_path).into_iter().flatten() {
+                let path = entry.path();
+                let is_package_config_file = entry.file_type().is_file()
+                    && path.extension().is_some_and(|ext| ext == "pc")
+                    && path.parent().is_some_and(|parent_dir| {
+                        parent_dir
+                            .file_name()
+                            .is_some_and(|name| name == "pkgconfig")
+                    });
+                if is_package_config_file {
+                    let contents = fs::read_to_string(path).map_err(|e| {
+                        AptBuildpackError::ReadPackageConfigFile(path.to_path_buf(), e)
+                    })?;
+                    let new_contents = contents
+                        .split('\n')
+                        .map(|line| {
+                            if let Some(original_prefix) = line.strip_prefix("prefix=") {
+                                install_path
+                                    .join(original_prefix)
+                                    .to_string_lossy()
+                                    .to_string()
+                            } else {
+                                line.to_string()
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    fs::write(path, new_contents).map_err(|e| {
+                        AptBuildpackError::WritePackageConfigFile(path.to_path_buf(), e)
+                    })?;
+                }
             }
         } else {
             log_step("Skipping, packages already in cache");
