@@ -6,12 +6,16 @@ rust-version = "1.75"
 
 [dependencies]
 commons = { git = "https://github.com/heroku/buildpacks-ruby", branch = "main" }
+fun_run = "0.1"
+indoc = "2"
 libcnb = { version = "=0.17.0", features = ["trace"] }
+semver = "1"
 serde = "1"
+tempfile = "3"
 
 [dev-dependencies]
 libcnb-test = "=0.17.0"
-indoc = "2"
+regex = "1"
 
 [profile.release]
 strip = true

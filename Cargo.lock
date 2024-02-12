@@ -116,10 +116,14 @@ name = "buildpacks-apt"
 version = "0.1.0"
 dependencies = [
  "commons",
+ "fun_run",
  "indoc",
  "libcnb",
  "libcnb-test",
+ "regex",
+ "semver",
  "serde",
+ "tempfile",
 ]
 
 [[package]]

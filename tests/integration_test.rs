@@ -1,8 +1,33 @@
+mod macros;
+
 use libcnb::data::buildpack_id;
 use libcnb_test::{
     assert_contains, assert_not_contains, BuildConfig, BuildpackReference, TestContext, TestRunner,
 };
 use std::path::PathBuf;
+
+#[test]
+#[ignore = "integration test"]
+fn test_basic_package_install() {
+    apt_integration_test("./fixtures/basic", |ctx| {
+        assert_contains!(ctx.pack_stdout, "Heroku Apt Buildpack");
+        assert_contains!(ctx.pack_stdout, "Apt packages cache");
+        assert_contains!(ctx.pack_stdout, "Creating cache directory");
+        assert_matches!(ctx.pack_stdout, r"Using apt version `\d+\.\d+\.\d+`");
+        assert_matches!(
+            ctx.pack_stdout,
+            r"Running `apt-get --config-file /tmp/.*/apt\.conf update`"
+        );
+        assert_matches!(
+            ctx.pack_stdout,
+            r"Running `apt-get --allow-downgrades --allow-remove-essential --allow-change-held-packages --assume-yes --config-file /tmp/.*/apt\.conf --download-only --reinstall install byacc`"
+        );
+        assert_matches!(
+            ctx.pack_stdout,
+            r#"Running `dpkg --extract "/tmp/.*/cache/archives/byacc.*\.deb" /layers/heroku_apt/installed_packages`"#
+        );
+    });
+}
 
 #[test]
 #[ignore = "integration test"]
