@@ -16,6 +16,7 @@ use std::fs;
 use std::io::stdout;
 use std::process::Command;
 use std::sync::atomic::AtomicBool;
+use std::sync::OnceLock;
 use walkdir::WalkDir;
 
 mod aptfile;
@@ -146,12 +147,7 @@ impl Buildpack for AptBuildpack {
             for entry in WalkDir::new(&install_path).into_iter().flatten() {
                 let path = entry.path();
                 let is_package_config_file = entry.file_type().is_file()
-                    && path.extension().is_some_and(|ext| ext == "pc")
-                    && path.parent().is_some_and(|parent_dir| {
-                        parent_dir
-                            .file_name()
-                            .is_some_and(|name| name == "pkgconfig")
-                    });
+                    && package_config_file_name_regex().is_match(&entry.path().to_string_lossy());
                 if is_package_config_file {
                     let contents = fs::read_to_string(path).map_err(|e| {
                         AptBuildpackError::ReadPackageConfigFile(path.to_path_buf(), e)
@@ -159,11 +155,14 @@ impl Buildpack for AptBuildpack {
                     let new_contents = contents
                         .split('\n')
                         .map(|line| {
-                            if let Some(original_prefix) = line.strip_prefix("prefix=") {
-                                install_path
-                                    .join(original_prefix)
-                                    .to_string_lossy()
-                                    .to_string()
+                            let prefix_match = package_config_prefix_line_regex()
+                                .captures(line)
+                                .and_then(|captures| captures.get(1));
+                            if let Some(prefix_value) = prefix_match {
+                                format!(
+                                    "prefix={}",
+                                    install_path.join(prefix_value.as_str()).to_string_lossy()
+                                )
                             } else {
                                 line.to_string()
                             }
@@ -183,4 +182,18 @@ impl Buildpack for AptBuildpack {
         logger.finish_logging();
         BuildResultBuilder::new().build()
     }
+}
+
+fn package_config_file_name_regex() -> &'static regex_lite::Regex {
+    static LAZY: OnceLock<regex_lite::Regex> = OnceLock::new();
+    LAZY.get_or_init(|| {
+        regex_lite::Regex::new(r"^.*/pkgconfig/.*\.pc$").expect("should be a valid regex pattern")
+    })
+}
+
+fn package_config_prefix_line_regex() -> &'static regex_lite::Regex {
+    static LAZY: OnceLock<regex_lite::Regex> = OnceLock::new();
+    LAZY.get_or_init(|| {
+        regex_lite::Regex::new(r"^prefix=(.*)$").expect("should be a valid regex pattern")
+    })
 }
