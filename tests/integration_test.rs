@@ -24,7 +24,7 @@ fn test_basic_package_install() {
         );
         assert_matches!(
             ctx.pack_stdout,
-            r#"Running `dpkg --extract "/tmp/.*/cache/archives/byacc.*\.deb" /layers/heroku_apt/installed_packages`"#
+            r#"Running `dpkg --extract "?/tmp/.*/cache/archives/byacc.*\.deb"? /layers/heroku_apt/installed_packages`"#
         );
     });
 }
@@ -67,7 +67,7 @@ fn test_cache_invalidated_when_aptfile_changes() {
     });
 }
 
-const DEFAULT_BUILDER: &str = "heroku/builder:22";
+const DEFAULT_BUILDER: &str = "heroku/builder:20";
 
 fn get_integration_test_builder() -> String {
     std::env::var("INTEGRATION_TEST_CNB_BUILDER").unwrap_or(DEFAULT_BUILDER.to_string())
