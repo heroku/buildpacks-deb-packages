@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::ops::Deref;
 use std::str::FromStr;
+use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Aptfile {
@@ -58,12 +59,24 @@ impl FromStr for DebianPackage {
     type Err = ParseDebianPackageError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        if value.is_empty() {
-            Err(ParseDebianPackageError(value.to_string()))
-        } else {
+        if debian_package_name_regex().is_match(value) {
             Ok(DebianPackage(value.to_string()))
+        } else {
+            Err(ParseDebianPackageError(value.to_string()))
         }
     }
+}
+
+fn debian_package_name_regex() -> &'static regex_lite::Regex {
+    static LAZY: OnceLock<regex_lite::Regex> = OnceLock::new();
+    LAZY.get_or_init(|| {
+        // https://www.debian.org/doc/debian-policy/ch-controlfields.html#source
+        // Package names (both source and binary, see Package) must consist only of
+        // lower case letters (a-z), digits (0-9), plus (+) and minus (-) signs,
+        // and periods (.). They must be at least two characters long and must
+        // start with an alphanumeric character.
+        regex_lite::Regex::new("^[a-z0-9][a-z0-9+.\\-]+$").expect("should be a valid regex pattern")
+    })
 }
 
 #[cfg(test)]
@@ -78,8 +91,18 @@ mod tests {
     }
     #[test]
     fn parse_invalid_debian_package() {
-        let error = DebianPackage::from_str("").unwrap_err();
-        assert_eq!(error, ParseDebianPackageError("".to_string()));
+        let invalid_names = [
+            "a",    // too short
+            "+a",   // can't start with non-alphanumeric character
+            "ab_c", // can't contain invalid characters
+            "aBc",  // uppercase is not allowed
+        ];
+        for invalid_name in invalid_names {
+            assert_eq!(
+                DebianPackage::from_str(invalid_name).unwrap_err(),
+                ParseDebianPackageError(invalid_name.to_string())
+            );
+        }
     }
 
     #[test]
