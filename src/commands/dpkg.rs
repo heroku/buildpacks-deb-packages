@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-// https://manpages.ubuntu.com/manpages/jammy/en/man1/dpkg-deb.1.html
+// https://manpages.ubuntu.com/manpages/jammy/en/man1/dpkg.1.html
 // https://manpages.ubuntu.com/manpages/jammy/en/man1/dpkg-deb.1.html
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DpkgCommand {
