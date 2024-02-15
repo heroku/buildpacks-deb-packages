@@ -9,7 +9,7 @@ homepage = "https://github.com/heroku/buildpacks-apt"
 keywords = ["apt"]
 
 [[buildpack.licenses]]
-type = "ALv2"
+type = "Apache-2.0"
 
 [metadata.release]
 image = { repository = "docker.io/heroku/buildpacks-apt" }
