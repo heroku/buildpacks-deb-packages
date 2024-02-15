@@ -6,6 +6,9 @@ use libcnb::generic::{GenericMetadata, GenericPlatform};
 use libcnb::{buildpack_main, Buildpack};
 use std::fs;
 
+#[cfg(test)]
+use libcnb_test as _;
+
 mod aptfile;
 mod errors;
 
