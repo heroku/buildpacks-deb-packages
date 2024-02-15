@@ -3,7 +3,6 @@ use crate::AptBuildpack;
 use commons::output::interface::SectionLogger;
 use commons::output::section_log::log_step;
 use libcnb::build::BuildContext;
-use libcnb::data::buildpack::StackId;
 use libcnb::data::layer_content_metadata::LayerTypes;
 use libcnb::layer::{ExistingLayerStrategy, Layer, LayerData, LayerResult, LayerResultBuilder};
 use libcnb::layer_env::{LayerEnv, ModificationBehavior, Scope};
@@ -32,7 +31,7 @@ impl<'a> Layer for InstalledPackagesLayer<'a> {
     }
 
     fn create(
-        &self,
+        &mut self,
         context: &BuildContext<Self::Buildpack>,
         layer_path: &Path,
     ) -> Result<LayerResult<Self::Metadata>, <Self::Buildpack as Buildpack>::Error> {
@@ -76,20 +75,24 @@ impl<'a> Layer for InstalledPackagesLayer<'a> {
 
         LayerResultBuilder::new(InstalledPackagesMetadata::new(
             self.aptfile.clone(),
-            context.stack_id.clone(),
+            context.target.os.clone(),
+            context.target.arch.clone(),
         ))
         .env(env)
         .build()
     }
 
     fn existing_layer_strategy(
-        &self,
+        &mut self,
         context: &BuildContext<Self::Buildpack>,
         layer_data: &LayerData<Self::Metadata>,
     ) -> Result<ExistingLayerStrategy, <Self::Buildpack as Buildpack>::Error> {
         let old_meta = &layer_data.content_metadata.metadata;
-        let new_meta =
-            &InstalledPackagesMetadata::new(self.aptfile.clone(), context.stack_id.clone());
+        let new_meta = &InstalledPackagesMetadata::new(
+            self.aptfile.clone(),
+            context.target.os.clone(),
+            context.target.arch.clone(),
+        );
         if old_meta == new_meta {
             log_step("Restoring installed packages");
             self.cache_restored.store(true, Ordering::Relaxed);
@@ -117,19 +120,23 @@ where
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub(crate) struct InstalledPackagesMetadata {
-    stack_id: StackId,
+    arch: String,
     aptfile: Aptfile,
+    os: String,
 }
 
 impl InstalledPackagesMetadata {
-    pub(crate) fn new(aptfile: Aptfile, stack_id: StackId) -> Self {
-        Self { aptfile, stack_id }
+    pub(crate) fn new(aptfile: Aptfile, os: String, arch: String) -> Self {
+        Self { arch, aptfile, os }
     }
 
     pub(crate) fn changed_fields(&self, other: &InstalledPackagesMetadata) -> Vec<String> {
         let mut changed_fields = vec![];
-        if self.stack_id != other.stack_id {
-            changed_fields.push("stack_id".to_string());
+        if self.os != other.os {
+            changed_fields.push("os".to_string());
+        }
+        if self.arch != other.arch {
+            changed_fields.push("arch".to_string());
         }
         if self.aptfile != other.aptfile {
             changed_fields.push("Aptfile".to_string());
@@ -148,7 +155,6 @@ pub(crate) enum InstalledPackagesState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libcnb::data::stack_id;
     use std::str::FromStr;
 
     #[test]
@@ -156,13 +162,15 @@ mod tests {
         assert_eq!(
             InstalledPackagesMetadata::new(
                 Aptfile::from_str("package-1").unwrap(),
-                stack_id!("heroku-20")
+                "linux".to_string(),
+                "amd64".to_string()
             )
             .changed_fields(&InstalledPackagesMetadata::new(
                 Aptfile::from_str("package-2").unwrap(),
-                stack_id!("heroku-22")
+                "windows".to_string(),
+                "arm64".to_string()
             )),
-            &["Aptfile", "stack_id"]
+            &["Aptfile", "arch", "os"]
         );
     }
 
@@ -170,11 +178,13 @@ mod tests {
     fn installed_packages_metadata_with_no_changed_fields() {
         assert!(InstalledPackagesMetadata::new(
             Aptfile::from_str("package-1").unwrap(),
-            stack_id!("heroku-20")
+            "linux".to_string(),
+            "amd64".to_string()
         )
         .changed_fields(&InstalledPackagesMetadata::new(
             Aptfile::from_str("package-1").unwrap(),
-            stack_id!("heroku-20")
+            "linux".to_string(),
+            "amd64".to_string()
         ))
         .is_empty());
     }

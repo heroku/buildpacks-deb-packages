@@ -17,6 +17,9 @@ use std::io::stdout;
 use std::process::Command;
 use std::sync::atomic::AtomicBool;
 
+#[cfg(test)]
+use libcnb_test as _;
+
 mod aptfile;
 mod commands;
 mod errors;

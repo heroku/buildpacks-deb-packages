@@ -55,8 +55,8 @@ impl NonRootApt {
             })?;
 
         Ok(Self {
-            install_dir,
             apt_version,
+            install_dir,
         })
     }
 
