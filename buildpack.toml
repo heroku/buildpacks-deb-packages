@@ -4,11 +4,12 @@ api = "0.9"
 id = "heroku/apt"
 version = "0.0.1"
 name = "Heroku Apt"
+description = "Heroku's Apt buildpack"
 homepage = "https://github.com/heroku/buildpacks-apt"
 keywords = ["apt"]
 
 [[buildpack.licenses]]
-type = "MIT"
+type = "ALv2"
 
 [[stacks]]
 id = "*"

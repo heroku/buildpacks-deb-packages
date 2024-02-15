@@ -4,6 +4,9 @@ use libcnb::detect::{DetectContext, DetectResult};
 use libcnb::generic::{GenericMetadata, GenericPlatform};
 use libcnb::{buildpack_main, Buildpack};
 
+#[cfg(test)]
+use libcnb_test as _;
+
 mod errors;
 
 buildpack_main!(AptBuildpack);

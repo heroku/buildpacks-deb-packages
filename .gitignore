@@ -11,3 +11,9 @@ target/
 
 # IDE
 .idea
+
+# compiled buildpacks
+packaged/
+
+# other
+.DS_store
