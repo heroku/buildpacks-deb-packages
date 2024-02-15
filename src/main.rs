@@ -19,6 +19,9 @@ use std::sync::atomic::AtomicBool;
 use std::sync::OnceLock;
 use walkdir::WalkDir;
 
+#[cfg(test)]
+use libcnb_test as _;
+
 mod aptfile;
 mod commands;
 mod errors;

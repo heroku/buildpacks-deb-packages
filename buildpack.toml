@@ -1,17 +1,15 @@
-api = "0.9"
+api = "0.10"
 
 [buildpack]
 id = "heroku/apt"
 version = "0.0.1"
 name = "Heroku Apt"
+description = "Heroku's Apt buildpack"
 homepage = "https://github.com/heroku/buildpacks-apt"
 keywords = ["apt"]
 
 [[buildpack.licenses]]
-type = "MIT"
-
-[[stacks]]
-id = "*"
+type = "ALv2"
 
 [metadata.release]
 image = { repository = "docker.io/heroku/buildpacks-apt" }

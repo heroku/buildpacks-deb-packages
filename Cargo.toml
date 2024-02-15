@@ -1,14 +1,13 @@
 [package]
 name = "buildpacks-apt"
-version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.76"
 
 [dependencies]
 commons = { git = "https://github.com/heroku/buildpacks-ruby", branch = "main" }
 fun_run = "0.1"
 indoc = "2"
-libcnb = { version = "=0.17.0", features = ["trace"] }
+libcnb = "=0.18.0"
 regex-lite = "0.1"
 semver = "1"
 serde = "1"
@@ -16,8 +15,14 @@ tempfile = "3"
 walkdir = "2"
 
 [dev-dependencies]
-libcnb-test = "=0.17.0"
-indoc = "2"
+libcnb-test = "=0.18.0"
 
-[profile.release]
-strip = true
+[lints.rust]
+unreachable_pub = "warn"
+unsafe_code = "warn"
+unused_crate_dependencies = "warn"
+
+[lints.clippy]
+panic_in_result_fn = "warn"
+pedantic = "warn"
+unwrap_used = "warn"

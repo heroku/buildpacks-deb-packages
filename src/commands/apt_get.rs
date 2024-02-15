@@ -8,6 +8,7 @@ use std::str::FromStr;
 // https://manpages.ubuntu.com/manpages/jammy/en/man8/apt-get.8.html
 
 #[derive(Debug, Default, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub(crate) struct AptGetCommand {
     pub(crate) allow_downgrades: bool,
     pub(crate) allow_remove_essential: bool,
