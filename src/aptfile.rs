@@ -1,14 +1,10 @@
 use std::collections::HashSet;
 use std::str::FromStr;
-use std::sync::OnceLock;
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) struct Aptfile {
     packages: HashSet<DebianPackageName>,
 }
-
-#[derive(Debug, PartialEq)]
-pub(crate) struct ParseAptfileError(ParseDebianPackageNameError);
 
 impl FromStr for Aptfile {
     type Err = ParseAptfileError;
@@ -25,17 +21,28 @@ impl FromStr for Aptfile {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub(crate) struct ParseAptfileError(ParseDebianPackageNameError);
+
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub(crate) struct DebianPackageName(String);
-
-#[derive(Debug, PartialEq)]
-pub(crate) struct ParseDebianPackageNameError(String);
 
 impl FromStr for DebianPackageName {
     type Err = ParseDebianPackageNameError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        if debian_package_name_regex().is_match(value) {
+        // https://www.debian.org/doc/debian-policy/ch-controlfields.html#source
+        // Package names (both source and binary, see Package) must consist only of
+        // lower case letters (a-z), digits (0-9), plus (+) and minus (-) signs,
+        // and periods (.). They must be at least two characters long and must
+        // start with an alphanumeric character.
+        let is_valid_package_name = value
+            .chars()
+            .all(|c| matches!(c, 'a'..='z' | '0'..='9' | '+' | '-' | '.'))
+            && value.chars().count() >= 2
+            && value.starts_with(|c: char| c.is_ascii_alphanumeric());
+
+        if is_valid_package_name {
             Ok(DebianPackageName(value.to_string()))
         } else {
             Err(ParseDebianPackageNameError(value.to_string()))
@@ -43,17 +50,8 @@ impl FromStr for DebianPackageName {
     }
 }
 
-fn debian_package_name_regex() -> &'static regex_lite::Regex {
-    static LAZY: OnceLock<regex_lite::Regex> = OnceLock::new();
-    LAZY.get_or_init(|| {
-        // https://www.debian.org/doc/debian-policy/ch-controlfields.html#source
-        // Package names (both source and binary, see Package) must consist only of
-        // lower case letters (a-z), digits (0-9), plus (+) and minus (-) signs,
-        // and periods (.). They must be at least two characters long and must
-        // start with an alphanumeric character.
-        regex_lite::Regex::new("^[a-z0-9][a-z0-9+.\\-]+$").expect("should be a valid regex pattern")
-    })
-}
+#[derive(Debug, PartialEq)]
+pub(crate) struct ParseDebianPackageNameError(String);
 
 #[cfg(test)]
 mod tests {
@@ -76,6 +74,7 @@ mod tests {
             );
         }
     }
+
     #[test]
     fn parse_invalid_debian_package_name() {
         let invalid_names = [
@@ -110,12 +109,14 @@ mod tests {
         " })
         .unwrap();
         assert_eq!(
-            aptfile.packages,
-            HashSet::from([
-                DebianPackageName("package-name-1".to_string()),
-                DebianPackageName("package-name-2".to_string()),
-                DebianPackageName("package-name-3".to_string()),
-            ])
+            aptfile,
+            Aptfile {
+                packages: HashSet::from([
+                    DebianPackageName("package-name-1".to_string()),
+                    DebianPackageName("package-name-2".to_string()),
+                    DebianPackageName("package-name-3".to_string()),
+                ])
+            }
         );
     }
 
