@@ -14,6 +14,12 @@ impl AsRef<OsStr> for DebianPackageName {
     }
 }
 
+impl AsRef<str> for DebianPackageName {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 impl FromStr for DebianPackageName {
     type Err = ParseDebianPackageNameError;
 
@@ -59,6 +65,13 @@ impl FromStr for DebianArchitectureName {
 
 #[derive(Debug)]
 pub(crate) struct ParseDebianArchitectureNameError(String);
+
+impl Display for ParseDebianArchitectureNameError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let unsupported_architecture = &self.0;
+        write!(f, "Unsupported architecture: `{unsupported_architecture}`")
+    }
+}
 
 #[derive(Debug, PartialEq)]
 #[allow(non_camel_case_types)]

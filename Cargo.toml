@@ -6,8 +6,8 @@ rust-version = "1.76"
 [dependencies]
 commons = { git = "https://github.com/heroku/buildpacks-ruby", branch = "main" }
 fun_run = "0.1"
-libcnb = "=0.19.0"
 indoc = "2"
+libcnb = "=0.19.0"
 semver = "1"
 serde = "1"
 tempfile = "3"

@@ -6,9 +6,12 @@
 
 mod macros;
 
+use indoc::indoc;
 use libcnb_test::{
     assert_contains, assert_not_contains, BuildConfig, PackResult, TestContext, TestRunner,
 };
+
+const DEFAULT_BUILDER: &str = "heroku/builder:22";
 
 #[test]
 #[ignore = "integration test"]
@@ -177,7 +180,30 @@ fn test_rewriting_package_configs() {
         });
 }
 
-const DEFAULT_BUILDER: &str = "heroku/builder:22";
+#[test]
+#[ignore = "integration test"]
+fn test_invalid_aptfile_error() {
+    TestRunner::default().build(
+        BuildConfig::new(get_integration_test_builder(), "tests/fixtures/invalid_aptfile").expected_pack_result(PackResult::Failure), |ctx| {
+            assert_contains!(
+                ctx.pack_stdout,
+                indoc! { "
+                    # Heroku Apt Buildpack
+    
+                    - Debug info
+                      - Invalid debian package name: `invalid-package-name!`
+                    
+                    ! Error reading `Aptfile`.
+                    !
+                    ! This buildpack requires an `Aptfile` to complete the build but the file can't be parsed.
+                    !
+                    ! Use the debug information above to troubleshoot and retry your build.
+                    !
+                    ! If the issue persists and you think you found a bug in the buildpack then reproduce the issue locally with a minimal example and open an issue in the buildpack's GitHub repository with the details.    
+                " }.trim()
+            );
+        });
+}
 
 fn get_integration_test_builder() -> String {
     std::env::var("INTEGRATION_TEST_CNB_BUILDER").unwrap_or(DEFAULT_BUILDER.to_string())

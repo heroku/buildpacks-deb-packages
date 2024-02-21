@@ -1,6 +1,7 @@
 use crate::debian::{DebianPackageName, ParseDebianPackageNameError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
@@ -26,6 +27,17 @@ impl FromStr for Aptfile {
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct ParseAptfileError(ParseDebianPackageNameError);
+
+impl Display for ParseAptfileError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let parse_debian_package_name_error = &self.0;
+        let invalid_debian_package_name = &parse_debian_package_name_error.0;
+        write!(
+            f,
+            "Invalid debian package name: `{invalid_debian_package_name}`"
+        )
+    }
+}
 
 #[cfg(test)]
 mod tests {

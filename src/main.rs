@@ -88,4 +88,8 @@ impl Buildpack for AptBuildpack {
 
         BuildResultBuilder::new().build()
     }
+
+    fn on_error(&self, error: libcnb::Error<Self::Error>) {
+        errors::on_error(error);
+    }
 }

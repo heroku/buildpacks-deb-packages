@@ -1,5 +1,6 @@
 use crate::debian::DebianPackageName;
 use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::Command;
@@ -117,12 +118,6 @@ impl From<AptGetUpdateCommand> for Command {
 #[derive(Debug)]
 pub(crate) struct AptVersion(semver::Version);
 
-#[derive(Debug)]
-pub(crate) enum ParseAptVersionError {
-    UnexpectedOutput(String),
-    InvalidVersion(String, semver::Error),
-}
-
 impl FromStr for AptVersion {
     type Err = ParseAptVersionError;
 
@@ -155,6 +150,31 @@ impl Deref for AptVersion {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum ParseAptVersionError {
+    UnexpectedOutput(String),
+    InvalidVersion(String, semver::Error),
+}
+
+impl Display for ParseAptVersionError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseAptVersionError::UnexpectedOutput(output) => {
+                write!(
+                    f,
+                    "Expected apt version output to start with `apt <version> ...`\nOutput: ${output}"
+                )
+            }
+            ParseAptVersionError::InvalidVersion(output, error) => {
+                write!(
+                    f,
+                    "Expected apt version to be valid semver\nError: ${error}\nOutput: ${output}"
+                )
+            }
+        }
     }
 }
 
