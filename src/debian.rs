@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::ffi::OsStr;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -6,6 +7,12 @@ use std::str::FromStr;
 #[serde(deny_unknown_fields)]
 // https://www.debian.org/doc/debian-policy/ch-controlfields.html#source
 pub(crate) struct DebianPackageName(pub(crate) String);
+
+impl AsRef<OsStr> for DebianPackageName {
+    fn as_ref(&self) -> &OsStr {
+        self.0.as_ref()
+    }
+}
 
 impl FromStr for DebianPackageName {
     type Err = ParseDebianPackageNameError;

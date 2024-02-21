@@ -11,11 +11,14 @@ use libcnb::generic::{GenericMetadata, GenericPlatform};
 use libcnb::{buildpack_main, Buildpack};
 #[cfg(test)]
 use libcnb_test as _;
+#[cfg(test)]
+use regex_lite as _;
 use std::fs;
 use std::io::stdout;
 use std::str::FromStr;
 
 mod aptfile;
+mod commands;
 mod debian;
 mod errors;
 mod layers;

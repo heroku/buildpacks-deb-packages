@@ -1,13 +1,24 @@
 use crate::aptfile::Aptfile;
+use crate::commands::apt_get::{AptGetCommand, AptVersion};
+use crate::commands::dpkg::DpkgCommand;
+use crate::debian::DebianPackageName;
+use crate::errors::AptBuildpackError;
 use crate::AptBuildpack;
+use commons::output::fmt;
 use commons::output::interface::SectionLogger;
-use commons::output::section_log::log_step;
+use commons::output::section_log::{log_step, log_step_stream, log_step_timed};
+use fun_run::CommandWithName;
+use indoc::formatdoc;
 use libcnb::build::BuildContext;
 use libcnb::data::layer_content_metadata::LayerTypes;
 use libcnb::layer::{ExistingLayerStrategy, Layer, LayerData, LayerResult, LayerResultBuilder};
 use libcnb::Buildpack;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::collections::HashSet;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use tempfile::{tempdir, TempDir};
 
 pub(crate) struct InstalledPackagesLayer<'a> {
     pub(crate) aptfile: &'a Aptfile,
@@ -29,9 +40,32 @@ impl<'a> Layer for InstalledPackagesLayer<'a> {
     fn create(
         &mut self,
         context: &BuildContext<Self::Buildpack>,
-        _layer_path: &Path,
+        layer_path: &Path,
     ) -> Result<LayerResult<Self::Metadata>, <Self::Buildpack as Buildpack>::Error> {
-        log_step("Installing packages from Aptfile");
+        let apt_dir = create_apt_dir()?;
+        let apt_config = create_apt_config(apt_dir.path())?;
+        let apt_version = get_apt_version()?;
+
+        log_step(format!(
+            "Installing packages from Aptfile (apt-get version {})",
+            fmt::value(apt_version.to_string())
+        ));
+
+        update_apt_sources(&apt_config)?;
+        download_packages(&self.aptfile.packages, &apt_config, &apt_version)?;
+
+        log_step_timed(
+            format!("Extracting packages to {}", layer_path.to_string_lossy()),
+            || {
+                fs::read_dir(apt_dir.path().join("cache/archives"))
+                    .map_err(AptBuildpackError::ListDownloadedPackages)?
+                    .flatten()
+                    .filter(|entry| entry.path().extension() == Some("deb".as_ref()))
+                    .try_for_each(|downloaded_package| {
+                        extract_package(&downloaded_package.path(), layer_path)
+                    })
+            },
+        )?;
 
         LayerResultBuilder::new(InstalledPackagesMetadata::new(
             self.aptfile.clone(),
@@ -63,6 +97,105 @@ impl<'a> Layer for InstalledPackagesLayer<'a> {
             Ok(ExistingLayerStrategy::Recreate)
         }
     }
+}
+
+fn create_apt_dir() -> Result<TempDir, AptBuildpackError> {
+    let apt_dir = tempdir().map_err(AptBuildpackError::CreateAptDir)?;
+    // apt-get complains if these folders aren't present
+    fs::create_dir_all(apt_dir.path().join("state/lists/partial"))
+        .map_err(AptBuildpackError::CreateAptDir)?;
+    fs::create_dir_all(apt_dir.path().join("cache/archives/partial"))
+        .map_err(AptBuildpackError::CreateAptDir)?;
+    Ok(apt_dir)
+}
+
+fn create_apt_config(apt_dir: &Path) -> Result<PathBuf, AptBuildpackError> {
+    // https://manpages.ubuntu.com/manpages/jammy/man5/apt.conf.5.html
+    // set a custom apt.conf so that our calls to apt-get use our custom installation
+    let apt_config = apt_dir.join("apt.conf");
+    fs::write(
+        apt_dir.join("apt.conf"),
+        formatdoc! { r#"
+            #clear APT::Update::Post-Invoke;
+            Debug::NoLocking "true";
+            Dir::Cache "{apt_dir}/cache";
+            Dir::State "{apt_dir}/state";      
+        "#, apt_dir = apt_dir.to_string_lossy() },
+    )
+    .map_err(AptBuildpackError::CreateAptConfig)
+    .map(|()| apt_config)
+}
+
+fn get_apt_version() -> Result<AptVersion, AptBuildpackError> {
+    let mut apt_get = AptGetCommand::new();
+    apt_get.version = true;
+    Command::from(apt_get)
+        .named_output()
+        .map_err(AptBuildpackError::AptGetVersionCommand)
+        .and_then(|output| {
+            output
+                .stdout_lossy()
+                .parse::<AptVersion>()
+                .map_err(AptBuildpackError::ParseAptGetVersion)
+        })
+}
+
+fn update_apt_sources(config_file: &Path) -> Result<(), AptBuildpackError> {
+    let mut apt_get = AptGetCommand::new();
+    apt_get.config_file = Some(config_file.to_path_buf());
+    let apt_get_update = apt_get.update();
+    let mut command = Command::from(apt_get_update);
+    log_step_stream(
+        format!("Updating sources with {}", fmt::command(command.name())),
+        |stream| command.stream_output(stream.io(), stream.io()),
+    )
+    .map_err(AptBuildpackError::AptGetUpdate)
+    .map(|_| ())
+}
+
+fn download_packages(
+    packages: &HashSet<DebianPackageName>,
+    config_file: &Path,
+    apt_version: &AptVersion,
+) -> Result<(), AptBuildpackError> {
+    let mut apt_get = AptGetCommand::new();
+    apt_get.config_file = Some(config_file.to_path_buf());
+    apt_get.assume_yes = true;
+    apt_get.download_only = true;
+    apt_get.reinstall = true;
+
+    let force_yes_requirement =
+        semver::VersionReq::parse("<1.1").expect("this should be a valid semver range");
+
+    if force_yes_requirement.matches(apt_version) {
+        apt_get.force_yes = true;
+    } else {
+        apt_get.allow_downgrades = true;
+        apt_get.allow_remove_essential = true;
+        apt_get.allow_change_held_packages = true;
+    };
+
+    let mut apt_get_install = apt_get.install();
+    for package in packages {
+        apt_get_install.packages.insert(package.clone());
+    }
+
+    let mut command = Command::from(apt_get_install);
+    log_step_stream(
+        format!("Downloading packages with {}", fmt::command(command.name())),
+        |stream| command.stream_output(stream.io(), stream.io()),
+    )
+    .map_err(AptBuildpackError::DownloadPackages)
+    .map(|_| ())
+}
+
+fn extract_package(package_archive: &Path, install_dir: &Path) -> Result<(), AptBuildpackError> {
+    let mut dpkg = DpkgCommand::new();
+    dpkg.extract(package_archive.to_path_buf(), install_dir.to_path_buf());
+    Command::from(dpkg)
+        .named_output()
+        .map_err(|e| AptBuildpackError::InstallPackage(package_archive.to_path_buf(), e))
+        .map(|_| ())
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
