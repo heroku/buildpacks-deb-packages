@@ -161,6 +161,22 @@ fn test_basic_package_install() {
         });
 }
 
+#[test]
+#[ignore = "integration test"]
+fn test_rewriting_package_configs() {
+    TestRunner::default().build(
+        BuildConfig::new(get_integration_test_builder(), "tests/fixtures/rewrite_package_config"), |ctx| {
+            assert_matches!(
+                ctx.pack_stdout,
+                r"Downloading packages with `apt-get --allow-downgrades --allow-remove-essential --allow-change-held-packages --assume-yes --config-file /tmp/.*/apt\.conf --download-only --reinstall install libopusfile-dev`"
+            );
+            assert_contains!(ctx.pack_stdout, "Extracting packages to /layers/heroku_apt/installed_packages");
+            assert_contains!(ctx.pack_stdout, "Rewriting package-config files");
+            assert_contains!(ctx.run_shell_command("cat /layers/heroku_apt/installed_packages/usr/lib/pkgconfig/opusfile.pc").stdout, "prefix=/layers/heroku_apt/installed_packages/usr");
+            assert_contains!(ctx.run_shell_command("cat /layers/heroku_apt/installed_packages/usr/lib/pkgconfig/opusurl.pc").stdout, "prefix=/layers/heroku_apt/installed_packages/usr");
+        });
+}
+
 const DEFAULT_BUILDER: &str = "heroku/builder:22";
 
 fn get_integration_test_builder() -> String {

@@ -11,10 +11,10 @@ indoc = "2"
 semver = "1"
 serde = "1"
 tempfile = "3"
+walkdir = "2"
 
 [dev-dependencies]
 libcnb-test = "=0.19.0"
-indoc = "2"
 toml = "0.8"
 regex-lite = "0.1"
 

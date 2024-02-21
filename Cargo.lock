@@ -99,6 +99,7 @@ dependencies = [
  "serde",
  "tempfile",
  "toml",
+ "walkdir",
 ]
 
 [[package]]

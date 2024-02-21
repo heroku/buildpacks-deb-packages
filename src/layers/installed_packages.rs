@@ -19,6 +19,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::{tempdir, TempDir};
+use walkdir::{DirEntry, WalkDir};
 
 pub(crate) struct InstalledPackagesLayer<'a> {
     pub(crate) aptfile: &'a Aptfile,
@@ -66,6 +67,16 @@ impl<'a> Layer for InstalledPackagesLayer<'a> {
                     })
             },
         )?;
+
+        log_step_timed("Rewriting package-config files", || {
+            WalkDir::new(layer_path)
+                .into_iter()
+                .flatten()
+                .filter(is_package_config)
+                .try_for_each(|dir_entry: DirEntry| {
+                    rewrite_package_config(dir_entry.path(), layer_path)
+                })
+        })?;
 
         LayerResultBuilder::new(InstalledPackagesMetadata::new(
             self.aptfile.clone(),
@@ -196,6 +207,44 @@ fn extract_package(package_archive: &Path, install_dir: &Path) -> Result<(), Apt
         .named_output()
         .map_err(|e| AptBuildpackError::InstallPackage(package_archive.to_path_buf(), e))
         .map(|_| ())
+}
+
+fn is_package_config(entry: &DirEntry) -> bool {
+    entry.file_type().is_file()
+        && entry
+            .path()
+            .parent()
+            .and_then(|parent| parent.file_name())
+            .is_some_and(|parent_dir| parent_dir == "pkgconfig")
+        && entry.path().extension().is_some_and(|ext| ext == "pc")
+}
+
+fn rewrite_package_config(
+    package_config: &Path,
+    install_dir: &Path,
+) -> Result<(), AptBuildpackError> {
+    let contents = fs::read_to_string(package_config)
+        .map_err(|e| AptBuildpackError::ReadPackageConfigFile(package_config.to_path_buf(), e))?;
+
+    let new_contents = contents
+        .split('\n')
+        .map(|line| {
+            if let Some(prefix_value) = line.strip_prefix("prefix=") {
+                format!(
+                    "prefix={}",
+                    install_dir
+                        .join(prefix_value.trim_start_matches('/'))
+                        .to_string_lossy()
+                )
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    fs::write(package_config, new_contents)
+        .map_err(|e| AptBuildpackError::WritePackageConfigFile(package_config.to_path_buf(), e))
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
