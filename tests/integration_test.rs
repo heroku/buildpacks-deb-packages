@@ -74,7 +74,7 @@ fn test_cache_invalidated_when_aptfile_changes() {
                 assert_contains!(ctx.pack_stdout, "- Apt packages");
                 assert_contains!(
                     ctx.pack_stdout,
-                    "  - Invalidating installed packages (Aptfile changed)"
+                    "  - Invalidating installed packages (packages changed)"
                 );
                 assert_contains!(ctx.pack_stdout, "  - Installing packages from Aptfile");
 
@@ -147,11 +147,12 @@ fn test_basic_package_install() {
             assert_contains!(ctx.pack_stdout, "- Apt packages");
             assert_matches!(
                 ctx.pack_stdout,
-                r"Installing packages from Aptfile \(apt-get version `\d+\.\d+\.\d+`\)"
+                r"Updating sources with `apt-get --config-file /tmp/.*/apt\.conf update`"
             );
+            assert_contains!(ctx.pack_stdout, "  - Collecting dependency information");
             assert_matches!(
                 ctx.pack_stdout,
-                r"Updating sources with `apt-get --config-file /tmp/.*/apt\.conf update`"
+                r"Installing packages from Aptfile \(apt-get version `\d+\.\d+\.\d+`\)"
             );
             assert_matches!(
                 ctx.pack_stdout,

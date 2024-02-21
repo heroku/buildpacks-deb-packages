@@ -1,12 +1,11 @@
 use crate::debian::DebianPackageName;
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
 
 // https://manpages.ubuntu.com/manpages/jammy/en/man8/apt-get.8.html
-
 #[derive(Debug, Default, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub(crate) struct AptGetCommand {
@@ -90,7 +89,7 @@ impl From<AptGetInstallCommand> for Command {
     fn from(value: AptGetInstallCommand) -> Self {
         let mut command: Command = value.apt_get_command.into();
         command.arg("install");
-        command.args(value.packages);
+        command.args(value.packages.iter().collect::<BTreeSet<_>>());
         command
     }
 }
@@ -156,6 +155,97 @@ impl Deref for AptVersion {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+// https://manpages.ubuntu.com/manpages/jammy/en/man8/apt-cache.8.html
+#[derive(Debug, Clone)]
+pub(crate) struct AptCacheCommand {
+    pub(crate) config_file: Option<PathBuf>,
+    pub(crate) important: bool,
+    pub(crate) recurse: bool,
+}
+
+impl AptCacheCommand {
+    pub(crate) fn new() -> Self {
+        Self {
+            config_file: None,
+            important: false,
+            recurse: false,
+        }
+    }
+
+    pub(crate) fn policy(self) -> AptCachePolicyCommand {
+        AptCachePolicyCommand::new(self.clone())
+    }
+
+    pub(crate) fn depends(self) -> AptCacheDependsCommand {
+        AptCacheDependsCommand::new(self.clone())
+    }
+}
+
+impl From<AptCacheCommand> for Command {
+    fn from(value: AptCacheCommand) -> Self {
+        let mut command = Command::new("apt-cache");
+        if let Some(config_file) = value.config_file {
+            command.arg("--config-file");
+            command.arg(config_file);
+        }
+        if value.important {
+            command.arg("--important");
+        }
+        if value.recurse {
+            command.arg("--recurse");
+        }
+        command
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct AptCachePolicyCommand {
+    apt_cache_command: AptCacheCommand,
+    pub(crate) packages: HashSet<DebianPackageName>,
+}
+
+impl AptCachePolicyCommand {
+    fn new(apt_cache_command: AptCacheCommand) -> Self {
+        Self {
+            apt_cache_command,
+            packages: HashSet::new(),
+        }
+    }
+}
+
+impl From<AptCachePolicyCommand> for Command {
+    fn from(value: AptCachePolicyCommand) -> Self {
+        let mut command = Command::from(value.apt_cache_command);
+        command.arg("policy");
+        command.args(value.packages.iter().collect::<BTreeSet<_>>());
+        command
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct AptCacheDependsCommand {
+    apt_cache_command: AptCacheCommand,
+    pub(crate) packages: HashSet<DebianPackageName>,
+}
+
+impl AptCacheDependsCommand {
+    fn new(apt_cache_command: AptCacheCommand) -> Self {
+        Self {
+            apt_cache_command,
+            packages: HashSet::new(),
+        }
+    }
+}
+
+impl From<AptCacheDependsCommand> for Command {
+    fn from(value: AptCacheDependsCommand) -> Self {
+        let mut command = Command::from(value.apt_cache_command);
+        command.arg("depends");
+        command.args(value.packages.iter().collect::<BTreeSet<_>>());
+        command
     }
 }
 
@@ -278,5 +368,55 @@ mod tests {
             ParseAptVersionError::UnexpectedOutput(_) => panic!("wrong error type"),
             ParseAptVersionError::InvalidVersion(version, _) => assert_eq!(&version, "1.2"),
         };
+    }
+
+    #[test]
+    fn test_apt_cache_policy() {
+        let mut apt_cache = AptCacheCommand::new();
+        apt_cache.config_file = Some(PathBuf::from("/not/a/real/path/apt.conf"));
+        let mut apt_cache_policy = apt_cache.policy();
+        apt_cache_policy.packages = HashSet::from([
+            DebianPackageName("package-1".to_string()),
+            DebianPackageName("package-2".to_string()),
+        ]);
+        let command = Command::from(apt_cache_policy);
+        assert_eq!(command.get_program(), "apt-cache");
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            [
+                "--config-file",
+                "/not/a/real/path/apt.conf",
+                "policy",
+                "package-1",
+                "package-2"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_apt_cache_depends() {
+        let mut apt_cache = AptCacheCommand::new();
+        apt_cache.config_file = Some(PathBuf::from("/not/a/real/path/apt.conf"));
+        apt_cache.important = true;
+        apt_cache.recurse = true;
+        let mut apt_cache_depends = apt_cache.depends();
+        apt_cache_depends.packages = HashSet::from([
+            DebianPackageName("package-2".to_string()),
+            DebianPackageName("package-1".to_string()),
+        ]);
+        let command = Command::from(apt_cache_depends);
+        assert_eq!(command.get_program(), "apt-cache");
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            [
+                "--config-file",
+                "/not/a/real/path/apt.conf",
+                "--important",
+                "--recurse",
+                "depends",
+                "package-1",
+                "package-2"
+            ]
+        );
     }
 }

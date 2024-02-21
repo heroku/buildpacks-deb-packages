@@ -1,7 +1,10 @@
-use crate::aptfile::ParseAptfileError;
-use crate::commands::apt_get::ParseAptVersionError;
-use crate::debian::ParseDebianArchitectureNameError;
 use std::path::PathBuf;
+
+use crate::aptfile::ParseAptfileError;
+use crate::commands::apt::ParseAptVersionError;
+use crate::debian::ParseDebianArchitectureNameError;
+use crate::dependency_set::DependencySetError;
+use crate::dependency_versions::DependencyVersionsError;
 
 #[derive(Debug)]
 #[allow(clippy::enum_variant_names)]
@@ -19,6 +22,8 @@ pub(crate) enum AptBuildpackError {
     DownloadPackages(fun_run::CmdError),
     ListDownloadedPackages(std::io::Error),
     InstallPackage(PathBuf, fun_run::CmdError),
+    DependencySet(DependencySetError),
+    DependencyVersions(DependencyVersionsError),
 }
 
 impl From<AptBuildpackError> for libcnb::Error<AptBuildpackError> {

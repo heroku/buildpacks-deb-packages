@@ -3,7 +3,7 @@ use std::ffi::OsStr;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize, Ord, PartialOrd)]
 #[serde(deny_unknown_fields)]
 // https://www.debian.org/doc/debian-policy/ch-controlfields.html#source
 pub(crate) struct DebianPackageName(pub(crate) String);

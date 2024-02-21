@@ -1,2 +1,2 @@
-pub(crate) mod apt_get;
+pub(crate) mod apt;
 pub(crate) mod dpkg;
