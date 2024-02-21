@@ -4,6 +4,8 @@
 // Required due to: https://github.com/rust-lang/rust/issues/95513
 #![allow(unused_crate_dependencies)]
 
+mod macros;
+
 use libcnb_test::{
     assert_contains, assert_not_contains, BuildConfig, PackResult, TestContext, TestRunner,
 };
@@ -134,6 +136,29 @@ fn test_environment_configuration() {
             assert_contains!(pkg_config_path, &format!("{layer_dir}/usr/lib/pkgconfig"));
         },
     );
+}
+
+#[test]
+#[ignore = "integration test"]
+fn test_basic_package_install() {
+    TestRunner::default().build(
+        BuildConfig::new(get_integration_test_builder(), "tests/fixtures/basic"), |ctx| {
+            assert_contains!(ctx.pack_stdout, "# Heroku Apt Buildpack");
+            assert_contains!(ctx.pack_stdout, "- Apt packages");
+            assert_matches!(
+                ctx.pack_stdout,
+                r"Installing packages from Aptfile \(apt-get version `\d+\.\d+\.\d+`\)"
+            );
+            assert_matches!(
+                ctx.pack_stdout,
+                r"Updating sources with `apt-get --config-file /tmp/.*/apt\.conf update`"
+            );
+            assert_matches!(
+                ctx.pack_stdout,
+                r"Downloading packages with `apt-get --allow-downgrades --allow-remove-essential --allow-change-held-packages --assume-yes --config-file /tmp/.*/apt\.conf --download-only --reinstall install xmlsec1`"
+            );
+            assert_contains!(ctx.pack_stdout, "Extracting packages to /layers/heroku_apt/installed_packages");
+        });
 }
 
 const DEFAULT_BUILDER: &str = "heroku/builder:22";

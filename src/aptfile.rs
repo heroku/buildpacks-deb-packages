@@ -6,7 +6,7 @@ use std::str::FromStr;
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Aptfile {
-    packages: HashSet<DebianPackageName>,
+    pub(crate) packages: HashSet<DebianPackageName>,
 }
 
 impl FromStr for Aptfile {
