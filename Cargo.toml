@@ -6,10 +6,12 @@ rust-version = "1.76"
 [dependencies]
 commons = { git = "https://github.com/heroku/buildpacks-ruby", branch = "main" }
 libcnb = "=0.19.0"
+serde = "1"
 
 [dev-dependencies]
 libcnb-test = "=0.19.0"
 indoc = "2"
+toml = "0.8"
 
 [lints.rust]
 unreachable_pub = "warn"

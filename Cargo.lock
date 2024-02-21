@@ -93,6 +93,8 @@ dependencies = [
  "indoc",
  "libcnb 0.19.0",
  "libcnb-test",
+ "serde",
+ "toml",
 ]
 
 [[package]]
