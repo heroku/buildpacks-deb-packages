@@ -91,7 +91,7 @@ version = "0.0.0"
 dependencies = [
  "commons",
  "indoc",
- "libcnb 0.18.0",
+ "libcnb 0.19.0",
  "libcnb-test",
 ]
 
@@ -509,13 +509,13 @@ dependencies = [
 
 [[package]]
 name = "libcnb"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01a3489808fbae57c1b5a66a4c38062cb1baa66548a4a1c738f297e7a29df944"
+checksum = "7db217651ab45597152c94ad849defb079fc7ced7d72de2fcc2e9c3dec6e990e"
 dependencies = [
- "libcnb-common 0.18.0",
- "libcnb-data 0.18.0",
- "libcnb-proc-macros 0.18.0",
+ "libcnb-common 0.19.0",
+ "libcnb-data 0.19.0",
+ "libcnb-proc-macros 0.19.0",
  "serde",
  "thiserror",
  "toml",
@@ -534,9 +534,9 @@ dependencies = [
 
 [[package]]
 name = "libcnb-common"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b49fe66eb86c6f49b54a1120ea6e7f0770d61351aa1a17fedba98c991f6097d"
+checksum = "f3abf2056162dd76ade12884e002ba88f068a26594b2eb9579ef8af40cfbca1b"
 dependencies = [
  "serde",
  "thiserror",
@@ -559,12 +559,12 @@ dependencies = [
 
 [[package]]
 name = "libcnb-data"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baab61150f401f2570a338993e667ce2c5988e2df6c1fa95ef359953fa24ac02"
+checksum = "afc6b01af8b624193ca6b247667ef82f36dd85d62b90f5a7e8d047b46642ce7c"
 dependencies = [
  "fancy-regex 0.13.0",
- "libcnb-proc-macros 0.18.0",
+ "libcnb-proc-macros 0.19.0",
  "serde",
  "thiserror",
  "toml",
@@ -573,15 +573,15 @@ dependencies = [
 
 [[package]]
 name = "libcnb-package"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce362548e8ca30b04100ae41dd3fdf8808ac966bf78ecc32510024ad75c0f9bf"
+checksum = "2678c2e0882c622a01d415e64625258849e533aeba8531110a5b3db9593d97d5"
 dependencies = [
  "cargo_metadata",
  "ignore",
  "indoc",
- "libcnb-common 0.18.0",
- "libcnb-data 0.18.0",
+ "libcnb-common 0.19.0",
+ "libcnb-data 0.19.0",
  "petgraph",
  "thiserror",
  "uriparse",
@@ -602,9 +602,9 @@ dependencies = [
 
 [[package]]
 name = "libcnb-proc-macros"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d45827270d4493f5634a96fdc1238653fb00b12abc1b6fc4d1e7ed920f3785b"
+checksum = "b0308e3b554dd8b0b969ab42d19b50b02bdb712dc72652849fa1e33bd1d16709"
 dependencies = [
  "cargo_metadata",
  "fancy-regex 0.13.0",
@@ -614,14 +614,14 @@ dependencies = [
 
 [[package]]
 name = "libcnb-test"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d89d3c16306a2719734316cc523dc6320112d6d51121392324a4afde7ea64366"
+checksum = "f094d9c229c481fb868d36231dcc4b7596491503d0a297eb239b08e942eb483c"
 dependencies = [
  "fastrand",
  "fs_extra",
- "libcnb-common 0.18.0",
- "libcnb-data 0.18.0",
+ "libcnb-common 0.19.0",
+ "libcnb-data 0.19.0",
  "libcnb-package",
  "tempfile",
  "thiserror",
@@ -857,18 +857,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.196"
+version = "1.0.197"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "870026e60fa08c69f064aa766c10f10b1d62db9ccd4d0abb206472bee0ce3b32"
+checksum = "3fb1c873e1b9b056a4dc4c0c198b24c3ffa059243875552b2bd0933b1aee4ce2"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.196"
+version = "1.0.197"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33c85360c95e7d137454dc81d9a4ed2b8efd8fbe19cee57357b32b9771fccb67"
+checksum = "7eb0b34b42edc17f6b7cac84a52a1c5f0e1bb2227e997ca9011ea3dd34e8610b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -920,9 +920,9 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 
 [[package]]
 name = "syn"
-version = "2.0.48"
+version = "2.0.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f3531638e407dfc0814761abb7c00a5b54992b849452a0646b7f65c9f770f3f"
+checksum = "74f1bdc9872430ce9b75da68329d1c1746faf50ffac5f19e02b71e37ff881ffb"
 dependencies = [
  "proc-macro2",
  "quote",
