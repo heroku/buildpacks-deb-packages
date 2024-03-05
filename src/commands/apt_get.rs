@@ -7,80 +7,31 @@ use std::str::FromStr;
 
 // https://manpages.ubuntu.com/manpages/jammy/en/man8/apt-get.8.html
 
-#[derive(Debug, Default, Clone)]
-#[allow(clippy::struct_excessive_bools)]
-pub(crate) struct AptGetCommand {
-    pub(crate) allow_downgrades: bool,
-    pub(crate) allow_remove_essential: bool,
-    pub(crate) allow_change_held_packages: bool,
-    pub(crate) assume_yes: bool,
-    pub(crate) config_file: Option<PathBuf>,
-    pub(crate) download_only: bool,
-    pub(crate) force_yes: bool,
-    pub(crate) reinstall: bool,
-}
-
-impl AptGetCommand {
-    pub(crate) fn new() -> Self {
-        AptGetCommand::default()
-    }
-
-    pub(crate) fn install(&self) -> AptGetInstallCommand {
-        AptGetInstallCommand::new(self.clone())
-    }
-}
-
-impl From<AptGetCommand> for Command {
-    fn from(value: AptGetCommand) -> Self {
-        let mut command = Command::new("apt-get");
-
-        if value.allow_downgrades {
-            command.arg("--allow-downgrades");
-        }
-        if value.allow_remove_essential {
-            command.arg("--allow-remove-essential");
-        }
-        if value.allow_change_held_packages {
-            command.arg("--allow-change-held-packages");
-        }
-        if value.assume_yes {
-            command.arg("--assume-yes");
-        }
-        if let Some(config_file) = value.config_file {
-            command.arg("--config-file");
-            command.arg(config_file);
-        }
-        if value.download_only {
-            command.arg("--download-only");
-        }
-        if value.force_yes {
-            command.arg("--force-yes");
-        }
-        if value.reinstall {
-            command.arg("--reinstall");
-        }
-        command
-    }
-}
-
 #[derive(Debug, Clone)]
-pub(crate) struct AptGetInstallCommand {
-    apt_get_command: AptGetCommand,
+pub(crate) struct AptGetInstall {
+    pub(crate) config_file: PathBuf,
+    pub(crate) can_force_yes: bool,
     pub(crate) packages: HashSet<DebianPackageName>,
 }
 
-impl AptGetInstallCommand {
-    fn new(apt_get_command: AptGetCommand) -> Self {
-        Self {
-            apt_get_command,
-            packages: HashSet::new(),
+impl From<AptGetInstall> for Command {
+    fn from(value: AptGetInstall) -> Self {
+        let mut command = Command::new("apt-get");
+        if value.can_force_yes {
+            command.arg("--force-yes");
+        } else {
+            command.arg("--allow-downgrades");
+            command.arg("--allow-remove-essential");
+            command.arg("--allow-change-held-packages");
         }
-    }
-}
+        command.arg("--assume-yes");
 
-impl From<AptGetInstallCommand> for Command {
-    fn from(value: AptGetInstallCommand) -> Self {
-        let mut command: Command = value.apt_get_command.into();
+        command.arg("--config-file");
+        command.arg(value.config_file);
+
+        command.arg("--download-only");
+        command.arg("--reinstall");
+
         command.arg("install");
         command.args(value.packages);
         command
@@ -138,23 +89,22 @@ mod tests {
 
     #[test]
     fn test_apt_get_install_with_force_yes() {
-        let mut apt_get = AptGetCommand::new();
-        apt_get.assume_yes = true;
-        apt_get.download_only = true;
-        apt_get.reinstall = true;
-        apt_get.force_yes = true;
-        let mut apt_get_install = apt_get.install();
-        apt_get_install
-            .packages
-            .insert(DebianPackageName::from_str("some-package").unwrap());
-        let command: Command = apt_get_install.into();
+        let command: Command = AptGetInstall {
+            packages: HashSet::from([DebianPackageName::from_str("some-package").unwrap()]),
+            config_file: PathBuf::from("/dev/null"),
+            can_force_yes: true,
+        }
+        .into();
+
         assert_eq!(command.get_program(), "apt-get");
         assert_eq!(
             command.get_args().collect::<Vec<_>>(),
             &[
-                "--assume-yes",
-                "--download-only",
                 "--force-yes",
+                "--assume-yes",
+                "--config-file",
+                "/dev/null",
+                "--download-only",
                 "--reinstall",
                 "install",
                 "some-package"
@@ -164,18 +114,13 @@ mod tests {
 
     #[test]
     fn test_apt_get_install_without_force_yes() {
-        let mut apt_get = AptGetCommand::new();
-        apt_get.assume_yes = true;
-        apt_get.download_only = true;
-        apt_get.reinstall = true;
-        apt_get.allow_downgrades = true;
-        apt_get.allow_remove_essential = true;
-        apt_get.allow_change_held_packages = true;
-        let mut apt_get_install = apt_get.install();
-        apt_get_install
-            .packages
-            .insert(DebianPackageName::from_str("some-package").unwrap());
-        let command: Command = apt_get_install.into();
+        let command: Command = AptGetInstall {
+            packages: HashSet::from([DebianPackageName::from_str("some-package").unwrap()]),
+            config_file: PathBuf::from("/dev/null"),
+            can_force_yes: false,
+        }
+        .into();
+
         assert_eq!(command.get_program(), "apt-get");
         assert_eq!(
             command.get_args().collect::<Vec<_>>(),
@@ -184,6 +129,8 @@ mod tests {
                 "--allow-remove-essential",
                 "--allow-change-held-packages",
                 "--assume-yes",
+                "--config-file",
+                "/dev/null",
                 "--download-only",
                 "--reinstall",
                 "install",

@@ -1,5 +1,5 @@
 use crate::aptfile::Aptfile;
-use crate::commands::apt_get::{AptGetCommand, AptVersion};
+use crate::commands::apt_get::{AptGetInstall, AptVersion};
 use crate::commands::dpkg::DpkgCommand;
 use crate::debian::DebianPackageName;
 use crate::errors::AptBuildpackError;
@@ -119,7 +119,7 @@ fn create_apt_config(apt_dir: &Path) -> Result<PathBuf, AptBuildpackError> {
             #clear APT::Update::Post-Invoke;
             Debug::NoLocking "true";
             Dir::Cache "{apt_dir}/cache";
-            Dir::State "{apt_dir}/state";      
+            Dir::State "{apt_dir}/state";
         "#, apt_dir = apt_dir.to_string_lossy() },
     )
     .map_err(AptBuildpackError::CreateAptConfig)
@@ -156,29 +156,16 @@ fn download_packages(
     config_file: &Path,
     apt_version: &AptVersion,
 ) -> Result<(), AptBuildpackError> {
-    let mut apt_get = AptGetCommand::new();
-    apt_get.config_file = Some(config_file.to_path_buf());
-    apt_get.assume_yes = true;
-    apt_get.download_only = true;
-    apt_get.reinstall = true;
-
     let force_yes_requirement =
         semver::VersionReq::parse("<=1.0").expect("this should be a valid semver range");
 
-    if force_yes_requirement.matches(apt_version) {
-        apt_get.force_yes = true;
-    } else {
-        apt_get.allow_downgrades = true;
-        apt_get.allow_remove_essential = true;
-        apt_get.allow_change_held_packages = true;
-    };
-
-    let mut apt_get_install = apt_get.install();
-    for package in packages {
-        apt_get_install.packages.insert(package.clone());
+    let mut command: Command = AptGetInstall {
+        packages: packages.clone(),
+        config_file: config_file.to_path_buf(),
+        can_force_yes: force_yes_requirement.matches(apt_version),
     }
+    .into();
 
-    let mut command = Command::from(apt_get_install);
     log_step_stream(
         format!("Downloading packages with {}", fmt::command(command.name())),
         |stream| command.stream_output(stream.io(), stream.io()),
