@@ -18,7 +18,6 @@ pub(crate) struct AptGetCommand {
     pub(crate) download_only: bool,
     pub(crate) force_yes: bool,
     pub(crate) reinstall: bool,
-    pub(crate) version: bool,
 }
 
 impl AptGetCommand {
@@ -63,9 +62,6 @@ impl From<AptGetCommand> for Command {
         }
         if value.reinstall {
             command.arg("--reinstall");
-        }
-        if value.version {
-            command.arg("--version");
         }
         command
     }
@@ -164,15 +160,6 @@ mod tests {
     use indoc::indoc;
 
     #[test]
-    fn test_apt_get_version() {
-        let mut apt_get = AptGetCommand::new();
-        apt_get.version = true;
-        let command: Command = apt_get.into();
-        assert_eq!(command.get_program(), "apt-get");
-        assert_eq!(command.get_args().collect::<Vec<_>>(), &["--version"]);
-    }
-
-    #[test]
     fn test_apt_get_update() {
         let apt_get_update = AptGetCommand::new().update();
         let command: Command = apt_get_update.into();
@@ -255,7 +242,7 @@ mod tests {
              Idx: Debian dpkg status file
              Idx: Debian deb file
              Idx: Debian dsc file
-             Idx: Debian control file            
+             Idx: Debian control file
         " })
         .unwrap();
         assert_eq!(*apt_version, semver::Version::new(2, 4, 11));

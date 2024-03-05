@@ -127,9 +127,8 @@ fn create_apt_config(apt_dir: &Path) -> Result<PathBuf, AptBuildpackError> {
 }
 
 fn get_apt_version() -> Result<AptVersion, AptBuildpackError> {
-    let mut apt_get = AptGetCommand::new();
-    apt_get.version = true;
-    Command::from(apt_get)
+    Command::new("apt-get")
+        .arg("--version")
         .named_output()
         .map_err(AptBuildpackError::AptGetVersionCommand)
         .and_then(|output| {
