@@ -28,10 +28,6 @@ impl AptGetCommand {
     pub(crate) fn install(&self) -> AptGetInstallCommand {
         AptGetInstallCommand::new(self.clone())
     }
-
-    pub(crate) fn update(&self) -> AptGetUpdateCommand {
-        AptGetUpdateCommand::new(self.clone())
-    }
 }
 
 impl From<AptGetCommand> for Command {
@@ -91,25 +87,6 @@ impl From<AptGetInstallCommand> for Command {
     }
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct AptGetUpdateCommand {
-    apt_get_command: AptGetCommand,
-}
-
-impl AptGetUpdateCommand {
-    fn new(apt_get_command: AptGetCommand) -> Self {
-        Self { apt_get_command }
-    }
-}
-
-impl From<AptGetUpdateCommand> for Command {
-    fn from(value: AptGetUpdateCommand) -> Self {
-        let mut command: Command = value.apt_get_command.into();
-        command.arg("update");
-        command
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct AptVersion(semver::Version);
 
@@ -158,14 +135,6 @@ impl Deref for AptVersion {
 mod tests {
     use super::*;
     use indoc::indoc;
-
-    #[test]
-    fn test_apt_get_update() {
-        let apt_get_update = AptGetCommand::new().update();
-        let command: Command = apt_get_update.into();
-        assert_eq!(command.get_program(), "apt-get");
-        assert_eq!(command.get_args().collect::<Vec<_>>(), &["update"]);
-    }
 
     #[test]
     fn test_apt_get_install_with_force_yes() {

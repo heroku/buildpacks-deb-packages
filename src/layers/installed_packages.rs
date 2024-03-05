@@ -140,10 +140,9 @@ fn get_apt_version() -> Result<AptVersion, AptBuildpackError> {
 }
 
 fn update_apt_sources(config_file: &Path) -> Result<(), AptBuildpackError> {
-    let mut apt_get = AptGetCommand::new();
-    apt_get.config_file = Some(config_file.to_path_buf());
-    let apt_get_update = apt_get.update();
-    let mut command = Command::from(apt_get_update);
+    let mut command = Command::new("apt-get");
+    command.arg("--config-file").arg(config_file).arg("update");
+
     log_step_stream(
         format!("Updating sources with {}", fmt::command(command.name())),
         |stream| command.stream_output(stream.io(), stream.io()),
