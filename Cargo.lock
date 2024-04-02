@@ -130,7 +130,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "commons"
 version = "0.0.0"
-source = "git+https://github.com/heroku/buildpacks-ruby?branch=main#89ed27ce52e210092821607a8427b59d7c160be0"
+source = "git+https://github.com/heroku/buildpacks-ruby?branch=main#3e9677fc68f05785edbb1c3a33f047244159b068"
 dependencies = [
  "ascii_table",
  "byte-unit",
