@@ -3,6 +3,7 @@ use crate::debian::ParseDebianArchitectureNameError;
 
 #[derive(Debug)]
 #[allow(clippy::enum_variant_names)]
+#[allow(dead_code)] // TODO: remove this once error messages are added
 pub(crate) enum AptBuildpackError {
     DetectAptfile(std::io::Error),
     ReadAptfile(std::io::Error),

@@ -51,6 +51,7 @@ impl FromStr for DebianArchitectureName {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)] // TODO: remove this once error messages are added
 pub(crate) struct ParseDebianArchitectureNameError(String);
 
 #[derive(Debug, PartialEq)]
