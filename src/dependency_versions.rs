@@ -49,16 +49,22 @@ impl FromStr for DependencyVersions {
         for line in value.lines().filter(|line| !line.is_empty()) {
             // dependency names are the only line that are not indented
             if line.starts_with(' ') {
-                if let Some(version) = line.trim().strip_prefix("Candidate: ") {
-                    if dependency_queue.len() == 1 {
-                        let debian_package = dependency_queue
-                            .pop()
-                            .expect("There should be 1 element in this list");
+                match (
+                    line.trim().strip_prefix("Candidate: "),
+                    &dependency_queue[..],
+                ) {
+                    // we have a version and a single package name in the queue, this is the expected format
+                    (Some(version), [debian_package]) => {
                         let candidate_version = CandidateVersion(version.to_string());
                         dependencies_versions.insert(debian_package.clone(), candidate_version);
-                    } else {
+                        dependency_queue.pop();
+                    }
+                    // if there's zero or more than one package in the queue, that's a problem
+                    (Some(_), [] | _) => {
                         Err(DependencyVersionsError::UnexpectedFormat(value.to_string()))?;
                     }
+                    // ignore everything else, there's a check outside this loop to ensure nothing unprocessed is left in the queue
+                    _ => continue,
                 }
             } else if let Some(package_name) = line.strip_suffix(':') {
                 let debian_package = DebianPackageName::from_str(package_name).map_err(|e| {
