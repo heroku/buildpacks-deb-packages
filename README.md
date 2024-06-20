@@ -63,29 +63,26 @@ install = [
 
 - `com.heroku.buildpacks.debian-packages` *__([table][toml-table], optional)__*
 
-    <p style="margin-left: 1rem">The root configuration for this buildpack.</p><br>
+  The root configuration for this buildpack.
 
     - `install` *__([array][toml-array], optional)__*
 
-        <p style="margin-left: 1rem">A list of one or more packages to install. Each package can be specified in either of the following formats:</p><br>
+      A list of one or more packages to install. Each package can be specified in either of the following formats:
 
         - *__([string][toml-string])__*
 
-            <p style="margin-left: 1rem">The name of the package to install.</p><br>
+          The name of the package to install.
 
-        <p style="margin-left: 1rem">OR</p><br>
+      <p>&nbsp;&nbsp;&nbsp; OR</p>
 
         - *__([inline-table][toml-inline-table])__*
-
-            <br>
-
             - `name` *__([string][toml-string], required)__*
 
-                <p style="margin-left: 1rem">The name of the package to install.</p><br>
+              The name of the package to install.
 
             - `skip_dependencies` *__([boolean][toml-boolean], optional, default = false)__*
 
-                <p style="margin-left: 1rem">If set to <code>true</code>, no attempt will be made to install any dependencies of the given package.</p><br>
+              If set to `true`, no attempt will be made to install any dependencies of the given package.
 
 > [!TIP]
 > Users of the [heroku-community/apt][classic-apt-buildpack] can migrate their Aptfile to the above configuration by
