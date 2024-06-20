@@ -43,6 +43,7 @@ fn test_failed_detection_when_project_file_has_no_config() {
 
 #[test]
 #[ignore = "integration test"]
+#[allow(clippy::too_many_lines)]
 fn test_general_usage_output() {
     TestRunner::default().build(BuildConfig::new(get_integration_test_builder(), "tests/fixtures/general_usage"), |ctx| {
         assert_contains_match!(ctx.pack_stdout, r"# Heroku Debian Packages Buildpack \(v\d+\.\d+\.\d+\)");
@@ -108,21 +109,21 @@ fn test_general_usage_output() {
 
                 assert_eq!(ld_library_path, library_path);
 
-                assert_contains!(path, &format!("/layers/heroku_debian-packages/xmlsec1/bin"));
-                assert_contains!(path, &format!("/layers/heroku_debian-packages/xmlsec1/usr/bin"));
-                assert_contains!(path, &format!("/layers/heroku_debian-packages/xmlsec1/usr/sbin"));
-                assert_contains!(ld_library_path, &format!("/layers/heroku_debian-packages/xmlsec1/usr/lib/x86_64-linux-gnu"));
-                assert_contains!(ld_library_path, &format!("/layers/heroku_debian-packages/xmlsec1/usr/lib"));
-                assert_contains!(ld_library_path, &format!("/layers/heroku_debian-packages/xmlsec1/lib/x86_64-linux-gnu"));
-                assert_contains!(ld_library_path, &format!("/layers/heroku_debian-packages/xmlsec1/lib"));
+                assert_contains!(path, "/layers/heroku_debian-packages/xmlsec1/bin");
+                assert_contains!(path, "/layers/heroku_debian-packages/xmlsec1/usr/bin");
+                assert_contains!(path, "/layers/heroku_debian-packages/xmlsec1/usr/sbin");
+                assert_contains!(ld_library_path, "/layers/heroku_debian-packages/xmlsec1/usr/lib/x86_64-linux-gnu");
+                assert_contains!(ld_library_path, "/layers/heroku_debian-packages/xmlsec1/usr/lib");
+                assert_contains!(ld_library_path, "/layers/heroku_debian-packages/xmlsec1/lib/x86_64-linux-gnu");
+                assert_contains!(ld_library_path, "/layers/heroku_debian-packages/xmlsec1/lib");
 
-                assert_contains!(path, &format!("/layers/heroku_debian-packages/libgwenhywfar-data/bin"));
-                assert_contains!(path, &format!("/layers/heroku_debian-packages/libgwenhywfar-data/usr/bin"));
-                assert_contains!(path, &format!("/layers/heroku_debian-packages/libgwenhywfar-data/usr/sbin"));
+                assert_contains!(path, "/layers/heroku_debian-packages/libgwenhywfar-data/bin");
+                assert_contains!(path, "/layers/heroku_debian-packages/libgwenhywfar-data/usr/bin");
+                assert_contains!(path, "/layers/heroku_debian-packages/libgwenhywfar-data/usr/sbin");
 
-                assert_contains!(path, &format!("/layers/heroku_debian-packages/libgwenhywfar79/bin"));
-                assert_contains!(path, &format!("/layers/heroku_debian-packages/libgwenhywfar79/usr/bin"));
-                assert_contains!(path, &format!("/layers/heroku_debian-packages/libgwenhywfar79/usr/sbin"));
+                assert_contains!(path, "/layers/heroku_debian-packages/libgwenhywfar79/bin");
+                assert_contains!(path, "/layers/heroku_debian-packages/libgwenhywfar79/usr/bin");
+                assert_contains!(path, "/layers/heroku_debian-packages/libgwenhywfar79/usr/sbin");
             }
             "heroku/builder:24" if cfg!(target_arch = "x86_64") => {
                 assert_contains!(ctx.pack_stdout, "## Distribution Info");
