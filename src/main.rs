@@ -1,87 +1,149 @@
-use crate::aptfile::Aptfile;
-use crate::debian::DebianArchitectureName;
-use crate::errors::AptBuildpackError;
-use crate::layers::environment::EnvironmentLayer;
-use crate::layers::installed_packages::InstalledPackagesLayer;
-use commons::output::build_log::{BuildLog, Logger};
+use std::fmt::Debug;
+use std::fs;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
+
 use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
-use libcnb::data::layer_name;
 use libcnb::detect::{DetectContext, DetectResult, DetectResultBuilder};
 use libcnb::generic::{GenericMetadata, GenericPlatform};
 use libcnb::{buildpack_main, Buildpack};
+use reqwest::Client;
+use reqwest_middleware::ClientBuilder;
+use reqwest_retry::policies::ExponentialBackoff;
+use reqwest_retry::RetryTransientMiddleware;
+
 #[cfg(test)]
 use libcnb_test as _;
-use std::fs;
-use std::io::stdout;
-use std::str::FromStr;
+#[cfg(test)]
+use regex as _;
 
-mod aptfile;
+use crate::config::{BuildpackConfig, ParseConfigError};
+use crate::create_package_index::{create_package_index, CreatePackageIndexError};
+use crate::debian::{SupportedDistro, UnsupportedDistroError};
+use crate::determine_packages_to_install::{
+    determine_packages_to_install, DeterminePackagesToInstallError,
+};
+use crate::install_packages::{install_packages, InstallPackagesError};
+use crate::DebianPackagesBuildpackError::{
+    CreateAsyncRuntime, CreateHttpClient, CreatePackageIndex, DetectFailed, InstallPackages,
+    ParseConfig, ReadRequestedPackages, SolvePackagesToInstall, UnsupportedDistro,
+};
+
+mod config;
+mod create_package_index;
 mod debian;
-mod errors;
-mod layers;
+mod determine_packages_to_install;
+mod install_packages;
+mod on_package_install;
+mod pgp;
 
-buildpack_main!(AptBuildpack);
+// Include buildpack information from `build.rs`.
+include!(concat!(env!("OUT_DIR"), "/buildpack_info.rs"));
 
-const BUILDPACK_NAME: &str = "Heroku Apt Buildpack";
+buildpack_main!(DebianPackagesBuildpack);
 
-const APTFILE_PATH: &str = "Aptfile";
+#[derive(Debug)]
+#[allow(dead_code)] // TODO: remove this once error messages are added
+pub(crate) enum DebianPackagesBuildpackError {
+    DetectFailed(std::io::Error),
+    ParseConfig(ParseConfigError),
+    ReadRequestedPackages(std::io::Error),
+    CreateHttpClient(reqwest::Error),
+    CreateAsyncRuntime(std::io::Error),
+    UnsupportedDistro(UnsupportedDistroError),
+    CreatePackageIndex(CreatePackageIndexError),
+    SolvePackagesToInstall(DeterminePackagesToInstallError),
+    InstallPackages(InstallPackagesError),
+}
 
-struct AptBuildpack;
+impl From<DebianPackagesBuildpackError> for libcnb::Error<DebianPackagesBuildpackError> {
+    fn from(value: DebianPackagesBuildpackError) -> Self {
+        Self::BuildpackError(value)
+    }
+}
 
-impl Buildpack for AptBuildpack {
+struct DebianPackagesBuildpack;
+
+impl Buildpack for DebianPackagesBuildpack {
     type Platform = GenericPlatform;
     type Metadata = GenericMetadata;
-    type Error = AptBuildpackError;
+    type Error = DebianPackagesBuildpackError;
 
     fn detect(&self, context: DetectContext<Self>) -> libcnb::Result<DetectResult, Self::Error> {
-        let aptfile_exists = context
-            .app_dir
-            .join(APTFILE_PATH)
-            .try_exists()
-            .map_err(AptBuildpackError::DetectAptfile)?;
+        let project_toml = context.app_dir.join("project.toml");
 
-        if aptfile_exists {
-            DetectResultBuilder::pass().build()
+        let project_file_exists = project_toml.try_exists().map_err(DetectFailed)?;
+
+        if project_file_exists {
+            let config = fs::read_to_string(project_toml)
+                .map_err(DetectFailed)
+                .and_then(|contents| BuildpackConfig::from_str(&contents).map_err(ParseConfig))?;
+            if config.install.is_empty() {
+                println!("No configured packages to install found in project.toml file.");
+                DetectResultBuilder::fail().build()
+            } else {
+                DetectResultBuilder::pass().build()
+            }
         } else {
-            BuildLog::new(stdout())
-                .without_buildpack_name()
-                .announce()
-                .warning("No Aptfile found.");
+            println!("No project.toml file found.");
             DetectResultBuilder::fail().build()
         }
     }
 
     fn build(&self, context: BuildContext<Self>) -> libcnb::Result<BuildResult, Self::Error> {
-        let logger = BuildLog::new(stdout()).buildpack_name(BUILDPACK_NAME);
+        println!("# {BUILDPACK_NAME} (v{BUILDPACK_VERSION})");
+        println!();
 
-        let aptfile: Aptfile = fs::read_to_string(context.app_dir.join(APTFILE_PATH))
-            .map_err(AptBuildpackError::ReadAptfile)?
-            .parse()
-            .map_err(AptBuildpackError::ParseAptfile)?;
+        let config = fs::read_to_string(context.app_dir.join("project.toml"))
+            .map_err(ReadRequestedPackages)
+            .and_then(|contents| BuildpackConfig::from_str(&contents).map_err(ParseConfig))?;
 
-        let debian_architecture_name = DebianArchitectureName::from_str(&context.target.arch)
-            .map_err(AptBuildpackError::ParseDebianArchitectureName)?;
+        let distro = SupportedDistro::try_from(&context.target).map_err(UnsupportedDistro)?;
 
-        let section = logger.section("Apt packages");
+        let shared_context = Arc::new(context);
 
-        let installed_packages_layer_data = context.handle_layer(
-            layer_name!("installed_packages"),
-            InstalledPackagesLayer {
-                aptfile: &aptfile,
-                _section_logger: section.as_ref(),
-            },
-        )?;
+        let client = ClientBuilder::new(
+            Client::builder()
+                .use_rustls_tls()
+                .timeout(Duration::from_secs(60 * 10))
+                .build()
+                .map_err(CreateHttpClient)?,
+        )
+        .with(RetryTransientMiddleware::new_with_policy(
+            ExponentialBackoff::builder().build_with_max_retries(5),
+        ))
+        .build();
 
-        context.handle_layer(
-            layer_name!("environment"),
-            EnvironmentLayer {
-                debian_architecture_name: &debian_architecture_name,
-                installed_packages_dir: &installed_packages_layer_data.path,
-                _section_logger: section.as_ref(),
-            },
-        )?;
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_io()
+            .enable_time()
+            .build()
+            .map_err(CreateAsyncRuntime)?;
 
-        section.end_section().finish_logging();
+        println!("## Distribution Info");
+        println!();
+        println!("- Name: {}", &distro.name);
+        println!("- Version: {}", &distro.version);
+        println!("- Codename: {}", &distro.codename);
+        println!("- Architecture: {}", &distro.architecture);
+        println!();
+
+        let package_index = runtime
+            .block_on(create_package_index(&shared_context, &client, &distro))
+            .map_err(CreatePackageIndex)?;
+
+        let packages_to_install = determine_packages_to_install(&package_index, config.install)
+            .map_err(SolvePackagesToInstall)?;
+
+        runtime
+            .block_on(install_packages(
+                &shared_context,
+                &client,
+                &distro,
+                packages_to_install,
+            ))
+            .map_err(InstallPackages)?;
 
         BuildResultBuilder::new().build()
     }

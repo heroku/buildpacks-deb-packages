@@ -1,0 +1,16 @@
+[_]
+schema-version = "0.2"
+
+[com.heroku.buildpacks.debian-packages]
+install = [
+  # basic package with some dependencies
+  "libgwenhywfar79",
+  # child package of "libgwenhywfar79" so we should get a warning that it was already installed by the previous entry
+  "libgwenhywfar-data",
+  # package with child dependencies skipped so no "libxmlsec1" or "libxmlsec1-openssl" will be installed
+  { name = "xmlsec1", skip_dependencies = true },
+  # a package already installed on the system
+  "wget",
+  # libvips is a virtual package which is only provided by libvips42 so no need to halt and ask the user which implementing package to install
+  "libvips",
+]

@@ -1,0 +1,2 @@
+# because some of the output lines in tests exceed the default of 100
+max_width = 300

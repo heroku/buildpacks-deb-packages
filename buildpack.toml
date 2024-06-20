@@ -1,12 +1,12 @@
 api = "0.10"
 
 [buildpack]
-id = "heroku/apt"
+id = "heroku/debian-packages"
 version = "0.0.1"
-name = "Heroku Apt"
-description = "Heroku's Apt buildpack."
-homepage = "https://github.com/heroku/buildpacks-apt"
-keywords = ["apt"]
+name = "Heroku Debian Packages Buildpack"
+description = "Heroku's buildpack for installing Debian packages."
+homepage = "https://github.com/heroku/buildpacks-debian-packages"
+keywords = ["debian", "packages"]
 
 [[buildpack.licenses]]
 type = "Apache-2.0"
@@ -14,6 +14,17 @@ type = "Apache-2.0"
 [[targets]]
 os = "linux"
 arch = "amd64"
+distros = [
+  { name = "ubuntu", version = "24.04" },
+  { name = "ubuntu", version = "22.04" }
+]
+
+[[targets]]
+os = "linux"
+arch = "arm64"
+distros = [
+  { name = "ubuntu", version = "24.04" }
+]
 
 [metadata.release]
-image = { repository = "docker.io/heroku/buildpacks-apt" }
+image = { repository = "docker.io/heroku/buildpacks-debian-packages" }

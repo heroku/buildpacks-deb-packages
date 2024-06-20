@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        builder: ["builder:22", "builder:20"]
+        builder: [ "builder:22", "builder:20" ]
     env:
       INTEGRATION_TEST_CNB_BUILDER: heroku/${{ matrix.builder }}
     steps:
@@ -60,7 +60,7 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.7.3
       - name: Install Pack CLI
-        uses: buildpacks/github-actions/setup-pack@v5.6.0
+        uses: buildpacks/github-actions/setup-pack@v5.7.2
       - name: Pull builder image
         run: docker pull ${{ env.INTEGRATION_TEST_CNB_BUILDER }}
       - name: Run integration tests
