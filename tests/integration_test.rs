@@ -77,9 +77,9 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "## Distribution Info");
 
                 assert_contains!(ctx.pack_stdout, "- Name: ubuntu");
-                assert_contains!(ctx.pack_stdout, r"- Version: 22.04");
-                assert_contains!(ctx.pack_stdout, r"- Codename: jammy");
-                assert_contains!(ctx.pack_stdout, r"- Architecture: amd64");
+                assert_contains!(ctx.pack_stdout, "- Version: 22.04");
+                assert_contains!(ctx.pack_stdout, "- Codename: jammy");
+                assert_contains!(ctx.pack_stdout, "- Architecture: amd64");
 
                 assert_contains!(ctx.pack_stdout, "## Creating package index");
 
@@ -153,9 +153,9 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "## Distribution Info");
 
                 assert_contains!(ctx.pack_stdout, "- Name: ubuntu");
-                assert_contains!(ctx.pack_stdout, r"- Version: 24.04");
-                assert_contains!(ctx.pack_stdout, r"- Codename: noble");
-                assert_contains!(ctx.pack_stdout, r"- Architecture: amd64");
+                assert_contains!(ctx.pack_stdout, "- Version: 24.04");
+                assert_contains!(ctx.pack_stdout, "- Codename: noble");
+                assert_contains!(ctx.pack_stdout, "- Architecture: amd64");
 
                 assert_contains!(ctx.pack_stdout, "## Creating package index");
 
@@ -211,26 +211,59 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "## Distribution Info");
 
                 assert_contains!(ctx.pack_stdout, "- Name: ubuntu");
-                assert_contains!(ctx.pack_stdout, r"- Version: 24.04");
-                assert_contains!(ctx.pack_stdout, r"- Codename: noble");
-                assert_contains!(ctx.pack_stdout, r"- Architecture: arm64");
+                assert_contains!(ctx.pack_stdout, "- Version: 24.04");
+                assert_contains!(ctx.pack_stdout, "- Codename: noble");
+                assert_contains!(ctx.pack_stdout, "- Architecture: arm64");
 
                 assert_contains!(ctx.pack_stdout, "## Creating package index");
 
                 assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
+                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
+                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
                 assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
+                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
+                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
                 assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
+                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
+                assert_contains_match!(ctx.pack_stdout, r"\[GET\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
 
                 assert_contains!(ctx.pack_stdout, "Processing package files...");
                 assert_contains_match!(ctx.pack_stdout, r"Indexed \d+ packages \(\d+ms\)");
 
-                panic!("{}", ctx.pack_stdout);
+                assert_contains!(ctx.pack_stdout, "## Determining packages to install");
+
+                assert_contains!(
+                    ctx.pack_stdout,
+                    "! Virtual package libgwenhywfar79 is provided by libgwenhywfar79t64@5.10.2-2.1build4 (consider replacing libgwenhywfar79 for libgwenhywfar79t64 in your project.toml configuration for this buildpack)"
+                );
+                assert_contains!(ctx.pack_stdout, "Adding libgwenhywfar79t64@5.10.2-2.1build4");
+                assert_contains!(ctx.pack_stdout, "Adding libgwenhywfar-data@5.10.2-2.1build4 [from libgwenhywfar79t64]");
+                assert_contains!(
+                    ctx.pack_stdout,
+                    "! Skipping libgwenhywfar-data because libgwenhywfar-data@5.10.2-2.1build4 was already installed as a dependency of libgwenhywfar79t64 (consider removing libgwenhywfar-data from your project.toml configuration for this buildpack)"
+                );
+                assert_contains!(ctx.pack_stdout, "Adding xmlsec1@1.2.39-5build2");
+                assert_contains!(ctx.pack_stdout, "! Skipping wget because wget@1.21.4-1ubuntu4 is already installed on the system (consider removing wget from your project.toml configuration for this buildpack)");
+                assert_contains!(
+                    ctx.pack_stdout,
+                    "! Virtual package libvips is provided by libvips42t64@8.15.1-1.1build4 (consider replacing libvips for libvips42t64 in your project.toml configuration for this buildpack)"
+                );
+                assert_contains!(
+                    ctx.pack_stdout,
+                    "! Skipping libvips42t64 because libvips42t64@8.15.1-1.1build4 is already installed on the system (consider removing libvips42t64 from your project.toml configuration for this buildpack)"
+                );
+
+                assert_contains!(ctx.pack_stdout, "## Installing packages");
+
+                assert_contains!(ctx.pack_stdout, "Downloading libgwenhywfar79t64");
+                assert_contains!(ctx.pack_stdout, "Downloading xmlsec1");
+                assert_contains!(ctx.pack_stdout, "Downloading libgwenhywfar-data");
+                assert_contains!(ctx.pack_stdout, "Extracting xmlsec1");
+                assert_contains!(ctx.pack_stdout, "Extracting libgwenhywfar-data");
+                assert_contains!(ctx.pack_stdout, "Installing xmlsec1 → /layers/heroku_debian-packages/xmlsec1");
+                assert_contains!(ctx.pack_stdout, "Installing libgwenhywfar-data → /layers/heroku_debian-packages/libgwenhywfar-data");
+                assert_contains!(ctx.pack_stdout, "Extracting libgwenhywfar79t64");
+                assert_contains!(ctx.pack_stdout, "Installing libgwenhywfar79t64 → /layers/heroku_debian-packages/libgwenhywfar79t64");
             }
             _ => panic!("Unsupported test configuration"),
         }
@@ -278,16 +311,18 @@ fn test_general_usage_output_on_rebuild() {
                 }
                 "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/InRelease");
-                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
+                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
+                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/InRelease");
-                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
+                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
+                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/InRelease");
-                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
+                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
+                    assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
 
-                    panic!("{}", ctx.pack_stdout);
+                    assert_contains!(ctx.pack_stdout, "Restoring xmlsec1 from cache");
+                    assert_contains!(ctx.pack_stdout, "Restoring libgwenhywfar-data from cache");
+                    assert_contains!(ctx.pack_stdout, "Restoring libgwenhywfar79t64 from cache");
                 }
                 _ => panic!("Unsupported test configuration"),
             }
@@ -348,7 +383,21 @@ fn test_general_usage_env() {
                 }
             }
             "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
-                panic!("{}", ctx.pack_stdout);
+                let packages = ["xmlsec1", "libgwenhywfar-data", "libgwenhywfar79t64"];
+                for package in packages {
+                    let layer_path = format!("{buildpack_layer_path}/{package}");
+                    assert_contains!(path, &format!("{layer_path}/bin"));
+                    assert_contains!(path, &format!("{layer_path}/usr/bin"));
+                    assert_contains!(path, &format!("{layer_path}/usr/sbin"));
+                    assert_contains!(ld_library_path, &format!("{layer_path}/usr/lib/aarch64-linux-gnu"));
+                    assert_contains!(ld_library_path, &format!("{layer_path}/usr/lib"));
+                    assert_contains!(ld_library_path, &format!("{layer_path}/lib/aarch64-linux-gnu"));
+                    assert_contains!(ld_library_path, &format!("{layer_path}/lib"));
+                    assert_contains!(include_path, &format!("{layer_path}/usr/include/aarch64-linux-gnu"));
+                    assert_contains!(include_path, &format!("{layer_path}/usr/include"));
+                    assert_contains!(pkg_config_path, &format!("{layer_path}/usr/lib/aarch64-linux-gnu/pkgconfig"));
+                    assert_contains!(pkg_config_path, &format!("{layer_path}/usr/lib/pkgconfig"));
+                }
             }
             _ => panic!("Unsupported test configuration"),
         }
@@ -376,7 +425,8 @@ fn test_package_config_rewrite() {
                     assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/x86_64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
                 }
                 "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
-                    panic!("{}", ctx.pack_stdout);
+                    assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/aarch64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
+                    assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/aarch64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
                 }
                 _ => panic!("Unsupported test configuration"),
             };
@@ -409,7 +459,10 @@ fn test_cache_invalidated_when_configuration_changes() {
                     assert_contains!(ctx.pack_stdout, "Installing libxmlsec1t64 → /layers/heroku_debian-packages/libxmlsec1t64");
                 }
                 "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
-                    panic!("{}", ctx.pack_stdout);
+                    assert_contains!(ctx.pack_stdout, "Adding libxmlsec1t64@1.2.39-5build2");
+                    assert_contains!(ctx.pack_stdout, "Downloading libxmlsec1t64");
+                    assert_contains!(ctx.pack_stdout, "Extracting libxmlsec1t64");
+                    assert_contains!(ctx.pack_stdout, "Installing libxmlsec1t64 → /layers/heroku_debian-packages/libxmlsec1t64");
                 }
                 _ => panic!("Unsupported test configuration"),
             }
@@ -443,7 +496,15 @@ fn test_cache_invalidated_when_configuration_changes() {
                         assert_not_contains!(ctx.pack_stdout, "Installing libxmlsec1t64 → /layers/heroku_debian-packages/libxmlsec1t64");
                     }
                     "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
-                        panic!("{}", ctx.pack_stdout);
+                        assert_contains!(ctx.pack_stdout, "Adding libgwenhywfar-data@5.10.2-2.1build4");
+                        assert_contains!(ctx.pack_stdout, "Downloading libgwenhywfar-data");
+                        assert_contains!(ctx.pack_stdout, "Extracting libgwenhywfar-data");
+                        assert_contains!(ctx.pack_stdout, "Installing libgwenhywfar-data → /layers/heroku_debian-packages/libgwenhywfar-data");
+
+                        assert_not_contains!(ctx.pack_stdout, "Adding libxmlsec1t64@1.2.39-5build2");
+                        assert_not_contains!(ctx.pack_stdout, "Downloading libxmlsec1t64");
+                        assert_not_contains!(ctx.pack_stdout, "Extracting libxmlsec1t64");
+                        assert_not_contains!(ctx.pack_stdout, "Installing libxmlsec1t64 → /layers/heroku_debian-packages/libxmlsec1t64");
                     }
                     _ => panic!("Unsupported test configuration"),
                 },
