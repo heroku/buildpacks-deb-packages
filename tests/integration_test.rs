@@ -8,8 +8,8 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use libcnb_test::{assert_contains, assert_contains_match, assert_not_contains, BuildConfig, BuildpackReference, PackResult, TestContext, TestRunner};
-use toml_edit::{value, Array, DocumentMut, InlineTable};
+use libcnb_test::{assert_contains, assert_contains_match, assert_not_contains, BuildConfig, PackResult, TestContext, TestRunner};
+use toml_edit::{Array, DocumentMut, InlineTable, value};
 
 #[test]
 #[ignore = "integration test"]
