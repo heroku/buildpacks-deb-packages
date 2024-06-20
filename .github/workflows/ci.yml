@@ -41,7 +41,7 @@ jobs:
         run: cargo test --locked
 
   integration-test:
-    runs-on: ${{ matrix.arch == 'arm64' && 'pub-hk-ubuntu-22.04-arm-medium' || 'pub-hk-ubuntu-22.04-small' }} # TODO: change to ubuntu-latest once repo is public
+    runs-on: ${{ matrix.arch == 'arm64' && 'pub-hk-ubuntu-22.04-arm-medium' || 'ubuntu-latest' }} # TODO: change to ubuntu-latest once repo is public
     strategy:
       fail-fast: false
       matrix:
