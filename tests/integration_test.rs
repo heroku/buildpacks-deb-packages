@@ -5,47 +5,71 @@
 #![allow(unused_crate_dependencies)]
 #![allow(clippy::unwrap_used)]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use libcnb_test::{assert_contains, assert_contains_match, assert_not_contains, BuildConfig, PackResult, TestContext, TestRunner};
+use libcnb_test::{assert_contains, assert_contains_match, assert_not_contains, BuildConfig, BuildpackReference, PackResult, TestContext, TestRunner};
 use toml_edit::{value, Array, DocumentMut, InlineTable};
 
 #[test]
 #[ignore = "integration test"]
 fn test_successful_detection() {
-    TestRunner::default().build(BuildConfig::new(get_integration_test_builder(), "tests/fixtures/general_usage").expected_pack_result(PackResult::Success), |_| {});
+    integration_test_with_config(
+        "fixtures/general_usage",
+        |config| {
+            config.expected_pack_result(PackResult::Success);
+        },
+        |_| {},
+    );
 }
 
 #[test]
 #[ignore = "integration test"]
 fn test_failed_detection_when_no_project_file_exists() {
-    TestRunner::default().build(BuildConfig::new(get_integration_test_builder(), "tests/fixtures/no_project_file").expected_pack_result(PackResult::Failure), |ctx| {
-        assert_contains!(ctx.pack_stdout, "No project.toml file found.");
-    });
+    integration_test_with_config(
+        "fixtures/no_project_file",
+        |config| {
+            config.expected_pack_result(PackResult::Failure);
+        },
+        |ctx| {
+            assert_contains!(ctx.pack_stdout, "No project.toml file found.");
+        },
+    );
 }
 
 #[test]
 #[ignore = "integration test"]
 fn test_failed_detection_when_project_file_with_empty_config_exists() {
-    TestRunner::default().build(BuildConfig::new(get_integration_test_builder(), "tests/fixtures/project_file_with_empty_config").expected_pack_result(PackResult::Failure), |ctx| {
-        assert_contains!(ctx.pack_stdout, "No configured packages to install found in project.toml file.");
-    });
+    integration_test_with_config(
+        "fixtures/project_file_with_empty_config",
+        |config| {
+            config.expected_pack_result(PackResult::Failure);
+        },
+        |ctx| {
+            assert_contains!(ctx.pack_stdout, "No configured packages to install found in project.toml file.");
+        },
+    );
 }
 
 #[test]
 #[ignore = "integration test"]
 fn test_failed_detection_when_project_file_has_no_config() {
-    TestRunner::default().build(BuildConfig::new(get_integration_test_builder(), "tests/fixtures/project_file_with_no_config").expected_pack_result(PackResult::Failure), |ctx| {
-        assert_contains!(ctx.pack_stdout, "No configured packages to install found in project.toml file.");
-    });
+    integration_test_with_config(
+        "fixtures/project_file_with_no_config",
+        |config| {
+            config.expected_pack_result(PackResult::Failure);
+        },
+        |ctx| {
+            assert_contains!(ctx.pack_stdout, "No configured packages to install found in project.toml file.");
+        },
+    );
 }
 
 #[test]
 #[ignore = "integration test"]
 #[allow(clippy::too_many_lines)]
 fn test_general_usage_output() {
-    TestRunner::default().build(BuildConfig::new(get_integration_test_builder(), "tests/fixtures/general_usage"), |ctx| {
+    integration_test("fixtures/general_usage", |ctx| {
         assert_contains_match!(ctx.pack_stdout, r"# Heroku Debian Packages Buildpack \(v\d+\.\d+\.\d+\)");
 
         match get_integration_test_builder().as_str() {
@@ -216,7 +240,7 @@ fn test_general_usage_output() {
 #[test]
 #[ignore = "integration test"]
 fn test_general_usage_output_on_rebuild() {
-    TestRunner::default().build(BuildConfig::new(get_integration_test_builder(), "tests/fixtures/general_usage"), |ctx| {
+    integration_test("fixtures/general_usage", |ctx| {
         let config = ctx.config.clone();
         ctx.rebuild(config, |ctx| {
             assert_contains_match!(ctx.pack_stdout, r"# Heroku Debian Packages Buildpack \(v\d+\.\d+\.\d+\)");
@@ -274,7 +298,7 @@ fn test_general_usage_output_on_rebuild() {
 #[test]
 #[ignore = "integration test"]
 fn test_general_usage_env() {
-    TestRunner::default().build(BuildConfig::new(get_integration_test_builder(), "tests/fixtures/general_usage"), |ctx| {
+    integration_test("fixtures/general_usage", |ctx| {
         let buildpack_layer_path = "/layers/heroku_debian-packages";
         let path = get_env_var(&ctx, "PATH");
         let ld_library_path = get_env_var(&ctx, "LD_LIBRARY_PATH");
@@ -334,23 +358,28 @@ fn test_general_usage_env() {
 #[test]
 #[ignore = "integration test"]
 fn test_package_config_rewrite() {
-    TestRunner::default().build(
-        BuildConfig::new(get_integration_test_builder(), "tests/fixtures/project_file_with_empty_config").app_dir_preprocessor(|app_dir| {
-            set_install_config(&app_dir, [requested_package_config("libopusfile-dev", true)]);
-        }),
-        |ctx| match get_integration_test_builder().as_str() {
-            "heroku/builder:22" if cfg!(target_arch = "x86_64") => {
-                assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
-                assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
-            }
-            "heroku/builder:24" if cfg!(target_arch = "x86_64") => {
-                assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/x86_64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
-                assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/x86_64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
-            }
-            "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
-                panic!("{}", ctx.pack_stdout);
-            }
-            _ => panic!("Unsupported test configuration"),
+    integration_test_with_config(
+        "fixtures/project_file_with_empty_config",
+        |config| {
+            config.app_dir_preprocessor(|app_dir| {
+                set_install_config(&app_dir, [requested_package_config("libopusfile-dev", true)]);
+            });
+        },
+        |ctx| {
+            match get_integration_test_builder().as_str() {
+                "heroku/builder:22" if cfg!(target_arch = "x86_64") => {
+                    assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
+                    assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
+                }
+                "heroku/builder:24" if cfg!(target_arch = "x86_64") => {
+                    assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/x86_64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
+                    assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/x86_64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
+                }
+                "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
+                    panic!("{}", ctx.pack_stdout);
+                }
+                _ => panic!("Unsupported test configuration"),
+            };
         },
     );
 }
@@ -358,10 +387,13 @@ fn test_package_config_rewrite() {
 #[test]
 #[ignore = "integration test"]
 fn test_cache_invalidated_when_configuration_changes() {
-    TestRunner::default().build(
-        BuildConfig::new(get_integration_test_builder(), "tests/fixtures/project_file_with_empty_config").app_dir_preprocessor(|app_dir| {
-            set_install_config(&app_dir, [requested_package_config("libxmlsec1", true)]);
-        }),
+    integration_test_with_config(
+        "fixtures/project_file_with_empty_config",
+        |config| {
+            config.app_dir_preprocessor(|app_dir| {
+                set_install_config(&app_dir, [requested_package_config("libxmlsec1", true)]);
+            });
+        },
         |ctx| {
             match get_integration_test_builder().as_str() {
                 "heroku/builder:22" if cfg!(target_arch = "x86_64") => {
@@ -424,6 +456,29 @@ const DEFAULT_BUILDER: &str = "heroku/builder:22";
 
 fn get_integration_test_builder() -> String {
     std::env::var("INTEGRATION_TEST_CNB_BUILDER").unwrap_or(DEFAULT_BUILDER.to_string())
+}
+
+fn integration_test(fixture: &str, test_body: fn(TestContext)) {
+    integration_test_with_config(fixture, |_| {}, test_body);
+}
+
+fn integration_test_with_config(fixture: &str, with_config: fn(&mut BuildConfig), test_body: fn(TestContext)) {
+    let builder = get_integration_test_builder();
+    let app_dir = PathBuf::from("tests").join(fixture);
+
+    // TODO: Once Pack build supports `--platform` and libcnb-test adjusted accordingly, change this
+    // to allow configuring the target arch independently of the builder name (eg via env var).
+    let target_triple = match builder.as_str() {
+        // Compile the buildpack for ARM64 iff the builder supports multi-arch and the host is ARM64.
+        "heroku/builder:24" if cfg!(target_arch = "aarch64") => "aarch64-unknown-linux-musl",
+        _ => "x86_64-unknown-linux-musl",
+    };
+
+    let mut build_config = BuildConfig::new(builder, app_dir);
+    build_config.target_triple(target_triple);
+    with_config(&mut build_config);
+
+    TestRunner::default().build(build_config, test_body);
 }
 
 fn get_env_var(ctx: &TestContext, env_var_name: &str) -> String {
