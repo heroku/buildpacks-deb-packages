@@ -73,7 +73,7 @@ install = [
 
           The name of the package to install.
 
-      <p>&nbsp;&nbsp;&nbsp; OR</p>
+      <p>&nbsp;&nbsp;&nbsp; <em><strong>OR</strong></em></p>
 
         - *__([inline-table][toml-inline-table])__*
             - `name` *__([string][toml-string], required)__*
