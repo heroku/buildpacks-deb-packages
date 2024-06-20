@@ -3,18 +3,20 @@
 [![CI][ci-badge]][ci-link] [![Registry][registry-badge]][registry-link]
 
 `heroku/debian-packages` is a [Heroku Cloud Native Buildpack][heroku-cnbs] that adds support for installing Debian
-packages required by an application that are not available in the build or run base image used.
+packages required by an application that are not available in the build or run image used.
+
+> [!IMPORTANT]
+> This is a [Cloud Native Buildpack][cnb], and is a component of the [Heroku Cloud Native Buildpacks][heroku-cnbs]
+> project, which is in preview. If you are instead looking for the Heroku Apt Buildpack (for use on the Heroku
+> platform), you may find it [here][classic-apt-buildpack].
+
+This buildpack is compatible with the following environments:
 
 | OS    | Arch  | Distro Name | Distro Version |
 |-------|-------|-------------|----------------|
 | linux | amd64 | Ubuntu      | 24.04          |
 | linux | arm64 | Ubuntu      | 24.04          |
 | linux | amd64 | Ubuntu      | 22.04          |
-
-> [!IMPORTANT]
-> This is a [Cloud Native Buildpack][cnb], and is a component of the [Heroku Cloud Native Buildpacks][heroku-cnbs]
-> project, which is in preview. If you are instead looking for the Heroku Apt Buildpack (for use on the Heroku
-> platform), you may find it [here][classic-apt-buildpack].
 
 ---
 
@@ -39,7 +41,7 @@ docker run --rm -it my-app
 ## Configuration
 
 The configuration for this buildpack must be added to the project descriptor file (`project.toml`) at the root of your
-project using the `com.heroku.buildpacks.debian-packages` [table][toml-table]. A list of packages to install should be
+project using the `com.heroku.buildpacks.debian-packages` table. The list of packages to install must be
 specified there. See below for the [configuration schema](#schema) and an [example](#example).
 
 ### Example
