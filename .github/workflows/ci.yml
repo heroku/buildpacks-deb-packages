@@ -41,11 +41,15 @@ jobs:
         run: cargo test --locked
 
   integration-test:
-    runs-on: pub-hk-ubuntu-22.04-small # TODO: change to ubuntu-latest once repo is public
+    runs-on: ${{ matrix.arch == 'arm64' && 'pub-hk-ubuntu-22.04-arm-medium' || 'pub-hk-ubuntu-22.04-small' }} # TODO: change to ubuntu-latest once repo is public
     strategy:
       fail-fast: false
       matrix:
-        builder: [ "builder:22", "builder:20" ]
+        builder: [ "builder:24", "builder:22" ]
+        arch: [ "amd64", "arm64" ]
+        exclude:
+          - builder: "builder:22"
+            arch: "arm64"
     env:
       INTEGRATION_TEST_CNB_BUILDER: heroku/${{ matrix.builder }}
     steps:
@@ -56,7 +60,7 @@ jobs:
       - name: Update Rust toolchain
         run: rustup update
       - name: Install Rust linux-musl target
-        run: rustup target add x86_64-unknown-linux-musl
+        run: rustup target add ${{ matrix.arch == 'arm64' && 'aarch64-unknown-linux-musl' || 'x86_64-unknown-linux-musl' }}
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.7.3
       - name: Install Pack CLI
@@ -64,4 +68,4 @@ jobs:
       - name: Pull builder image
         run: docker pull ${{ env.INTEGRATION_TEST_CNB_BUILDER }}
       - name: Run integration tests
-        run: cargo test --locked -- --ignored --test-threads 5
+        run: cargo test --locked -- --ignored --test-threads $(($(nproc)+1))
