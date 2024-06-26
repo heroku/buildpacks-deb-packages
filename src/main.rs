@@ -20,14 +20,14 @@ use regex as _;
 
 use crate::config::{BuildpackConfig, ParseConfigError};
 use crate::create_package_index::{create_package_index, CreatePackageIndexError};
-use crate::debian::{SupportedDistro, UnsupportedDistroError};
+use crate::debian::{Distro, UnsupportedDistroError};
 use crate::determine_packages_to_install::{
     determine_packages_to_install, DeterminePackagesToInstallError,
 };
 use crate::install_packages::{install_packages, InstallPackagesError};
 use crate::DebianPackagesBuildpackError::{
-    CreateAsyncRuntime, CreateHttpClient, CreatePackageIndex, DetectFailed, InstallPackages,
-    ParseConfig, ReadRequestedPackages, SolvePackagesToInstall, UnsupportedDistro,
+    CreateAsyncRuntime, CreateHttpClient, CreatePackageIndex, DetectConfigFile, InstallPackages,
+    ParseConfig, ReadConfig, SolvePackagesToInstall, UnsupportedDistro,
 };
 
 mod config;
@@ -35,20 +35,16 @@ mod create_package_index;
 mod debian;
 mod determine_packages_to_install;
 mod install_packages;
-mod on_package_install;
 mod pgp;
-
-// Include buildpack information from `build.rs`.
-include!(concat!(env!("OUT_DIR"), "/buildpack_info.rs"));
 
 buildpack_main!(DebianPackagesBuildpack);
 
 #[derive(Debug)]
 #[allow(dead_code)] // TODO: remove this once error messages are added
 pub(crate) enum DebianPackagesBuildpackError {
-    DetectFailed(std::io::Error),
+    DetectConfigFile(std::io::Error),
+    ReadConfig(std::io::Error),
     ParseConfig(ParseConfigError),
-    ReadRequestedPackages(std::io::Error),
     CreateHttpClient(reqwest::Error),
     CreateAsyncRuntime(std::io::Error),
     UnsupportedDistro(UnsupportedDistroError),
@@ -73,11 +69,11 @@ impl Buildpack for DebianPackagesBuildpack {
     fn detect(&self, context: DetectContext<Self>) -> libcnb::Result<DetectResult, Self::Error> {
         let project_toml = context.app_dir.join("project.toml");
 
-        let project_file_exists = project_toml.try_exists().map_err(DetectFailed)?;
+        let project_file_exists = project_toml.try_exists().map_err(DetectConfigFile)?;
 
         if project_file_exists {
             let config = fs::read_to_string(project_toml)
-                .map_err(DetectFailed)
+                .map_err(ReadConfig)
                 .and_then(|contents| BuildpackConfig::from_str(&contents).map_err(ParseConfig))?;
             if config.install.is_empty() {
                 println!("No configured packages to install found in project.toml file.");
@@ -92,14 +88,23 @@ impl Buildpack for DebianPackagesBuildpack {
     }
 
     fn build(&self, context: BuildContext<Self>) -> libcnb::Result<BuildResult, Self::Error> {
-        println!("# {BUILDPACK_NAME} (v{BUILDPACK_VERSION})");
+        println!(
+            "# {buildpack_name} (v{buildpack_version})",
+            buildpack_name = context
+                .buildpack_descriptor
+                .buildpack
+                .name
+                .as_ref()
+                .expect("buildpack name should be set"),
+            buildpack_version = context.buildpack_descriptor.buildpack.version
+        );
         println!();
 
         let config = fs::read_to_string(context.app_dir.join("project.toml"))
-            .map_err(ReadRequestedPackages)
+            .map_err(ReadConfig)
             .and_then(|contents| BuildpackConfig::from_str(&contents).map_err(ParseConfig))?;
 
-        let distro = SupportedDistro::try_from(&context.target).map_err(UnsupportedDistro)?;
+        let distro = Distro::try_from(&context.target).map_err(UnsupportedDistro)?;
 
         let shared_context = Arc::new(context);
 

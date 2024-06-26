@@ -38,8 +38,8 @@ use crate::create_package_index::CreatePackageIndexError::{
     WritePackagesLayer, WriteReleaseLayer,
 };
 use crate::debian::{
-    ArchitectureName, PackageIndex, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
-    Source, SupportedDistro,
+    ArchitectureName, Distro, PackageIndex, ParseRepositoryPackageError, RepositoryPackage,
+    RepositoryUri, Source,
 };
 use crate::pgp::CertHelper;
 use crate::{DebianPackagesBuildpack, DebianPackagesBuildpackError};
@@ -49,12 +49,11 @@ type Result<T> = std::result::Result<T, CreatePackageIndexError>;
 pub(crate) async fn create_package_index(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
-    supported_distro: &SupportedDistro,
+    distro: &Distro,
 ) -> Result<PackageIndex> {
     println!("## Creating package index");
     println!();
-    let updated_sources =
-        update_sources(context, client, &supported_distro.get_source_list()).await?;
+    let updated_sources = update_sources(context, client, &distro.get_source_list()).await?;
     println!();
 
     println!("  Processing package files...");
@@ -262,7 +261,7 @@ async fn get_release(
     async_read_to_string(&release_file_path)
         .await
         .map_err(ReadReleaseFile)
-        .and_then(|contents| Release::from(&contents).map_err(ParseReleaseFile))
+        .and_then(|release_data| Release::from(&release_data).map_err(ParseReleaseFile))
 }
 
 async fn get_package_list(
@@ -400,8 +399,8 @@ async fn read_packages(
             .split("\n\n")
             .par_bridge()
             .into_par_iter()
-            .partition_map(|package_contents| {
-                RepositoryPackage::parse_parallel(repository_uri.clone(), package_contents)
+            .partition_map(|package_data| {
+                RepositoryPackage::parse_parallel(repository_uri.clone(), package_data)
                     .map_or_else(Either::Left, Either::Right)
             });
         let _ = send.send((packages, errors));

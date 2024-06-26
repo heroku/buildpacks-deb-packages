@@ -23,8 +23,8 @@ pub(crate) fn determine_packages_to_install(
         .map_err(ReadSystemPackages)?
         .trim()
         .split("\n\n")
-        .map(|entry_contents| {
-            Control::from(entry_contents)
+        .map(|control_data| {
+            Control::from(control_data)
                 .map_err(ParseSystemPackage)
                 .map(|control| (control.package.to_string(), control))
         })

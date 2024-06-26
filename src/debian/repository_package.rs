@@ -142,7 +142,7 @@ mod test {
         provides: Option<&str>,
     ) -> RepositoryPackage {
         RepositoryPackage {
-            repository_uri: RepositoryUri::from("test-repository".to_string()),
+            repository_uri: RepositoryUri::from("test-repository"),
             name: "test-name".to_string(),
             version: "test-version".to_string(),
             filename: "test-filename".to_string(),

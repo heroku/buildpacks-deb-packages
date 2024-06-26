@@ -7,9 +7,9 @@ impl RepositoryUri {
     }
 }
 
-impl From<String> for RepositoryUri {
-    fn from(value: String) -> Self {
-        Self(value)
+impl From<&str> for RepositoryUri {
+    fn from(value: &str) -> Self {
+        Self(value.to_string())
     }
 }
 
@@ -26,8 +26,7 @@ mod test {
     #[test]
     fn test_from_string() {
         let repository = RepositoryUri("http://archive.ubuntu.com/ubuntu".to_string());
-        let repository_from_string =
-            RepositoryUri::from("http://archive.ubuntu.com/ubuntu".to_string());
+        let repository_from_string = RepositoryUri::from("http://archive.ubuntu.com/ubuntu");
         assert_eq!(repository, repository_from_string);
     }
 }

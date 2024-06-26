@@ -18,14 +18,15 @@ pub(crate) struct Source {
 }
 
 impl Source {
-    pub(crate) fn new<I, S>(
-        uri: S,
+    pub(crate) fn new<R, I, S>(
+        uri: R,
         suites: I,
         components: I,
         signed_by: S,
         arch: ArchitectureName,
     ) -> Source
     where
+        R: Into<RepositoryUri>,
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
@@ -33,7 +34,7 @@ impl Source {
             components: components.into_iter().map(Into::into).collect(),
             signed_by: signed_by.into(),
             suites: suites.into_iter().map(Into::into).collect(),
-            uri: RepositoryUri::from(uri.into()),
+            uri: uri.into(),
             arch,
         }
     }

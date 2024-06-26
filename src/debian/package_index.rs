@@ -6,7 +6,9 @@ use crate::debian::RepositoryPackage;
 #[derive(Debug, Default)]
 pub(crate) struct PackageIndex {
     name_to_repository_packages: HashMap<String, Vec<RepositoryPackage>>,
-    provides_to_packages: HashMap<String, Vec<RepositoryPackage>>,
+    // NOTE: virtual packages are declared in the `Provides` field of a package
+    //       https://www.debian.org/doc/debian-policy/ch-relationships.html#virtual-packages-provides
+    virtual_package_to_implementing_packages: HashMap<String, Vec<RepositoryPackage>>,
     pub(crate) packages_indexed: usize,
 }
 
@@ -37,7 +39,7 @@ impl PackageIndex {
 
     pub(crate) fn add_package(&mut self, package: RepositoryPackage) {
         for provides in package.provides_dependencies() {
-            self.provides_to_packages
+            self.virtual_package_to_implementing_packages
                 .entry(provides.to_string())
                 .or_default()
                 .push(package.clone());
@@ -55,7 +57,7 @@ impl PackageIndex {
         &self,
         package: &str,
     ) -> Option<&Vec<RepositoryPackage>> {
-        self.provides_to_packages.get(package)
+        self.virtual_package_to_implementing_packages.get(package)
     }
 }
 
@@ -67,7 +69,7 @@ mod test {
 
     fn default_test_repository_package() -> RepositoryPackage {
         RepositoryPackage {
-            repository_uri: RepositoryUri::from("test-repository".to_string()),
+            repository_uri: RepositoryUri::from("test-repository"),
             name: "test-name".to_string(),
             version: "test-version".to_string(),
             filename: "test-filename".to_string(),
