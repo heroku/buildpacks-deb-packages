@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::fs;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -72,7 +71,7 @@ impl Buildpack for DebianPackagesBuildpack {
         let project_file_exists = project_toml.try_exists().map_err(DetectConfigFile)?;
 
         if project_file_exists {
-            let config = fs::read_to_string(project_toml)
+            let config = fs_err::read_to_string(project_toml)
                 .map_err(ReadConfig)
                 .and_then(|contents| BuildpackConfig::from_str(&contents).map_err(ParseConfig))?;
             if config.install.is_empty() {
@@ -100,7 +99,7 @@ impl Buildpack for DebianPackagesBuildpack {
         );
         println!();
 
-        let config = fs::read_to_string(context.app_dir.join("project.toml"))
+        let config = fs_err::read_to_string(context.app_dir.join("project.toml"))
             .map_err(ReadConfig)
             .and_then(|contents| BuildpackConfig::from_str(&contents).map_err(ParseConfig))?;
 

@@ -1,5 +1,5 @@
+use fs_err::read_to_string;
 use std::collections::HashMap;
-use std::fs::read_to_string;
 
 use apt_parser::Control;
 use indexmap::{IndexMap, IndexSet};

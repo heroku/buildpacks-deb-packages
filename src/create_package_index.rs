@@ -5,6 +5,9 @@ use std::sync::Arc;
 use apt_parser::errors::APTError;
 use apt_parser::Release;
 use async_compression::tokio::bufread::GzipDecoder;
+use fs_err::tokio::{
+    read_to_string as async_read_to_string, write as async_write, File as AsyncFile,
+};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
 use libcnb::build::BuildContext;
@@ -22,7 +25,6 @@ use sequoia_openpgp::policy::StandardPolicy;
 use sequoia_openpgp::Cert;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use tokio::fs::{read_to_string as async_read_to_string, write as async_write, File as AsyncFile};
 use tokio::io::{copy as async_copy, BufReader as AsyncBufReader, BufWriter as AsyncBufWriter};
 use tokio::sync::oneshot::channel;
 use tokio::sync::oneshot::error::RecvError;

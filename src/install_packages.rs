@@ -1,6 +1,5 @@
 use std::env::temp_dir;
 use std::ffi::OsString;
-use std::fs::File;
 use std::io::ErrorKind;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
@@ -9,6 +8,9 @@ use std::sync::Arc;
 
 use ar::Archive as ArArchive;
 use async_compression::tokio::bufread::{GzipDecoder, ZstdDecoder};
+use fs_err::tokio::{
+    read_to_string as async_read_to_string, write as async_write, File as AsyncFile,
+};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
 use libcnb::build::BuildContext;
@@ -21,7 +23,6 @@ use reqwest_middleware::ClientWithMiddleware;
 use reqwest_middleware::Error::Reqwest;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use tokio::fs::{read_to_string as async_read_to_string, write as async_write, File as AsyncFile};
 use tokio::io::{copy as async_copy, BufReader as AsyncBufReader, BufWriter as AsyncBufWriter};
 use tokio::task::{JoinError, JoinSet};
 use tokio_tar::Archive as TarArchive;
@@ -188,7 +189,7 @@ async fn download(
 async fn extract(download_path: PathBuf, output_dir: PathBuf) -> Result<()> {
     // a .deb file is an ar archive
     // https://manpages.ubuntu.com/manpages/jammy/en/man5/deb.5.html
-    let mut debian_archive = File::open(download_path)
+    let mut debian_archive = fs_err::File::open(download_path)
         .map_err(OpenPackageArchive)
         .map(ArArchive::new)?;
 

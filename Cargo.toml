@@ -27,6 +27,7 @@ tokio-tar = "0.3"
 tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
 toml_edit = "0.22"
 walkdir = "2"
+fs-err = { version = "2.11.0", features = ["tokio"] }
 
 [dev-dependencies]
 libcnb-test = "=0.22.0"

@@ -578,8 +578,8 @@ fn requested_package_config(package: &str, skip_dependencies: bool) -> InlineTab
 
 fn update_project_toml(app_dir: &Path, update_fn: impl FnOnce(&mut DocumentMut)) {
     let project_toml = app_dir.join("project.toml");
-    let contents = std::fs::read_to_string(&project_toml).unwrap();
+    let contents = fs_err::read_to_string(&project_toml).unwrap();
     let mut doc = toml_edit::DocumentMut::from_str(&contents).unwrap();
     update_fn(&mut doc);
-    std::fs::write(&project_toml, doc.to_string()).unwrap();
+    fs_err::write(&project_toml, doc.to_string()).unwrap();
 }
