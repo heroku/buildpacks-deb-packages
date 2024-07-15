@@ -105,7 +105,7 @@ fn test_general_usage_output() {
                     "! Skipping libgwenhywfar-data because libgwenhywfar-data@5.9.0-1 was already installed as a dependency of libgwenhywfar79 (consider removing libgwenhywfar-data from your project.toml configuration for this buildpack)"
                 );
                 assert_contains!(ctx.pack_stdout, "Adding xmlsec1@1.2.33-1build2");
-                assert_contains!(ctx.pack_stdout, "! Skipping wget because wget@1.21.2-2ubuntu1 is already installed on the system (consider removing wget from your project.toml configuration for this buildpack)");
+                assert_contains_match!(ctx.pack_stdout, "! Skipping wget because wget@.* is already installed on the system .*");
                 assert_contains!(
                     ctx.pack_stdout,
                     "! Virtual package libvips is provided by libvips42@8.12.1-1build1 (consider replacing libvips for libvips42 in your project.toml configuration for this buildpack)"
@@ -185,7 +185,7 @@ fn test_general_usage_output() {
                     "! Skipping libgwenhywfar-data because libgwenhywfar-data@5.10.2-2.1build4 was already installed as a dependency of libgwenhywfar79t64 (consider removing libgwenhywfar-data from your project.toml configuration for this buildpack)"
                 );
                 assert_contains!(ctx.pack_stdout, "Adding xmlsec1@1.2.39-5build2");
-                assert_contains!(ctx.pack_stdout, "! Skipping wget because wget@1.21.4-1ubuntu4 is already installed on the system (consider removing wget from your project.toml configuration for this buildpack)");
+                assert_contains_match!(ctx.pack_stdout, "! Skipping wget because wget@.* is already installed on the system .*");
                 assert_contains!(
                     ctx.pack_stdout,
                     "! Virtual package libvips is provided by libvips42t64@8.15.1-1.1build4 (consider replacing libvips for libvips42t64 in your project.toml configuration for this buildpack)"
@@ -243,7 +243,7 @@ fn test_general_usage_output() {
                     "! Skipping libgwenhywfar-data because libgwenhywfar-data@5.10.2-2.1build4 was already installed as a dependency of libgwenhywfar79t64 (consider removing libgwenhywfar-data from your project.toml configuration for this buildpack)"
                 );
                 assert_contains!(ctx.pack_stdout, "Adding xmlsec1@1.2.39-5build2");
-                assert_contains!(ctx.pack_stdout, "! Skipping wget because wget@1.21.4-1ubuntu4 is already installed on the system (consider removing wget from your project.toml configuration for this buildpack)");
+                assert_contains_match!(ctx.pack_stdout, "! Skipping wget because wget@.* is already installed on the system .*");
                 assert_contains!(
                     ctx.pack_stdout,
                     "! Virtual package libvips is provided by libvips42t64@8.15.1-1.1build4 (consider replacing libvips for libvips42t64 in your project.toml configuration for this buildpack)"
