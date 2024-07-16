@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   check-changelog:
-    runs-on: pub-hk-ubuntu-22.04-small # TODO: change to ubuntu-latest once repo is public
+    runs-on: pub-hk-ubuntu-24.04-ip # TODO: change to ubuntu-24.04 once repo is public
     if: (!contains(github.event.pull_request.labels.*.name, 'skip changelog'))
     steps:
       - name: Checkout
