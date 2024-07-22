@@ -1,9 +1,11 @@
 use indexmap::IndexSet;
+use std::fs;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use toml_edit::{DocumentMut, TableLike};
 
-use crate::config::ParseConfigError::{InvalidToml, ParseRequestedPackage, WrongConfigType};
+use crate::config::ConfigError::{InvalidToml, ParseRequestedPackage, WrongConfigType};
 use crate::config::{ParseRequestedPackageError, RequestedPackage};
 use crate::debian::ParsePackageNameError;
 
@@ -12,8 +14,18 @@ pub(crate) struct BuildpackConfig {
     pub(crate) install: IndexSet<RequestedPackage>,
 }
 
+impl TryFrom<PathBuf> for BuildpackConfig {
+    type Error = ConfigError;
+
+    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+        fs::read_to_string(value)
+            .map_err(ConfigError::ReadConfig)
+            .and_then(|contents| BuildpackConfig::from_str(&contents))
+    }
+}
+
 impl FromStr for BuildpackConfig {
-    type Err = ParseConfigError;
+    type Err = ConfigError;
 
     fn from_str(contents: &str) -> Result<Self, Self::Err> {
         let doc = DocumentMut::from_str(contents).map_err(InvalidToml)?;
@@ -39,7 +51,7 @@ impl FromStr for BuildpackConfig {
 }
 
 impl TryFrom<&dyn TableLike> for BuildpackConfig {
-    type Error = ParseConfigError;
+    type Error = ConfigError;
 
     fn try_from(config_item: &dyn TableLike) -> Result<Self, Self::Error> {
         let mut install = IndexSet::new();
@@ -58,7 +70,8 @@ impl TryFrom<&dyn TableLike> for BuildpackConfig {
 
 #[derive(Debug)]
 #[allow(dead_code)]
-pub(crate) enum ParseConfigError {
+pub(crate) enum ConfigError {
+    ReadConfig(std::io::Error),
     InvalidToml(toml_edit::TomlError),
     PackageNameError(ParsePackageNameError),
     WrongConfigType,

@@ -1,6 +1,4 @@
 use std::fmt::Debug;
-use std::fs;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -18,7 +16,7 @@ use libcnb_test as _;
 #[cfg(test)]
 use regex as _;
 
-use crate::config::{BuildpackConfig, ParseConfigError};
+use crate::config::{BuildpackConfig, ConfigError};
 use crate::create_package_index::{create_package_index, CreatePackageIndexError};
 use crate::debian::{Distro, UnsupportedDistroError};
 use crate::determine_packages_to_install::{
@@ -26,8 +24,8 @@ use crate::determine_packages_to_install::{
 };
 use crate::install_packages::{install_packages, InstallPackagesError};
 use crate::DebianPackagesBuildpackError::{
-    CreateAsyncRuntime, CreateHttpClient, CreatePackageIndex, DetectConfigFile, InstallPackages,
-    ParseConfig, ReadConfig, SolvePackagesToInstall, UnsupportedDistro,
+    Config, CreateAsyncRuntime, CreateHttpClient, CreatePackageIndex, DetectConfigFile,
+    InstallPackages, SolvePackagesToInstall, UnsupportedDistro,
 };
 
 mod config;
@@ -43,8 +41,7 @@ buildpack_main!(DebianPackagesBuildpack);
 #[allow(dead_code)] // TODO: remove this once error messages are added
 pub(crate) enum DebianPackagesBuildpackError {
     DetectConfigFile(std::io::Error),
-    ReadConfig(std::io::Error),
-    ParseConfig(ParseConfigError),
+    Config(ConfigError),
     CreateHttpClient(reqwest::Error),
     CreateAsyncRuntime(std::io::Error),
     UnsupportedDistro(UnsupportedDistroError),
@@ -72,9 +69,7 @@ impl Buildpack for DebianPackagesBuildpack {
         let project_file_exists = project_toml.try_exists().map_err(DetectConfigFile)?;
 
         if project_file_exists {
-            let config = fs::read_to_string(project_toml)
-                .map_err(ReadConfig)
-                .and_then(|contents| BuildpackConfig::from_str(&contents).map_err(ParseConfig))?;
+            let config = BuildpackConfig::try_from(project_toml).map_err(Config)?;
             if config.install.is_empty() {
                 println!("No configured packages to install found in project.toml file.");
                 DetectResultBuilder::fail().build()
@@ -100,9 +95,8 @@ impl Buildpack for DebianPackagesBuildpack {
         );
         println!();
 
-        let config = fs::read_to_string(context.app_dir.join("project.toml"))
-            .map_err(ReadConfig)
-            .and_then(|contents| BuildpackConfig::from_str(&contents).map_err(ParseConfig))?;
+        let config =
+            BuildpackConfig::try_from(context.app_dir.join("project.toml")).map_err(Config)?;
 
         let distro = Distro::try_from(&context.target).map_err(UnsupportedDistro)?;
 
