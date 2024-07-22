@@ -15,7 +15,7 @@ env:
 
 jobs:
   lint:
-    runs-on: pub-hk-ubuntu-22.04-small # TODO: change to ubuntu-latest once repo is public
+    runs-on: pub-hk-ubuntu-24.04-ip # TODO: change to ubuntu-latest once repo is public
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,7 +29,7 @@ jobs:
         run: cargo fmt -- --check
 
   unit-test:
-    runs-on: pub-hk-ubuntu-22.04-small # TODO: change to ubuntu-latest once repo is public
+    runs-on: pub-hk-ubuntu-24.04-ip # TODO: change to ubuntu-latest once repo is public
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,12 +41,12 @@ jobs:
         run: cargo test --locked
 
   integration-test:
-    runs-on: ${{ matrix.arch == 'arm64' && 'pub-hk-ubuntu-22.04-arm-medium' || 'pub-hk-ubuntu-22.04-small' }} # TODO: change to ubuntu-latest once repo is public
+    runs-on: ${{ matrix.arch == 'arm64' && 'pub-hk-ubuntu-24.04-arm-ip' || 'pub-hk-ubuntu-24.04-ip' }} # TODO: change to ubuntu-latest once repo is public
     strategy:
       fail-fast: false
       matrix:
-        builder: [ "builder:24", "builder:22" ]
-        arch: [ "amd64", "arm64" ]
+        builder: ["builder:24", "builder:22"]
+        arch: ["amd64", "arm64"]
         exclude:
           - builder: "builder:22"
             arch: "arm64"
@@ -68,5 +68,12 @@ jobs:
         uses: buildpacks/github-actions/setup-pack@v5.7.2
       - name: Pull builder image
         run: docker pull ${{ env.INTEGRATION_TEST_CNB_BUILDER }}
+      - name: Pull run image
+        run: |
+          RUN_IMAGE=$(
+            docker inspect --format='{{index .Config.Labels "io.buildpacks.builder.metadata"}}' '${{ env.INTEGRATION_TEST_CNB_BUILDER }}' \
+            | jq --exit-status --raw-output '.stack.runImage.image'
+          )
+          docker pull "${RUN_IMAGE}"
       - name: Run integration tests
         run: cargo test --locked -- --ignored --test-threads $(($(nproc)+1))
