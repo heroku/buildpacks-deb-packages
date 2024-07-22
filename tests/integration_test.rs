@@ -72,8 +72,8 @@ fn test_general_usage_output() {
     integration_test("fixtures/general_usage", |ctx| {
         assert_contains_match!(ctx.pack_stdout, r"# Heroku Debian Packages Buildpack \(v\d+\.\d+\.\d+\)");
 
-        match get_integration_test_builder().as_str() {
-            "heroku/builder:22" if cfg!(target_arch = "x86_64") => {
+        match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
+            ("heroku/builder:22", "amd64") => {
                 assert_contains!(ctx.pack_stdout, "## Distribution Info");
 
                 assert_contains!(ctx.pack_stdout, "- Name: ubuntu");
@@ -149,7 +149,7 @@ fn test_general_usage_output() {
                 assert_contains!(path, "/layers/heroku_debian-packages/libgwenhywfar79/usr/bin");
                 assert_contains!(path, "/layers/heroku_debian-packages/libgwenhywfar79/usr/sbin");
             }
-            "heroku/builder:24" if cfg!(target_arch = "x86_64") => {
+            ("heroku/builder:24", "amd64") => {
                 assert_contains!(ctx.pack_stdout, "## Distribution Info");
 
                 assert_contains!(ctx.pack_stdout, "- Name: ubuntu");
@@ -207,7 +207,7 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "Extracting libgwenhywfar79t64");
                 assert_contains!(ctx.pack_stdout, "Installing libgwenhywfar79t64 → /layers/heroku_debian-packages/libgwenhywfar79t64");
             }
-            "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
+            ("heroku/builder:24", "arm64") => {
                 assert_contains!(ctx.pack_stdout, "## Distribution Info");
 
                 assert_contains!(ctx.pack_stdout, "- Name: ubuntu");
@@ -265,7 +265,7 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "Extracting libgwenhywfar79t64");
                 assert_contains!(ctx.pack_stdout, "Installing libgwenhywfar79t64 → /layers/heroku_debian-packages/libgwenhywfar79t64");
             }
-            _ => panic!("Unsupported test configuration"),
+            _ => panic_unsupported_test_configuration(),
         }
     });
 }
@@ -278,8 +278,8 @@ fn test_general_usage_output_on_rebuild() {
         ctx.rebuild(config, |ctx| {
             assert_contains_match!(ctx.pack_stdout, r"# Heroku Debian Packages Buildpack \(v\d+\.\d+\.\d+\)");
 
-            match get_integration_test_builder().as_str() {
-                "heroku/builder:22" if cfg!(target_arch = "x86_64") => {
+            match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
+                ("heroku/builder:22", "amd64") => {
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease");
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://archive.ubuntu.com/ubuntu/dists/jammy/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://archive.ubuntu.com/ubuntu/dists/jammy/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
@@ -294,7 +294,7 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains!(ctx.pack_stdout, "Restoring libgwenhywfar-data from cache");
                     assert_contains!(ctx.pack_stdout, "Restoring libgwenhywfar79 from cache");
                 }
-                "heroku/builder:24" if cfg!(target_arch = "x86_64") => {
+                ("heroku/builder:24", "amd64") => {
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://archive.ubuntu.com/ubuntu/dists/noble/InRelease");
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://archive.ubuntu.com/ubuntu/dists/noble/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
@@ -309,7 +309,7 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains!(ctx.pack_stdout, "Restoring libgwenhywfar-data from cache");
                     assert_contains!(ctx.pack_stdout, "Restoring libgwenhywfar79t64 from cache");
                 }
-                "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
+                ("heroku/builder:24", "arm64") => {
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/InRelease");
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
                     assert_contains_match!(ctx.pack_stdout, r"\[CACHED\] http://ports.ubuntu.com/ubuntu-ports/dists/noble/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
@@ -324,7 +324,7 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains!(ctx.pack_stdout, "Restoring libgwenhywfar-data from cache");
                     assert_contains!(ctx.pack_stdout, "Restoring libgwenhywfar79t64 from cache");
                 }
-                _ => panic!("Unsupported test configuration"),
+                _ => panic_unsupported_test_configuration(),
             }
         });
     });
@@ -347,8 +347,8 @@ fn test_general_usage_env() {
         assert_eq!(include_path, cpath);
         assert_eq!(include_path, cpp_path);
 
-        match get_integration_test_builder().as_str() {
-            "heroku/builder:22" if cfg!(target_arch = "x86_64") => {
+        match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
+            ("heroku/builder:22", "amd64") => {
                 let packages = ["xmlsec1", "libgwenhywfar-data", "libgwenhywfar79"];
                 for package in packages {
                     let layer_path = format!("{buildpack_layer_path}/{package}");
@@ -365,7 +365,7 @@ fn test_general_usage_env() {
                     assert_contains!(pkg_config_path, &format!("{layer_path}/usr/lib/pkgconfig"));
                 }
             }
-            "heroku/builder:24" if cfg!(target_arch = "x86_64") => {
+            ("heroku/builder:24", "amd64") => {
                 let packages = ["xmlsec1", "libgwenhywfar-data", "libgwenhywfar79t64"];
                 for package in packages {
                     let layer_path = format!("{buildpack_layer_path}/{package}");
@@ -382,7 +382,7 @@ fn test_general_usage_env() {
                     assert_contains!(pkg_config_path, &format!("{layer_path}/usr/lib/pkgconfig"));
                 }
             }
-            "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
+            ("heroku/builder:24", "arm64") => {
                 let packages = ["xmlsec1", "libgwenhywfar-data", "libgwenhywfar79t64"];
                 for package in packages {
                     let layer_path = format!("{buildpack_layer_path}/{package}");
@@ -399,7 +399,7 @@ fn test_general_usage_env() {
                     assert_contains!(pkg_config_path, &format!("{layer_path}/usr/lib/pkgconfig"));
                 }
             }
-            _ => panic!("Unsupported test configuration"),
+            _ => panic_unsupported_test_configuration(),
         }
     });
 }
@@ -415,20 +415,20 @@ fn test_package_config_rewrite() {
             });
         },
         |ctx| {
-            match get_integration_test_builder().as_str() {
-                "heroku/builder:22" if cfg!(target_arch = "x86_64") => {
+            match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
+                ("heroku/builder:22", "amd64") => {
                     assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
                     assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
                 }
-                "heroku/builder:24" if cfg!(target_arch = "x86_64") => {
+                ("heroku/builder:24", "amd64") => {
                     assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/x86_64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
                     assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/x86_64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
                 }
-                "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
+                ("heroku/builder:24", "arm64") => {
                     assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/aarch64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
                     assert_contains!(read_package_config(&ctx, "libopusfile-dev", "/usr/lib/aarch64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/libopusfile-dev/usr");
                 }
-                _ => panic!("Unsupported test configuration"),
+                _ => panic_unsupported_test_configuration(),
             };
         },
     );
@@ -436,6 +436,7 @@ fn test_package_config_rewrite() {
 
 #[test]
 #[ignore = "integration test"]
+#[allow(clippy::match_same_arms)]
 fn test_cache_invalidated_when_configuration_changes() {
     integration_test_with_config(
         "fixtures/project_file_with_empty_config",
@@ -445,26 +446,26 @@ fn test_cache_invalidated_when_configuration_changes() {
             });
         },
         |ctx| {
-            match get_integration_test_builder().as_str() {
-                "heroku/builder:22" if cfg!(target_arch = "x86_64") => {
+            match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
+                ("heroku/builder:22", "amd64") => {
                     assert_contains!(ctx.pack_stdout, "Adding libxmlsec1@1.2.33-1build2");
                     assert_contains!(ctx.pack_stdout, "Downloading libxmlsec1");
                     assert_contains!(ctx.pack_stdout, "Extracting libxmlsec1");
                     assert_contains!(ctx.pack_stdout, "Installing libxmlsec1 → /layers/heroku_debian-packages/libxmlsec1");
                 }
-                "heroku/builder:24" if cfg!(target_arch = "x86_64") => {
+                ("heroku/builder:24", "amd64") => {
                     assert_contains!(ctx.pack_stdout, "Adding libxmlsec1t64@1.2.39-5build2");
                     assert_contains!(ctx.pack_stdout, "Downloading libxmlsec1t64");
                     assert_contains!(ctx.pack_stdout, "Extracting libxmlsec1t64");
                     assert_contains!(ctx.pack_stdout, "Installing libxmlsec1t64 → /layers/heroku_debian-packages/libxmlsec1t64");
                 }
-                "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
+                ("heroku/builder:24", "arm64") => {
                     assert_contains!(ctx.pack_stdout, "Adding libxmlsec1t64@1.2.39-5build2");
                     assert_contains!(ctx.pack_stdout, "Downloading libxmlsec1t64");
                     assert_contains!(ctx.pack_stdout, "Extracting libxmlsec1t64");
                     assert_contains!(ctx.pack_stdout, "Installing libxmlsec1t64 → /layers/heroku_debian-packages/libxmlsec1t64");
                 }
-                _ => panic!("Unsupported test configuration"),
+                _ => panic_unsupported_test_configuration(),
             }
 
             let mut config = ctx.config.clone();
@@ -472,8 +473,8 @@ fn test_cache_invalidated_when_configuration_changes() {
                 config.app_dir_preprocessor(|app_dir| {
                     set_install_config(&app_dir, [requested_package_config("libgwenhywfar-data", true)]);
                 }),
-                |ctx| match get_integration_test_builder().as_str() {
-                    "heroku/builder:22" if cfg!(target_arch = "x86_64") => {
+                |ctx| match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
+                    ("heroku/builder:22", "amd64") => {
                         assert_contains!(ctx.pack_stdout, "Adding libgwenhywfar-data@5.9.0-1");
                         assert_contains!(ctx.pack_stdout, "Downloading libgwenhywfar-data");
                         assert_contains!(ctx.pack_stdout, "Extracting libgwenhywfar-data");
@@ -484,7 +485,7 @@ fn test_cache_invalidated_when_configuration_changes() {
                         assert_not_contains!(ctx.pack_stdout, "Extracting libxmlsec1");
                         assert_not_contains!(ctx.pack_stdout, "Installing libxmlsec1 → /layers/heroku_debian-packages/libxmlsec1");
                     }
-                    "heroku/builder:24" if cfg!(target_arch = "x86_64") => {
+                    ("heroku/builder:24", "amd64") => {
                         assert_contains!(ctx.pack_stdout, "Adding libgwenhywfar-data@5.10.2-2.1build4");
                         assert_contains!(ctx.pack_stdout, "Downloading libgwenhywfar-data");
                         assert_contains!(ctx.pack_stdout, "Extracting libgwenhywfar-data");
@@ -495,7 +496,7 @@ fn test_cache_invalidated_when_configuration_changes() {
                         assert_not_contains!(ctx.pack_stdout, "Extracting libxmlsec1t64");
                         assert_not_contains!(ctx.pack_stdout, "Installing libxmlsec1t64 → /layers/heroku_debian-packages/libxmlsec1t64");
                     }
-                    "heroku/builder:24" if cfg!(target_arch = "aarch64") => {
+                    ("heroku/builder:24", "arm64") => {
                         assert_contains!(ctx.pack_stdout, "Adding libgwenhywfar-data@5.10.2-2.1build4");
                         assert_contains!(ctx.pack_stdout, "Downloading libgwenhywfar-data");
                         assert_contains!(ctx.pack_stdout, "Extracting libgwenhywfar-data");
@@ -506,7 +507,7 @@ fn test_cache_invalidated_when_configuration_changes() {
                         assert_not_contains!(ctx.pack_stdout, "Extracting libxmlsec1t64");
                         assert_not_contains!(ctx.pack_stdout, "Installing libxmlsec1t64 → /layers/heroku_debian-packages/libxmlsec1t64");
                     }
-                    _ => panic!("Unsupported test configuration"),
+                    _ => panic_unsupported_test_configuration(),
                 },
             );
         },
@@ -519,6 +520,16 @@ fn get_integration_test_builder() -> String {
     std::env::var("INTEGRATION_TEST_CNB_BUILDER").unwrap_or(DEFAULT_BUILDER.to_string())
 }
 
+const DEFAULT_ARCH: &str = "amd64";
+
+fn get_integration_test_arch() -> String {
+    std::env::var("INTEGRATION_TEST_CNB_ARCH").unwrap_or(DEFAULT_ARCH.to_string())
+}
+
+fn panic_unsupported_test_configuration() -> ! {
+    panic!("Unsupported test configuration:\nINTEGRATION_TEST_CNB_BUILDER={}\nINTEGRATION_TEST_CNB_ARCH={}", get_integration_test_builder(), get_integration_test_arch());
+}
+
 fn integration_test(fixture: &str, test_body: fn(TestContext)) {
     integration_test_with_config(fixture, |_| {}, test_body);
 }
@@ -527,12 +538,10 @@ fn integration_test_with_config(fixture: &str, with_config: fn(&mut BuildConfig)
     let builder = get_integration_test_builder();
     let app_dir = PathBuf::from("tests").join(fixture);
 
-    // TODO: Once Pack build supports `--platform` and libcnb-test adjusted accordingly, change this
-    // to allow configuring the target arch independently of the builder name (eg via env var).
-    let target_triple = match builder.as_str() {
-        // Compile the buildpack for ARM64 iff the builder supports multi-arch and the host is ARM64.
-        "heroku/builder:24" if cfg!(target_arch = "aarch64") => "aarch64-unknown-linux-musl",
-        _ => "x86_64-unknown-linux-musl",
+    let target_triple = match get_integration_test_arch().as_str() {
+        "amd64" => "x86_64-unknown-linux-musl",
+        "arm64" => "aarch64-unknown-linux-musl",
+        _ => panic_unsupported_test_configuration(),
     };
 
     let mut build_config = BuildConfig::new(builder, app_dir);
