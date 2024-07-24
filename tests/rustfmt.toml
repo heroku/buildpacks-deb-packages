@@ -1,0 +1,8 @@
+# Added because some of the output lines in tests exceed the default max_width
+# and without this setting, rustfmt fails with the following message:
+#
+#   error[internal]: left behind trailing whitespace
+#
+# This makes it seem like rustfmt is broken when it really just doesn't know how
+# to deal with long strings of text.
+max_width = 300
