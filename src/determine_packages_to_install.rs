@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::read_to_string;
 
 use apt_parser::Control;
@@ -80,29 +80,50 @@ fn visit(
     package_index: &PackageIndex,
 ) -> Result<()> {
     if let Some(system_package) = system_packages.get(package) {
-        println!(
-            "  ! Skipping {package} because {name}@{version} is already installed on the system (consider removing {package} from your project.toml configuration for this buildpack)",
-            name = system_package.package,
-            version = system_package.version
-        );
+        // only show this message if the package is a top-level dependency
+        if visit_stack.is_empty() {
+            println!(
+                "  ! Skipping {package} because {name}@{version} is already installed on the system (consider removing {package} from your project.toml configuration for this buildpack)",
+                name = system_package.package,
+                version = system_package.version
+            );
+        }
         return Ok(());
     }
 
     if let Some(install_record) = install_details.get(package) {
-        println!(
-            "  ! Skipping {package} because {name}@{version} was already installed as a dependency of {top_level_dependency} (consider removing {package} from your project.toml configuration for this buildpack)",
-            name = install_record.repository_package.name,
-            version = install_record.repository_package.version,
-            top_level_dependency = install_record.dependency_path.first().expect("The dependency path should always have at least 1 item")
-
-        );
+        // only show this message if the package is a top-level dependency
+        if visit_stack.is_empty() {
+            println!(
+                "  ! Skipping {package} because {name}@{version} was already installed as a dependency of {top_level_dependency} (consider removing {package} from your project.toml configuration for this buildpack)",
+                name = install_record.repository_package.name,
+                version = install_record.repository_package.version,
+                top_level_dependency = install_record.dependency_path.first().expect("The dependency path should always have at least 1 item")
+            );
+        }
         return Ok(());
     }
 
     if let Some(provides) = package_index.get_virtual_package_providers(package) {
-        return match provides.as_slice() {
-            [repository_package] => {
-                println!("  ! Virtual package {package} is provided by {name}@{version} (consider replacing {package} for {name} in your project.toml configuration for this buildpack)", name = repository_package.name, version = repository_package.version);
+        let provides_names = provides
+            .iter()
+            .map(|provide| provide.name.as_str())
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        return match provides_names.as_slice() {
+            [providing_package_name] => {
+                let repository_package = package_index
+                    .get_highest_available_version(providing_package_name)
+                    .ok_or(PackageNotFound)?;
+                // only show this message if the package is a top-level dependency
+                if visit_stack.is_empty() {
+                    println!(
+                        "  ! Virtual package {package} is provided by {name}@{version} (consider replacing {package} for {name} in your project.toml configuration for this buildpack)", 
+                        name = repository_package.name, 
+                        version = repository_package.version
+                    );
+                }
                 visit(
                     &repository_package.name,
                     skip_dependencies,
