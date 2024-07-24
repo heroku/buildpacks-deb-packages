@@ -8,7 +8,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use ar::Archive as ArArchive;
-use async_compression::tokio::bufread::{GzipDecoder, ZstdDecoder};
+use async_compression::tokio::bufread::{GzipDecoder, XzDecoder, ZstdDecoder};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
 use libcnb::build::BuildContext;
@@ -212,6 +212,13 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> Result<()> {
             }
             (Some("control.tar" | "data.tar"), Some("zstd" | "zst")) => {
                 let mut tar_archive = TarArchive::new(ZstdDecoder::new(entry_reader));
+                tar_archive
+                    .unpack(&output_dir)
+                    .await
+                    .map_err(UnpackTarball)?;
+            }
+            (Some("control.tar" | "data.tar"), Some("xz")) => {
+                let mut tar_archive = TarArchive::new(XzDecoder::new(entry_reader));
                 tar_archive
                     .unpack(&output_dir)
                     .await

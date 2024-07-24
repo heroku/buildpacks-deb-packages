@@ -10,7 +10,7 @@ toml_edit = "0.22"
 anyhow = "1"
 apt-parser = "1"
 ar = "0.9"
-async-compression = { version = "0.4", default-features = false, features = ["tokio", "gzip", "zstd"] }
+async-compression = { version = "0.4", default-features = false, features = ["tokio", "gzip", "zstd", "xz"] }
 debversion = "0.4"
 futures = { version = "0.3", default-features = false, features = ["io-compat"] }
 indexmap = "2"
