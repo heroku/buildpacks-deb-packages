@@ -105,7 +105,7 @@ impl Buildpack for DebianPackagesBuildpack {
         let client = ClientBuilder::new(
             Client::builder()
                 .use_rustls_tls()
-                .timeout(Duration::from_secs(60 * 10))
+                .timeout(Duration::from_secs(60 * 5))
                 .build()
                 .map_err(CreateHttpClient)?,
         )
