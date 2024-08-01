@@ -1,7 +1,9 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Eq)]
 #[allow(non_camel_case_types)]
 // https://wiki.debian.org/Multiarch/Tuples
 pub(crate) enum ArchitectureName {

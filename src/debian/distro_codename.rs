@@ -1,6 +1,8 @@
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub(crate) enum DistroCodename {
     Jammy,
     Noble,

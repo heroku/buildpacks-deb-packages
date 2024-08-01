@@ -1,20 +1,22 @@
+use std::collections::HashMap;
 use std::env::temp_dir;
 use std::ffi::OsString;
 use std::fs::File;
 use std::io::ErrorKind;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use std::sync::Arc;
 
 use ar::Archive as ArArchive;
 use async_compression::tokio::bufread::{GzipDecoder, XzDecoder, ZstdDecoder};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
+use indexmap::IndexSet;
 use libcnb::build::BuildContext;
-use libcnb::data::layer::{LayerName, LayerNameError};
+use libcnb::data::layer::LayerNameError;
+use libcnb::data::layer_name;
 use libcnb::layer::{
-    CachedLayerDefinition, InvalidMetadataAction, LayerRef, LayerState, RestoredLayerAction,
+    CachedLayerDefinition, InvalidMetadataAction, LayerState, RestoredLayerAction,
 };
 use libcnb::layer_env::{LayerEnv, ModificationBehavior, Scope};
 use reqwest_middleware::ClientWithMiddleware;
@@ -31,7 +33,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::debian::{Distro, MultiarchName, RepositoryPackage};
 use crate::install_packages::InstallPackagesError::{
-    ChecksumFailed, CreateLayer, DownloadPackage, InvalidLayerName, NoFilename, OpenPackageArchive,
+    ChecksumFailed, CreateLayer, DownloadPackage, NoFilename, OpenPackageArchive,
     OpenPackageArchiveEntry, ReadPackageConfig, TaskFailed, UnpackTarball, UnsupportedCompression,
     WriteLayerEnv, WriteLayerMetadata, WritePackage, WritePackageConfig,
 };
@@ -48,47 +50,22 @@ pub(crate) async fn install_packages(
     println!("## Installing packages");
     println!();
 
-    let mut download_and_extract_handles = JoinSet::new();
-
-    for repository_package in packages_to_install {
-        download_and_extract_handles.spawn(download_extract_and_install(
-            context.clone(),
-            client.clone(),
-            distro.clone(),
-            repository_package.clone(),
-        ));
-    }
-
-    while let Some(download_and_extract_handle) = download_and_extract_handles.join_next().await {
-        download_and_extract_handle.map_err(TaskFailed)??;
-    }
-
-    println!();
-    Ok(())
-}
-
-async fn download_extract_and_install(
-    context: Arc<BuildContext<DebianPackagesBuildpack>>,
-    client: ClientWithMiddleware,
-    distro: Distro,
-    repository_package: RepositoryPackage,
-) -> Result<()> {
-    let new_metadata = ExtractedPackageMetadata {
-        hash: repository_package.sha256sum.to_string(),
+    let new_metadata = InstallationMetadata {
+        package_checksums: packages_to_install
+            .iter()
+            .map(|package| (package.name.to_string(), package.sha256sum.to_string()))
+            .collect(),
+        distro: distro.clone(),
     };
 
-    let package_name = &repository_package.name;
-
-    let layer_name = LayerName::from_str(package_name).map_err(InvalidLayerName)?;
-
-    let extracted_package_layer = context
+    let install_layer = context
         .cached_layer(
-            layer_name,
+            layer_name!("packages"),
             CachedLayerDefinition {
-                launch: true,
                 build: true,
+                launch: true,
                 invalid_metadata_action: &|_| InvalidMetadataAction::DeleteLayer,
-                restored_layer_action: &|old_metadata: &ExtractedPackageMetadata, _| {
+                restored_layer_action: &|old_metadata: &InstallationMetadata, _| {
                     if old_metadata == &new_metadata {
                         RestoredLayerAction::KeepLayer
                     } else {
@@ -99,30 +76,58 @@ async fn download_extract_and_install(
         )
         .map_err(|e| CreateLayer(Box::new(e)))?;
 
-    match extracted_package_layer.state {
+    match install_layer.state {
         LayerState::Restored { .. } => {
-            println!("  Restoring {package_name} from cache");
+            for repository_package in packages_to_install {
+                println!("  Restoring {} from cache", repository_package.name);
+            }
         }
         LayerState::Empty { .. } => {
-            extracted_package_layer
+            install_layer
                 .write_metadata(new_metadata)
                 .map_err(|e| WriteLayerMetadata(Box::new(e)))?;
 
-            println!("  Downloading {package_name}");
-            let download_path = download(client, &repository_package).await?;
+            let mut download_and_extract_handles = JoinSet::new();
 
-            println!("  Extracting {package_name}");
-            extract(download_path, extracted_package_layer.path()).await?;
+            for repository_package in packages_to_install {
+                download_and_extract_handles.spawn(download_and_extract(
+                    client.clone(),
+                    repository_package.clone(),
+                    install_layer.path(),
+                ));
+            }
 
-            println!(
-                "  Installing {package_name} → {}",
-                extracted_package_layer.path().display()
-            );
-            install(&extracted_package_layer, &distro).await?;
+            while let Some(download_and_extract_handle) =
+                download_and_extract_handles.join_next().await
+            {
+                download_and_extract_handle.map_err(TaskFailed)??;
+            }
         }
     }
 
+    let layer_env = configure_layer_environment(
+        &install_layer.path(),
+        &MultiarchName::from(&distro.architecture),
+    );
+
+    install_layer
+        .write_env(layer_env)
+        .map_err(|e| WriteLayerEnv(Box::new(e)))?;
+
+    rewrite_package_configs(&install_layer.path()).await?;
+
+    println!();
     Ok(())
+}
+
+async fn download_and_extract(
+    client: ClientWithMiddleware,
+    repository_package: RepositoryPackage,
+    install_dir: PathBuf,
+) -> Result<()> {
+    println!("  Downloading and extracting {}", repository_package.name);
+    let download_path = download(client, &repository_package).await?;
+    extract(download_path, install_dir).await
 }
 
 async fn download(
@@ -203,28 +208,28 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> Result<()> {
             entry_path.file_stem().and_then(|v| v.to_str()),
             entry_path.extension().and_then(|v| v.to_str()),
         ) {
-            (Some("control.tar" | "data.tar"), Some("gz")) => {
+            (Some("data.tar"), Some("gz")) => {
                 let mut tar_archive = TarArchive::new(GzipDecoder::new(entry_reader));
                 tar_archive
                     .unpack(&output_dir)
                     .await
                     .map_err(UnpackTarball)?;
             }
-            (Some("control.tar" | "data.tar"), Some("zstd" | "zst")) => {
+            (Some("data.tar"), Some("zstd" | "zst")) => {
                 let mut tar_archive = TarArchive::new(ZstdDecoder::new(entry_reader));
                 tar_archive
                     .unpack(&output_dir)
                     .await
                     .map_err(UnpackTarball)?;
             }
-            (Some("control.tar" | "data.tar"), Some("xz")) => {
+            (Some("data.tar"), Some("xz")) => {
                 let mut tar_archive = TarArchive::new(XzDecoder::new(entry_reader));
                 tar_archive
                     .unpack(&output_dir)
                     .await
                     .map_err(UnpackTarball)?;
             }
-            (Some("control.tar" | "data.tar"), Some(compression)) => {
+            (Some("data.tar"), Some(compression)) => {
                 Err(UnsupportedCompression(compression.to_string()))?;
             }
             _ => {
@@ -232,22 +237,6 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> Result<()> {
             }
         };
     }
-
-    Ok(())
-}
-
-async fn install(
-    layer_ref: &LayerRef<DebianPackagesBuildpack, (), ()>,
-    distro: &Distro,
-) -> Result<()> {
-    layer_ref
-        .write_env(configure_layer_environment(
-            &layer_ref.path(),
-            &MultiarchName::from(&distro.architecture),
-        ))
-        .map_err(|e| WriteLayerEnv(Box::new(e)))?;
-
-    rewrite_package_configs(&layer_ref.path()).await?;
 
     Ok(())
 }
@@ -269,14 +258,30 @@ fn configure_layer_environment(install_path: &Path, multiarch_name: &MultiarchNa
         install_path.join("usr/lib"),
         install_path.join(format!("lib/{multiarch_name}")),
         install_path.join("lib"),
-    ];
+    ]
+    .iter()
+    .fold(IndexSet::new(), |mut acc, lib_dir| {
+        for dir in find_all_dirs_containing(lib_dir, shared_library_file) {
+            acc.insert(dir);
+        }
+        acc.insert(lib_dir.clone());
+        acc
+    });
     prepend_to_env_var(&mut layer_env, "LD_LIBRARY_PATH", &library_paths);
     prepend_to_env_var(&mut layer_env, "LIBRARY_PATH", &library_paths);
 
     let include_paths = [
         install_path.join(format!("usr/include/{multiarch_name}")),
         install_path.join("usr/include"),
-    ];
+    ]
+    .iter()
+    .fold(IndexSet::new(), |mut acc, include_dir| {
+        for dir in find_all_dirs_containing(include_dir, header_file) {
+            acc.insert(dir);
+        }
+        acc.insert(include_dir.clone());
+        acc
+    });
     prepend_to_env_var(&mut layer_env, "INCLUDE_PATH", &include_paths);
     prepend_to_env_var(&mut layer_env, "CPATH", &include_paths);
     prepend_to_env_var(&mut layer_env, "CPPPATH", &include_paths);
@@ -288,6 +293,44 @@ fn configure_layer_environment(install_path: &Path, multiarch_name: &MultiarchNa
     prepend_to_env_var(&mut layer_env, "PKG_CONFIG_PATH", &pkg_config_paths);
 
     layer_env
+}
+
+fn find_all_dirs_containing(
+    starting_dir: &Path,
+    condition: impl Fn(&Path) -> bool,
+) -> Vec<PathBuf> {
+    let mut matches = vec![];
+    if let Ok(true) = starting_dir.try_exists() {
+        for entry in WalkDir::new(starting_dir).into_iter().flatten() {
+            if let Some(parent_dir) = entry.path().parent() {
+                if condition(entry.path()) {
+                    matches.push(parent_dir.to_path_buf());
+                }
+            }
+        }
+    }
+    // order the paths by longest to shortest
+    matches.sort_by_key(|v| std::cmp::Reverse(v.as_os_str().len()));
+    matches
+}
+
+fn shared_library_file(path: &Path) -> bool {
+    let mut current_path = path.to_path_buf();
+    let mut current_ext = current_path.extension();
+    let mut current_name = current_path.file_stem();
+    while let (Some(name), Some(ext)) = (current_name, current_ext) {
+        if ext == "so" {
+            return true;
+        }
+        current_path = PathBuf::from(name);
+        current_ext = current_path.extension();
+        current_name = current_path.file_stem();
+    }
+    false
+}
+
+fn header_file(path: &Path) -> bool {
+    matches!(path.extension(), Some(ext) if ext == "h")
 }
 
 fn prepend_to_env_var<I, T>(layer_env: &mut LayerEnv, name: &str, paths: I)
@@ -375,9 +418,103 @@ pub(crate) enum InstallPackagesError {
     UnsupportedCompression(String),
     ReadPackageConfig(std::io::Error),
     WritePackageConfig(std::io::Error),
+    ConfigurePaths(std::io::Error),
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
-struct ExtractedPackageMetadata {
-    hash: String,
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
+struct InstallationMetadata {
+    package_checksums: HashMap<String, String>,
+    distro: Distro,
+}
+
+#[cfg(test)]
+mod test {
+    use std::ffi::OsString;
+    use std::path::{Path, PathBuf};
+
+    use libcnb::layer_env::Scope;
+    use tempfile::TempDir;
+
+    use crate::debian::MultiarchName;
+    use crate::install_packages::configure_layer_environment;
+
+    #[test]
+    fn configure_layer_environment_adds_nested_directories_with_shared_libraries_to_library_path() {
+        let arch = MultiarchName::X86_64_LINUX_GNU;
+        let install_dir = create_installation(bon::vec![
+            format!("usr/lib/{arch}/nested-1/shared-library.so.2"),
+            "usr/lib/nested-2/shared-library.so",
+            format!("lib/{arch}/nested-3/shared-library.so.4"),
+            format!("lib/{arch}/nested-3/deeply/shared-library.so.5"),
+            "lib/nested-4/shared-library.so.3.0.0",
+            "usr/lib/nested-but/does-not-contain-a-shared-library.txt",
+            "usr/not-a-lib-dir/shared-library.so.6"
+        ]);
+        let install_path = install_dir.path();
+        let layer_env = configure_layer_environment(install_path, &arch);
+        assert_eq!(
+            split_into_paths(layer_env.apply_to_empty(Scope::All).get("LD_LIBRARY_PATH")),
+            vec![
+                install_path.join(format!("usr/lib/{arch}/nested-1")),
+                install_path.join(format!("usr/lib/{arch}")),
+                install_path.join("usr/lib/nested-2"),
+                install_path.join("usr/lib"),
+                install_path.join(format!("lib/{arch}/nested-3/deeply")),
+                install_path.join(format!("lib/{arch}/nested-3")),
+                install_path.join(format!("lib/{arch}")),
+                install_path.join("lib/nested-4"),
+                install_path.join("lib"),
+            ]
+        );
+    }
+
+    #[test]
+    fn configure_layer_environment_adds_nested_directories_with_headers_to_include_path() {
+        let arch = MultiarchName::X86_64_LINUX_GNU;
+        let install_dir = create_installation(bon::vec![
+            format!("usr/include/{arch}/nested-1/header.h"),
+            "usr/include/nested-2/header.h",
+            "usr/include/nested-2/deeply/header.h",
+            "usr/include/nested-but/does-not-contain-a-header.txt",
+            "usr/not-an-include-dir/header.h"
+        ]);
+        let install_path = install_dir.path();
+        let layer_env = configure_layer_environment(install_path, &arch);
+        assert_eq!(
+            split_into_paths(layer_env.apply_to_empty(Scope::All).get("INCLUDE_PATH")),
+            vec![
+                install_path.join(format!("usr/include/{arch}/nested-1")),
+                install_path.join(format!("usr/include/{arch}")),
+                install_path.join("usr/include/nested-2/deeply"),
+                install_path.join("usr/include/nested-2"),
+                install_path.join("usr/include"),
+            ]
+        );
+    }
+
+    fn create_installation(files: Vec<String>) -> TempDir {
+        let install_dir = tempfile::tempdir().unwrap();
+        for file in files {
+            create_file(install_dir.path(), &file);
+        }
+        install_dir
+    }
+
+    fn create_file(install_dir: &Path, file: &str) {
+        let file_path = install_dir.join(file);
+        let dir = file_path.parent().unwrap();
+        std::fs::create_dir_all(dir).unwrap();
+        std::fs::File::create(file_path).unwrap();
+    }
+
+    fn split_into_paths(env_var: Option<&OsString>) -> Vec<PathBuf> {
+        env_var
+            .map(|v| {
+                v.to_string_lossy()
+                    .split(':')
+                    .map(PathBuf::from)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    }
 }

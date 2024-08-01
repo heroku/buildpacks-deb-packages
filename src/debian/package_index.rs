@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use crate::debian::RepositoryPackage;
@@ -53,11 +53,16 @@ impl PackageIndex {
         self.packages_indexed += 1;
     }
 
-    pub(crate) fn get_virtual_package_providers(
-        &self,
-        package: &str,
-    ) -> Option<&Vec<RepositoryPackage>> {
-        self.virtual_package_to_implementing_packages.get(package)
+    pub(crate) fn get_providers(&self, package: &str) -> HashSet<&str> {
+        self.virtual_package_to_implementing_packages
+            .get(package)
+            .map(|provides| {
+                provides
+                    .iter()
+                    .map(|provide| provide.name.as_str())
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 }
 
@@ -142,8 +147,11 @@ mod test {
         package_index.add_package(libvips_provider_1.clone());
         package_index.add_package(libvips_provider_2.clone());
         assert_eq!(
-            package_index.get_virtual_package_providers("libvips"),
-            Some(&vec![libvips_provider_1, libvips_provider_2])
+            package_index.get_providers("libvips"),
+            HashSet::from([
+                libvips_provider_1.name.as_str(),
+                libvips_provider_2.name.as_str()
+            ])
         );
     }
 
@@ -153,9 +161,6 @@ mod test {
         let libvips_provider_1 =
             create_repository_package_with_provides("libvips42", "8.12.1-1build1", "libvips");
         package_index.add_package(libvips_provider_1);
-        assert_eq!(
-            package_index.get_virtual_package_providers("libvips42"),
-            None
-        );
+        assert!(package_index.get_providers("libvips42").is_empty());
     }
 }
