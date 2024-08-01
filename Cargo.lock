@@ -73,7 +73,7 @@ version = "0.0.0"
 dependencies = [
  "commons",
  "indoc",
- "libcnb 0.19.0",
+ "libcnb",
  "libcnb-test",
  "serde",
  "toml",
@@ -142,7 +142,7 @@ dependencies = [
  "glob",
  "indoc",
  "lazy_static",
- "libcnb 0.21.0",
+ "libcnb",
  "libherokubuildpack",
  "regex",
  "serde",
@@ -261,9 +261,9 @@ dependencies = [
 
 [[package]]
 name = "fastrand"
-version = "2.0.1"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
+checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
 
 [[package]]
 name = "fixedbitset"
@@ -398,38 +398,13 @@ checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
 
 [[package]]
 name = "libcnb"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7db217651ab45597152c94ad849defb079fc7ced7d72de2fcc2e9c3dec6e990e"
-dependencies = [
- "libcnb-common 0.19.0",
- "libcnb-data 0.19.0",
- "libcnb-proc-macros 0.19.0",
- "serde",
- "thiserror",
- "toml",
-]
-
-[[package]]
-name = "libcnb"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aacc89bfeaef5f43cdee664798e3c0aa36e052a412ab1391f0750aee4df1f407"
 dependencies = [
- "libcnb-common 0.21.0",
- "libcnb-data 0.21.0",
- "libcnb-proc-macros 0.21.0",
- "serde",
- "thiserror",
- "toml",
-]
-
-[[package]]
-name = "libcnb-common"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3abf2056162dd76ade12884e002ba88f068a26594b2eb9579ef8af40cfbca1b"
-dependencies = [
+ "libcnb-common",
+ "libcnb-data",
+ "libcnb-proc-macros",
  "serde",
  "thiserror",
  "toml",
@@ -448,26 +423,12 @@ dependencies = [
 
 [[package]]
 name = "libcnb-data"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afc6b01af8b624193ca6b247667ef82f36dd85d62b90f5a7e8d047b46642ce7c"
-dependencies = [
- "fancy-regex",
- "libcnb-proc-macros 0.19.0",
- "serde",
- "thiserror",
- "toml",
- "uriparse",
-]
-
-[[package]]
-name = "libcnb-data"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfcd102bfb1bf98ee4c18da0b29be6f23a19681937924bf758e9ea8499668b18"
 dependencies = [
  "fancy-regex",
- "libcnb-proc-macros 0.21.0",
+ "libcnb-proc-macros",
  "serde",
  "thiserror",
  "toml",
@@ -476,31 +437,19 @@ dependencies = [
 
 [[package]]
 name = "libcnb-package"
-version = "0.19.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2678c2e0882c622a01d415e64625258849e533aeba8531110a5b3db9593d97d5"
+checksum = "3b8d9b42112212a875c07fb3acf19504cf330edaa63cddd1823e9d03a5e2b934"
 dependencies = [
  "cargo_metadata",
  "ignore",
  "indoc",
- "libcnb-common 0.19.0",
- "libcnb-data 0.19.0",
+ "libcnb-common",
+ "libcnb-data",
  "petgraph",
  "thiserror",
  "uriparse",
  "which",
-]
-
-[[package]]
-name = "libcnb-proc-macros"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0308e3b554dd8b0b969ab42d19b50b02bdb712dc72652849fa1e33bd1d16709"
-dependencies = [
- "cargo_metadata",
- "fancy-regex",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -517,14 +466,14 @@ dependencies = [
 
 [[package]]
 name = "libcnb-test"
-version = "0.19.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f094d9c229c481fb868d36231dcc4b7596491503d0a297eb239b08e942eb483c"
+checksum = "9471152703833b74d565c7f7c910b4d5e084f955c327eba2bdb6658e86bd6dd6"
 dependencies = [
  "fastrand",
  "fs_extra",
- "libcnb-common 0.19.0",
- "libcnb-data 0.19.0",
+ "libcnb-common",
+ "libcnb-data",
  "libcnb-package",
  "tempfile",
  "thiserror",
@@ -556,12 +505,6 @@ name = "memchr"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
-
-[[package]]
-name = "once_cell"
-version = "1.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
 name = "petgraph"
@@ -690,9 +633,9 @@ dependencies = [
 
 [[package]]
 name = "serde_spanned"
-version = "0.6.6"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79e674e01f999af37c49f70a6ede167a8a60b2503e56c5599532a65baa5969a0"
+checksum = "eb5b1b31579f3811bf615c144393417496f152e12ac8b7663bf664f4a815306d"
 dependencies = [
  "serde",
 ]
@@ -721,9 +664,9 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.10.0"
+version = "3.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a365e8cd18e44762ef95d87f284f4b5cd04107fec2ff3052bd6a3e6069669e67"
+checksum = "85b77fafb263dd9d05cbeac119526425676db3784113aa9295c88498cbf8bff1"
 dependencies = [
  "cfg-if",
  "fastrand",
@@ -753,9 +696,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.8.14"
+version = "0.8.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f49eb2ab21d2f26bd6db7bf383edc527a7ebaee412d17af4d40fdccd442f335"
+checksum = "a1ed1f98e3fdc28d6d910e6737ae6ab1a93bf1985935a1193e68f93eeb68d24e"
 dependencies = [
  "serde",
  "serde_spanned",
@@ -765,18 +708,18 @@ dependencies = [
 
 [[package]]
 name = "toml_datetime"
-version = "0.6.6"
+version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4badfd56924ae69bcc9039335b2e017639ce3f9b001c393c1b2d1ef846ce2cbf"
+checksum = "0dd7358ecb8fc2f8d014bf86f6f638ce72ba252a2c3a2572f2a795f1d23efb41"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "toml_edit"
-version = "0.22.15"
+version = "0.22.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d59a3a72298453f564e2b111fa896f8d07fabb36f51f06d7e875fc5e0b5a3ef1"
+checksum = "583c44c02ad26b0c3f3066fe629275e50627026c51ac2e595cca4c230ce1ce1d"
 dependencies = [
  "indexmap",
  "serde",
@@ -837,15 +780,14 @@ dependencies = [
 
 [[package]]
 name = "which"
-version = "6.0.0"
+version = "6.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fa5e0c10bf77f44aac573e498d1a82d5fbd5e91f6fc0a99e7be4b38e85e101c"
+checksum = "3d9c5ed668ee1f17edb3b627225343d210006a90bb1e3745ce1f30b1fb115075"
 dependencies = [
  "either",
  "home",
- "once_cell",
  "rustix",
- "windows-sys",
+ "winsafe",
 ]
 
 [[package]]
@@ -947,9 +889,15 @@ checksum = "0770833d60a970638e989b3fa9fd2bb1aaadcf88963d1659fd7d9990196ed2d6"
 
 [[package]]
 name = "winnow"
-version = "0.6.2"
+version = "0.6.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a4191c47f15cc3ec71fcb4913cb83d58def65dd3787610213c649283b5ce178"
+checksum = "68a9bda4691f099d435ad181000724da8e5899daa10713c2d432552b9ccd3a6f"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "winsafe"
+version = "0.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d135d17ab770252ad95e9a872d365cf3090e3be864a34ab46f48555993efc904"
