@@ -3,7 +3,8 @@
 [![CI][ci-badge]][ci-link] [![Registry][registry-badge]][registry-link]
 
 `heroku/debian-packages` is a [Heroku Cloud Native Buildpack][heroku-cnbs] that adds support for installing Debian
-packages required by an application that are not available in the build or run image used.
+packages required by an application that are not available in the build or run image used. It's roughly the equivalent
+of `apt install {package}` for [Cloud Native Buildpacks][cnb].
 
 > [!IMPORTANT]
 > This is a [Cloud Native Buildpack][cnb], and is a component of the [Heroku Cloud Native Buildpacks][heroku-cnbs]
@@ -113,8 +114,6 @@ install = [
 This buildpack will pass detection if:
 
 - A `project.toml` file is found at the root of the application source directory
-- The `project.toml` file contains [configuration](#configuration) for this buildpack
-- The buildpack configuration lists one or more Debian packages to install
 
 ### Build
 
@@ -163,7 +162,7 @@ For each package requested for install declared in the [buildpack configuration]
 
 For each package added after [determining the packages to install](#step-2-determine-the-packages-to-install):
 
-- Download the [Binary Package][debian-binary-package] from the repository that contains as
+- Download the [Binary Package][debian-binary-package] from the repository that contains it as
   a [Debian Archive][debian-archive].
 - Extract the contents of the `data.tar` entry from the [Debian Archive][debian-archive] into a [layer][cnb-layer]
   available at `build` and `launch`.
