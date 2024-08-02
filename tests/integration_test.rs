@@ -40,29 +40,17 @@ fn test_failed_detection_when_no_project_file_exists() {
 #[test]
 #[ignore = "integration test"]
 fn test_failed_detection_when_project_file_with_empty_config_exists() {
-    integration_test_with_config(
-        "fixtures/project_file_with_empty_config",
-        |config| {
-            config.expected_pack_result(PackResult::Failure);
-        },
-        |ctx| {
-            assert_contains!(ctx.pack_stdout, "No configured packages to install found in project.toml file.");
-        },
-    );
+    integration_test("fixtures/project_file_with_empty_config", |ctx| {
+        assert_contains!(ctx.pack_stdout, "No configured packages to install found in project.toml file.");
+    });
 }
 
 #[test]
 #[ignore = "integration test"]
 fn test_failed_detection_when_project_file_has_no_config() {
-    integration_test_with_config(
-        "fixtures/project_file_with_no_config",
-        |config| {
-            config.expected_pack_result(PackResult::Failure);
-        },
-        |ctx| {
-            assert_contains!(ctx.pack_stdout, "No configured packages to install found in project.toml file.");
-        },
-    );
+    integration_test("fixtures/project_file_with_no_config", |ctx| {
+        assert_contains!(ctx.pack_stdout, "No configured packages to install found in project.toml file.");
+    });
 }
 
 #[test]

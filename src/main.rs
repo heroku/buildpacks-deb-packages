@@ -64,18 +64,13 @@ impl Buildpack for DebianPackagesBuildpack {
     type Error = DebianPackagesBuildpackError;
 
     fn detect(&self, context: DetectContext<Self>) -> libcnb::Result<DetectResult, Self::Error> {
-        let project_toml = context.app_dir.join("project.toml");
-
-        let project_file_exists = project_toml.try_exists().map_err(DetectConfigFile)?;
-
-        if project_file_exists {
-            let config = BuildpackConfig::try_from(project_toml).map_err(Config)?;
-            if config.install.is_empty() {
-                println!("No configured packages to install found in project.toml file.");
-                DetectResultBuilder::fail().build()
-            } else {
-                DetectResultBuilder::pass().build()
-            }
+        if context
+            .app_dir
+            .join("project.toml")
+            .try_exists()
+            .map_err(DetectConfigFile)?
+        {
+            DetectResultBuilder::pass().build()
         } else {
             println!("No project.toml file found.");
             DetectResultBuilder::fail().build()
@@ -97,6 +92,24 @@ impl Buildpack for DebianPackagesBuildpack {
 
         let config =
             BuildpackConfig::try_from(context.app_dir.join("project.toml")).map_err(Config)?;
+
+        if config.install.is_empty() {
+            println!(
+                "{message}",
+                message = "
+No configured packages to install found in project.toml file. You may need to \
+add a list of packages to install in your project.toml like this:
+
+[com.heroku.buildpacks.debian-packages]
+install = [
+  \"package-name\",
+]
+            "
+                .trim()
+            );
+            println!();
+            return BuildResultBuilder::new().build();
+        }
 
         let distro = Distro::try_from(&context.target).map_err(UnsupportedDistro)?;
 
