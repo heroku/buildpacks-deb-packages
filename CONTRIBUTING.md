@@ -9,7 +9,7 @@ thanks for contributing – we hope these guidelines make it easier and shed som
 ## Salesforce Sponsored
 
 The intent and goal of open sourcing this project is to increase the contributor and user base. However, only Salesforce
-employees will be given `admin` rights and will be the final arbitrars of what contributions are accepted or not.
+employees will be given `admin` rights and will be the final arbiters of what contributions are accepted or not.
 
 # Issues, requests & ideas
 
@@ -23,7 +23,7 @@ Use GitHub Issues page to submit issues, enhancement requests and discuss ideas.
   section of the issue template. Even if an Issue is closed, feel free to comment and add details, it will still
   be reviewed.
 - Issues that have already been identified as a bug (note: able to reproduce) will be labelled `bug`.
-- If you'd like to submit a fix for a bug, [send a Pull Request](#creating_a_pull_request) and mention the Issue number.
+- If you'd like to submit a fix for a bug, [send a Pull Request](#creating-a-pull-request) and mention the Issue number.
 - Include tests that isolate the bug and verifies that it was fixed.
 
 ### New Features
@@ -40,7 +40,7 @@ Use GitHub Issues page to submit issues, enhancement requests and discuss ideas.
 - If you'd like to improve the tests, you want to make the documentation clearer, you have an
   alternative implementation of something that may have advantages over the way its currently
   done, or you have any other change, we would be happy to hear about it!
-- If its a trivial change, go ahead and [send a Pull Request](#creating_a_pull_request) with the changes you have in
+- If it's a trivial change, go ahead and [send a Pull Request](#creating-a-pull-request) with the changes you have in
   mind.
 - If not, [open an Issue](https://github.com/heroku/buildpacks-debian-packages/issues/new) to discuss the idea first.
 
@@ -49,29 +49,27 @@ Issues labelled `good first contribution`.
 
 # Contribution Checklist
 
-- [x] Clean, simple, well styled code
+- [x] Clean, simple, well styled code.
 - [x] Commits should be atomic and messages must be descriptive. Related issues should be mentioned by Issue number.
 - [x] Comments
     - Module-level & function-level comments.
     - Comments on complex blocks of code or algorithms (include references to sources).
 - [x] Tests
-    - The test suite, if provided, must be complete and pass
-    - Increase code coverage, not versa.
-    - Use any of our testkits that contains a bunch of testing facilities you would need. For example:
-      `import com.salesforce.op.test._` and borrow inspiration from existing tests.
+    - The test suite, if provided, must be complete and pass.
+    - Increase code coverage.
 - [x] Dependencies
     - Minimize number of dependencies.
     - Prefer Apache 2.0, BSD3, MIT, ISC and MPL licenses.
 - [x] Reviews
-    - Changes must be approved via peer code review
+    - Changes must be approved via peer code review.
 
 # Creating a Pull Request
 
 1. **Ensure the bug/feature was not already reported** by searching on GitHub under Issues. If none exists, create a new
    issue so that other contributors can keep track of what you are trying to add/fix and offer suggestions (or let you
    know if there is already an effort in progress).
-3. **Clone** the forked repo to your machine.
-4. **Create** a new branch to contain your work (e.g. `git br fix-issue-11`)
+2. **Clone** the forked repo to your machine.
+3. **Create** a new branch to contain your work (e.g. `git br fix-issue-11`)
 4. **Commit** changes to your own branch.
 5. **Push** your work back up to your fork. (e.g. `git push fix-issue-11`)
 6. **Submit** a Pull Request against the `main` branch and refer to the issue(s) you are fixing. Try not to pollute your
@@ -86,5 +84,5 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 # License
 
-By contributing your code, you agree to license your contribution under the terms of our project [LICENSE](LICENSE.txt)
+By contributing your code, you agree to license your contribution under the terms of our project [LICENSE](LICENSE)
 and to sign the [Salesforce CLA](https://cla.salesforce.com/sign-cla)
