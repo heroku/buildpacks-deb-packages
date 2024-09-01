@@ -14,7 +14,7 @@ async-compression = { version = "0.4", default-features = false, features = ["to
 debversion = "0.4"
 futures = { version = "0.3", default-features = false, features = ["io-compat"] }
 indexmap = "2"
-libcnb = { version = "=0.22.0", features = ["trace"] }
+libcnb = { version = "=0.23.0", features = ["trace"] }
 rayon = "1"
 reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
 reqwest-middleware = "0.3"
@@ -31,7 +31,7 @@ walkdir = "2"
 [dev-dependencies]
 bon = "1"
 tempfile = "3"
-libcnb-test = "=0.22.0"
+libcnb-test = "=0.23.0"
 regex = "1"
 
 [lints.rust]
