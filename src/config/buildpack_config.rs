@@ -1,34 +1,45 @@
-use indexmap::IndexSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use indexmap::IndexSet;
 use toml_edit::{DocumentMut, TableLike};
 
-use crate::config::ConfigError::{InvalidToml, ParseRequestedPackage, WrongConfigType};
+use crate::config::ConfigError::{CheckExists, ParseConfig, ReadConfig};
 use crate::config::{ParseRequestedPackageError, RequestedPackage};
-use crate::debian::ParsePackageNameError;
+use crate::{BuildpackResult, DebianPackagesBuildpackError};
 
 #[derive(Debug, Default, Eq, PartialEq)]
 pub(crate) struct BuildpackConfig {
     pub(crate) install: IndexSet<RequestedPackage>,
 }
 
+impl BuildpackConfig {
+    pub(crate) fn exists(config_file: impl AsRef<Path>) -> BuildpackResult<bool> {
+        Ok(config_file
+            .as_ref()
+            .try_exists()
+            .map_err(|e| CheckExists(config_file.as_ref().to_path_buf(), e))?)
+    }
+}
+
 impl TryFrom<PathBuf> for BuildpackConfig {
     type Error = ConfigError;
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
-        fs::read_to_string(value)
-            .map_err(ConfigError::ReadConfig)
-            .and_then(|contents| BuildpackConfig::from_str(&contents))
+        fs::read_to_string(&value)
+            .map_err(|e| ReadConfig(value.clone(), e))
+            .and_then(|contents| {
+                BuildpackConfig::from_str(&contents).map_err(|e| ParseConfig(value, e))
+            })
     }
 }
 
 impl FromStr for BuildpackConfig {
-    type Err = ConfigError;
+    type Err = ParseConfigError;
 
     fn from_str(contents: &str) -> Result<Self, Self::Err> {
-        let doc = DocumentMut::from_str(contents).map_err(InvalidToml)?;
+        let doc = DocumentMut::from_str(contents).map_err(Self::Err::InvalidToml)?;
 
         // the root config is the table named `[com.heroku.buildpacks.debian-packages]` in project.toml
         let root_config_item = doc
@@ -44,14 +55,14 @@ impl FromStr for BuildpackConfig {
             None => Ok(BuildpackConfig::default()),
             Some(item) => item
                 .as_table_like()
-                .ok_or(WrongConfigType)
+                .ok_or(Self::Err::WrongConfigType)
                 .map(BuildpackConfig::try_from)?,
         }
     }
 }
 
 impl TryFrom<&dyn TableLike> for BuildpackConfig {
-    type Error = ConfigError;
+    type Error = ParseConfigError;
 
     fn try_from(config_item: &dyn TableLike) -> Result<Self, Self::Error> {
         let mut install = IndexSet::new();
@@ -59,7 +70,8 @@ impl TryFrom<&dyn TableLike> for BuildpackConfig {
         if let Some(install_values) = config_item.get("install").and_then(|item| item.as_array()) {
             for install_value in install_values {
                 install.insert(
-                    RequestedPackage::try_from(install_value).map_err(ParseRequestedPackage)?,
+                    RequestedPackage::try_from(install_value)
+                        .map_err(Self::Error::ParseRequestedPackage)?,
                 );
             }
         }
@@ -69,19 +81,36 @@ impl TryFrom<&dyn TableLike> for BuildpackConfig {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub(crate) enum ConfigError {
-    ReadConfig(std::io::Error),
+    CheckExists(PathBuf, std::io::Error),
+    ReadConfig(PathBuf, std::io::Error),
+    ParseConfig(PathBuf, ParseConfigError),
+}
+
+#[derive(Debug)]
+pub(crate) enum ParseConfigError {
     InvalidToml(toml_edit::TomlError),
-    PackageNameError(ParsePackageNameError),
     WrongConfigType,
     ParseRequestedPackage(ParseRequestedPackageError),
 }
 
+impl From<ConfigError> for DebianPackagesBuildpackError {
+    fn from(value: ConfigError) -> Self {
+        DebianPackagesBuildpackError::Config(value)
+    }
+}
+
+impl From<ConfigError> for libcnb::Error<DebianPackagesBuildpackError> {
+    fn from(value: ConfigError) -> Self {
+        Self::BuildpackError(value.into())
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::*;
     use crate::debian::PackageName;
+
+    use super::*;
 
     #[test]
     fn test_deserialize() {
@@ -157,7 +186,7 @@ install = [
         "#
         .trim();
         match BuildpackConfig::from_str(toml).unwrap_err() {
-            ParseRequestedPackage(_) => {}
+            ParseConfigError::ParseRequestedPackage(_) => {}
             e => panic!("Not the expected error - {e:?}"),
         }
     }
@@ -175,7 +204,7 @@ install = [
         "#
         .trim();
         match BuildpackConfig::from_str(toml).unwrap_err() {
-            ParseRequestedPackage(_) => {}
+            ParseConfigError::ParseRequestedPackage(_) => {}
             e => panic!("Not the expected error - {e:?}"),
         }
     }
@@ -192,7 +221,7 @@ debian-packages = ["wrong"]
         "#
         .trim();
         match BuildpackConfig::from_str(toml).unwrap_err() {
-            WrongConfigType => {}
+            ParseConfigError::WrongConfigType => {}
             e => panic!("Not the expected error - {e:?}"),
         }
     }
@@ -204,7 +233,7 @@ debian-packages = ["wrong"]
         "
         .trim();
         match BuildpackConfig::from_str(toml).unwrap_err() {
-            InvalidToml(_) => {}
+            ParseConfigError::InvalidToml(_) => {}
             e => panic!("Not the expected error - {e:?}"),
         }
     }

@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
+use toml_edit::{Formatted, InlineTable, Value};
+
 use crate::config::ParseRequestedPackageError::{InvalidPackageName, UnexpectedTomlValue};
 use crate::debian::{PackageName, ParsePackageNameError};
-use std::str::FromStr;
-use toml_edit::{Formatted, InlineTable, Value};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub(crate) struct RequestedPackage {
@@ -62,7 +64,6 @@ impl TryFrom<&InlineTable> for RequestedPackage {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub(crate) enum ParseRequestedPackageError {
     InvalidPackageName(ParsePackageNameError),
     UnexpectedTomlValue(Value),

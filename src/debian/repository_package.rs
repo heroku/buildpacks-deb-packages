@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
-
 use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
+use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
 
 use crate::debian::RepositoryUri;
 
@@ -44,24 +44,30 @@ impl RepositoryPackage {
             .filter_map(|line| line.split_once(':'))
             .collect::<HashMap<&str, &str>>();
 
+        let package_name = values
+            .get(PACKAGE_KEY)
+            .map(|v| v.trim().to_string())
+            .ok_or(ParseRepositoryPackageError::MissingPackageName)?;
+
         Ok(RepositoryPackage {
             repository_uri,
-            name: values
-                .get(PACKAGE_KEY)
-                .map(|v| v.trim().to_string())
-                .ok_or(ParseRepositoryPackageError::MissingPackageName)?,
+            name: package_name.clone(),
             version: values
                 .get(VERSION_KEY)
                 .map(|v| v.trim().to_string())
-                .ok_or(ParseRepositoryPackageError::MissingVersionKey)?,
+                .ok_or(ParseRepositoryPackageError::MissingVersion(
+                    package_name.clone(),
+                ))?,
             filename: values
                 .get(FILENAME_KEY)
                 .map(|v| v.trim().to_string())
-                .ok_or(ParseRepositoryPackageError::MissingFilename)?,
+                .ok_or(ParseRepositoryPackageError::MissingFilename(
+                    package_name.clone(),
+                ))?,
             sha256sum: values
                 .get(SHA256_KEY)
                 .map(|v| v.trim().to_string())
-                .ok_or(ParseRepositoryPackageError::MissingSha256)?,
+                .ok_or(ParseRepositoryPackageError::MissingSha256(package_name))?,
             depends: values.get(DEPENDS_KEY).map(|v| v.trim().to_string()),
             pre_depends: values.get(PRE_DEPENDS_KEY).map(|v| v.trim().to_string()),
             provides: values.get(PROVIDES_KEY).map(|v| v.trim().to_string()),
@@ -117,9 +123,40 @@ impl RepositoryPackage {
 #[derive(Debug)]
 pub(crate) enum ParseRepositoryPackageError {
     MissingPackageName,
-    MissingVersionKey,
-    MissingFilename,
-    MissingSha256,
+    MissingVersion(String),
+    MissingFilename(String),
+    MissingSha256(String),
+}
+
+impl Display for ParseRepositoryPackageError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseRepositoryPackageError::MissingPackageName => {
+                write!(
+                    f,
+                    "There is an entry that is missing the required {PACKAGE_KEY} key"
+                )
+            }
+            ParseRepositoryPackageError::MissingVersion(package_name) => {
+                write!(
+                    f,
+                    "Package {package_name} is missing the required {VERSION_KEY} key"
+                )
+            }
+            ParseRepositoryPackageError::MissingFilename(package_name) => {
+                write!(
+                    f,
+                    "Package {package_name} is missing the required {FILENAME_KEY} key"
+                )
+            }
+            ParseRepositoryPackageError::MissingSha256(package_name) => {
+                write!(
+                    f,
+                    "Package {package_name} is missing the required {SHA256_KEY} key"
+                )
+            }
+        }
+    }
 }
 
 static PACKAGE_KEY: &str = "Package";
