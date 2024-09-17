@@ -853,3 +853,1120 @@ enum SuggestSubmitIssue {
     Yes,
     No,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::debian::{ParsePackageNameError, ParseRepositoryPackageError, RepositoryUri};
+    use crate::DebianPackagesBuildpackError::UnsupportedDistro;
+    use anyhow::anyhow;
+    use libcnb::data::layer::LayerNameError;
+    use libcnb_test::assert_contains_match;
+    use std::collections::HashSet;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_config_check_exists_errors() {
+        test_error_output(
+            ConfigError::CheckExists(
+                "/path/to/project.toml".into(),
+                create_io_error("test I/O error"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - test I/O error
+
+                ! Unable to complete buildpack detection
+                !
+                ! An unexpected I/O error occurred while checking `/path/to/project.toml` to \
+                determine if the Heroku Deb Packages buildpack is compatible for this application.
+            "},
+        );
+    }
+
+    #[test]
+    fn config_read_config_error() {
+        test_error_output(
+            ConfigError::ReadConfig(
+                "/path/to/project.toml".into(),
+                create_io_error("test I/O error"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - test I/O error
+
+                ! Error reading `/path/to/project.toml`
+                !
+                ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                to complete the build but the file can't be read.
+                !
+                ! Suggestions:
+                ! - Ensure the file has read permissions
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_wrong_config_type() {
+        test_error_output(
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::WrongConfigType,
+            ),
+            indoc! {"
+                ! Error parsing `/path/to/project.toml`
+                !
+                ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                to complete the build but the configuration for the key `[com.heroku.buildpacks.debian-packages]` \
+                is not the correct type. This value of this key is expected to be a TOML Table.
+                !
+                ! Suggestions:
+                ! - Refer to the buildpack documentation for this configuration at \
+                https://github.com/heroku/buildpacks-debian-packages?tab=readme-ov-file#configuration \
+                for proper buildpack usage
+                ! - Refer to the TOML documentation for more details on the TOML Table type at \
+                https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_invalid_toml() {
+        test_error_output(
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::InvalidToml(
+                    toml_edit::DocumentMut::from_str("[com.heroku").unwrap_err(),
+                ),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - TOML parse error at line 1, column 12
+                      |
+                    1 | [com.heroku
+                      |            ^
+                    invalid table header
+                    expected `.`, `]`
+
+                ! Error parsing `/path/to/project.toml`
+                !
+                ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                to complete the build but this file is not valid TOML.
+                !
+                ! Suggestions:
+                ! - Ensure the file conforms to the TOML format described at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_invalid_package_name() {
+        test_error_output(
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseRequestedPackage(
+                    ParseRequestedPackageError::InvalidPackageName(ParsePackageNameError {
+                        package_name: "invalid!package!name".to_string(),
+                    }),
+                ),
+            ),
+            indoc! {"
+                ! Error parsing `/path/to/project.toml`
+                !
+                ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                to complete the build but an invalid package name (`invalid!package!name`) was found \
+                in the key `[com.heroku.buildpacks.debian-packages]`.
+                !
+                ! Package names must consist only of lower case letters (a-z), digits (0-9), plus (+) \
+                and minus (-) signs, and periods (.). They must be at least two characters long and \
+                must start with an alphanumeric character. \
+                (See https://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-source).
+                !
+                ! Suggestions:
+                ! - Verify the package name at https://packages.ubuntu.com/
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_invalid_package_name_config_type() {
+        test_error_output(
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseRequestedPackage(
+                    ParseRequestedPackageError::UnexpectedTomlValue(
+                        toml_edit::value(37).into_value().unwrap(),
+                    ),
+                ),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - Invalid type `integer` with value `37`
+
+                ! Error parsing `/path/to/project.toml`
+                !
+                ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                to complete the build but an invalid package format was found in the key \
+                `[com.heroku.buildpacks.debian-packages]`.
+                !
+                ! Packages are expected to be specified using the following TOML values:
+                ! - String (e.g.; \"package-name\")
+                ! - Inline Table (e.g.; { name = \"package-name\", skip_dependencies = true })
+                !
+                ! Suggestions:
+                ! - Refer to the buildpack documentation for this configuration at \
+                https://github.com/heroku/buildpacks-debian-packages?tab=readme-ov-file#configuration \
+                for proper buildpack usage
+                ! - Refer to the TOML documentation for more details on the TOML String and Inline \
+                Table types at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn unsupported_distro_error() {
+        test_error_output(
+            UnsupportedDistro(UnsupportedDistroError {
+                name: "Windows".to_string(),
+                version: "XP".to_string(),
+                architecture: "x86".to_string(),
+            }),
+            indoc! {"
+                ! Unsupported distribution
+                !
+                ! The distribution Windows XP (x86) is not supported by the Heroku Deb Packages buildpack.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_no_sources() {
+        test_error_output(
+            CreatePackageIndexError::NoSources,
+            indoc! {"
+                ! No sources to update
+                !
+                ! No sources were configured for the distribution to update packages from.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_task_failed() {
+        test_error_output_with_custom_assertion(
+            CreatePackageIndexError::TaskFailed(create_join_error()),
+            |actual_text| {
+                assert_contains_match!(
+                    actual_text,
+                    indoc! {"
+                        - Debug Info:
+                          - task \\d+ panicked
+
+                        ! Task failure while updating sources
+                        !
+                        ! A background task responsible for updating sources failed to execute to \
+                        completion.
+                    "}
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_invalid_layer_name() {
+        test_error_output(
+            CreatePackageIndexError::InvalidLayerName(
+                "http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease".to_string(),
+                LayerNameError::InvalidValue(
+                    "623e1a2085e65abc3dc626a97909466ce19efe37f7a6529a842c290fcfc65b3b".to_string(),
+                ),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - Invalid Value: 623e1a2085e65abc3dc626a97909466ce19efe37f7a6529a842c290fcfc65b3b
+
+                ! Invalid layer name
+                !
+                ! For caching purposes, a unique layer name is generated for Debian Release files \
+                and Package indices based on their download urls. The generated name for the following \
+                url was determined to be invalid:
+                ! - http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease
+                !
+                ! The invalid layer name can be found in the debug information above.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_get_release_request() {
+        test_error_output(
+            CreatePackageIndexError::GetReleaseRequest(create_reqwest_middleware_error()),
+            indoc! {"
+                - Debug Info:
+                  - Request error: error sending request for url (https://test/error)
+
+                ! Failed to request Release file
+                !
+                ! While updating package sources, a request to download a Release file failed. This \
+                may be due to an unstable network connection or an issue with the upstream Debian \
+                package repository.
+                !
+                ! Suggestions:
+                ! - Check the status of https://status.canonical.com/ for any reported issues
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_read_get_release_response() {
+        test_error_output(
+            CreatePackageIndexError::ReadGetReleaseResponse(create_reqwest_error()),
+            indoc! {"
+                - Debug Info:
+                  - error sending request for url (https://test/error)
+
+                ! Failed to download Release file
+                !
+                ! While updating package sources, an error occurred while downloading a Release \
+                file. This may be due to an unstable network connection or an issue with the upstream \
+                Debian package repository.
+                !
+                ! Suggestions:
+                ! - Check the status of https://status.canonical.com/ for any reported issues
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_create_pgp_certificate() {
+        test_error_output(
+            CreatePackageIndexError::CreatePgpCertificate(anyhow!(
+                "Additional packets found, is this a keyring?"
+            )),
+            indoc! {"
+                - Debug Info:
+                  - Additional packets found, is this a keyring?
+
+                ! Failed to load verifying PGP certificate
+                !
+                ! The PGP certificate used to verify downloaded release files failed to load. This \
+                would indicate there is a problem with the format of the certificate file used by \
+                this distribution.
+                !
+                ! Suggestions:
+                ! - Verify the format of the certificates found in the ./keys directory of this \
+                buildpack's repository (see https://cirw.in/gpg-decoder)
+                ! - Extract new certificates by running the ./scripts/extract_keys.sh script found \
+                in this buildpack's repository.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_create_pgp_verifier() {
+        test_error_output(
+            CreatePackageIndexError::CreatePgpVerifier(anyhow!("Malformed OpenPGP message")),
+            indoc! {"
+                - Debug Info:
+                  - Malformed OpenPGP message
+
+                ! Failed to verify Release file
+                !
+                ! The PGP signature of the downloaded release file failed verification. This can \
+                happen if the process for signing release files was changed by the maintainers of \
+                the Debian repository.
+                !
+                ! Suggestions:
+                ! - Verify if the keys have changed by running the ./scripts/extract_keys.sh script \
+                found in this buildpack's repository.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_write_release_layer() {
+        test_error_output(
+            CreatePackageIndexError::WriteReleaseLayer(
+                "/path/to/layer/file".into(),
+                create_io_error("out of memory"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - out of memory
+
+                ! Failed to write Release file to layer
+                !
+                ! An unexpected I/O error occurred while writing release data to `/path/to/layer/file`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_read_release_file() {
+        test_error_output(
+            CreatePackageIndexError::ReadReleaseFile(
+                "/path/to/layer/release-file".into(),
+                create_io_error("not found"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - not found
+
+                ! Failed to read Release file from layer
+                !
+                ! An unexpected I/O error occurred while reading Release data from `/path/to/layer/release-file`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_parse_release_file() {
+        test_error_output(
+            CreatePackageIndexError::ParseReleaseFile(
+                "/path/to/layer/release-file".into(),
+                apt_parser::errors::ParseError.into(),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - Failed to parse an APT value
+
+                ! Failed to parse Release file data
+                !
+                ! The Release file data stored in `/path/to/layer/release-file` could not be parsed. \
+                This is most likely a bug with this buildpack but could also be caused by cached data \
+                that is no longer valid or an issue with the upstream repository.
+                !
+                ! Suggestions:
+                ! - Run the build again with a clean cache
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_missing_sha256_release_hashes() {
+        test_error_output(
+            CreatePackageIndexError::MissingSha256ReleaseHashes(RepositoryUri::from(
+                "http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease",
+            )),
+            indoc! {"
+                ! Missing SHA256 Release Hash
+                !
+                ! The Release file from http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease \
+                is missing the SHA256 key which, according to the documented Debian repository format \
+                is required. This is most likely an issue with the upstream repository. (See \
+                https://wiki.debian.org/DebianRepository/Format)
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_missing_package_index_release_hash() {
+        test_error_output(
+            CreatePackageIndexError::MissingPackageIndexReleaseHash(
+                RepositoryUri::from("http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease"),
+                "main/binary-amd64/Packages.gz".to_string(),
+            ),
+            indoc! {"
+                ! Missing Package Index
+                !
+                ! The Release file from http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease is \
+                missing an entry for `main/binary-amd64/Packages.gz` within the SHA256 section. This \
+                is most likely a bug with this buildpack but could also be an issue with the upstream \
+                repository.
+                !
+                ! Suggestions:
+                ! - Verify if `main/binary-amd64/Packages.gz` is found under the SHA256 section of \
+                http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_get_packages_request() {
+        test_error_output(
+            CreatePackageIndexError::GetPackagesRequest(create_reqwest_middleware_error()),
+            indoc! {"
+                - Debug Info:
+                  - Request error: error sending request for url (https://test/error)
+
+                ! Failed to request Package Index file
+                !
+                ! While updating package sources, a request to download a Package Index file failed. \
+                This may be due to an unstable network connection or an issue with the upstream Debian \
+                package repository.
+                !
+                ! Suggestions:
+                ! - Check the status of https://status.canonical.com/ for any reported issues
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_write_package_layer() {
+        test_error_output(
+            CreatePackageIndexError::WritePackagesLayer(
+                "/path/to/layer/package".into(),
+                create_io_error("entity already exists"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - entity already exists
+
+                ! Failed to write Package Index file to layer
+                !
+                ! An unexpected I/O error occurred while writing Package Index data to `/path/to/layer/package`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_write_package_index_from_response() {
+        test_error_output(
+            CreatePackageIndexError::WritePackageIndexFromResponse(
+                "/path/to/layer/package-index".into(),
+                create_io_error("stream closed"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - stream closed
+
+                ! Failed to download Package Index file
+                !
+                ! While updating package sources, an error occurred while downloading a Package Index \
+                file to `/path/to/layer/package-index`. This may be due to an unstable network connection \
+                or an issue with the upstream Debian package repository.
+                !
+                ! Suggestions:
+                ! - Check the status of https://status.canonical.com/ for any reported issues
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_checksum_failed() {
+        test_error_output(
+            CreatePackageIndexError::ChecksumFailed {
+                url: "http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/d41d8cd98f00b204e9800998ecf8427e".to_string(),
+                expected: "d41d8cd98f00b204e9800998ecf8427e".to_string(),
+                actual: "e62ff0123a74adfc6903d59a449cbdb0".to_string()
+            },
+            indoc! {"
+                ! Package Index checksum verification failed
+                !
+                ! While updating package sources, an error occurred while verifying the checksum of \
+                the Package Index at http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/d41d8cd98f00b204e9800998ecf8427e. \
+                This may be due to an issue with the upstream Debian package repository.
+                !
+                ! Checksum:
+                ! - Expected - `d41d8cd98f00b204e9800998ecf8427e`
+                ! - Actual - `e62ff0123a74adfc6903d59a449cbdb0`
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_cpu_task_failed() {
+        test_error_output(
+            CreatePackageIndexError::CpuTaskFailed(create_recv_error()),
+            indoc! {"
+                - Debug Info:
+                  - channel closed
+
+                ! Task failure while reading Package Index data
+                !
+                ! A background task responsible for reading Package Index data failed to execute to \
+                completion.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_read_packages_file() {
+        test_error_output(
+            CreatePackageIndexError::ReadPackagesFile(
+                "/path/to/layer/packages-file".into(),
+                create_io_error("entity not found"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - entity not found
+
+                ! Failed to read Package Index file
+                !
+                ! An unexpected I/O error occurred while reading Package Index data from \
+                `/path/to/layer/packages-file`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn create_package_index_error_parse_packages() {
+        test_error_output(
+            CreatePackageIndexError::ParsePackages(
+                "/path/to/layer/packages-file".into(),
+                vec![
+                    ParseRepositoryPackageError::MissingPackageName,
+                    ParseRepositoryPackageError::MissingVersion("package-a".to_string()),
+                    ParseRepositoryPackageError::MissingFilename("package-b".to_string()),
+                    ParseRepositoryPackageError::MissingSha256("package-c".to_string()),
+                ],
+            ),
+            indoc! {"
+                ! Failed to parse Package Index file
+                !
+                ! The Package Index file data stored in `/path/to/layer/packages-file` could not be \
+                parsed. This is most likely a bug with this buildpack but could also be caused by \
+                cached data that is no longer valid or an issue with the upstream repository.
+                !
+                ! Parsing errors:
+                ! - There is an entry that is missing the required Package key
+                ! - Package package-a is missing the required Version key
+                ! - Package package-b is missing the required Filename key
+                ! - Package package-c is missing the required SHA256 key
+                !
+                ! Suggestions:
+                ! - Run the build again with a clean cache
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn determine_packages_to_install_error_read_system_packages() {
+        test_error_output(
+            DeterminePackagesToInstallError::ReadSystemPackages(
+                "/var/lib/dpkg/status".into(),
+                create_io_error("entity not found"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - entity not found
+
+                ! Failed to read system packages
+                !
+                ! An unexpected I/O error occurred while reading system packages from `/var/lib/dpkg/status`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn determine_packages_to_install_error_parse_system_packages() {
+        test_error_output(
+            DeterminePackagesToInstallError::ParseSystemPackage(
+                "/var/lib/dpkg/status".into(),
+                "some-package".to_string(),
+                apt_parser::errors::APTError::KVError(apt_parser::errors::KVError),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - Failed to parse APT key-value data
+
+                    Package:
+                    some-package
+
+                ! Failed to parse system package
+                !
+                ! An unexpected parsing error occurred while reading system packages from `/var/lib/dpkg/status`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn determine_packages_to_install_error_package_not_found() {
+        test_error_output(
+            DeterminePackagesToInstallError::PackageNotFound("some-package".to_string()),
+            indoc! {"
+                ! Package not found
+                !
+                ! No package matching the name `some-package` could be found in the Package Index. If \
+                this package is listed in the packages to install for this buildpack then it is most \
+                likely due to the package being misspelled. Otherwise, it could be an issue with the \
+                upstream Debian package repository.
+                !
+                ! Suggestions:
+                ! - Verify the package name is correct and exists for the target distribution at \
+                https://packages.ubuntu.com/
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn determine_packages_to_install_error_virtual_package_must_be_specified() {
+        test_error_output(
+            DeterminePackagesToInstallError::VirtualPackageMustBeSpecified(
+                "some-package".to_string(),
+                HashSet::from(["package-b".to_string(), "package-a".to_string()]),
+            ),
+            indoc! {"
+                ! Multiple providers were found for the package `some-package`
+                !
+                ! Sometimes there are several packages which offer more-or-less the same functionality. \
+                In this case, Debian repositories define a virtual package and one or more actual packages \
+                provide an implementation for this virtual package. When multiple providers are found for \
+                a requested package, this buildpack cannot automatically choose which one is the desired \
+                implementation.
+                !
+                ! Providing packages:
+                !
+                !
+                ! - package-a
+                ! - package-b
+                !
+                ! Suggestions:
+                ! - Replace the virtual package `some-package` with one of the above providers
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_task_failed() {
+        test_error_output_with_custom_assertion(
+            InstallPackagesError::TaskFailed(create_join_error()),
+            |actual_text| {
+                assert_contains_match!(
+                    actual_text,
+                    indoc! {"
+                    - Debug Info:
+                      - task \\d+ panicked
+
+                    ! Task failure while installing packages
+                    !
+                    ! A background task responsible for installing failed to execute to completion.
+                    !
+                    ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                    ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                "}
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn install_packages_error_invalid_filename() {
+        test_error_output(
+            InstallPackagesError::InvalidFilename("some-package".to_string(), "..".to_string()),
+            indoc! {"
+                ! Could not determine file name for `some-package`
+                !
+                ! The package information for `some-package` contains a Filename field of `..` which \
+                failed to produce a valid name to use as a download path.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_request_package() {
+        test_error_output(
+            InstallPackagesError::RequestPackage(
+                "some-package".to_string(),
+                create_reqwest_middleware_error(),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - Request error: error sending request for url (https://test/error)
+
+                ! Failed to request package
+                !
+                ! While installing packages, an error occurred while downloading `some-package`. This \
+                may be due to an unstable network connection or an issue with the upstream Debian package \
+                repository.
+                !
+                ! Suggestions:
+                ! - Check the status of https://status.canonical.com/ for any reported issues
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_write_package() {
+        test_error_output(
+            InstallPackagesError::WritePackage(
+                "some-package".to_string(),
+                "https://test/error".to_string(),
+                "/path/to/layer/download-file".into(),
+                create_io_error("stream closed"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - stream closed
+
+                ! Failed to download package
+                !
+                ! An unexpected I/O error occured while downloading `some-package` from https://test/error \
+                to `/path/to/layer/download-file`. This may be due to an unstable network connection or \
+                an issue with the upstream Debian package repository.
+                !
+                ! Suggestions:
+                ! - Check the status of https://status.canonical.com/ for any reported issues
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_checksum_failed() {
+        test_error_output(
+            InstallPackagesError::ChecksumFailed {
+                url: "http://archive.ubuntu.com/ubuntu/dists/jammy/some-package.tgz".to_string(),
+                expected: "7931f51fd704f93171f36f5f6f1d7b7b".into(),
+                actual: "19a47cdb280539511523382fa1cabbe5".to_string(),
+            },
+            indoc! {"
+                ! Package checksum verification failed
+                !
+                ! An error occurred while verifying the checksum of the package at \
+                http://archive.ubuntu.com/ubuntu/dists/jammy/some-package.tgz. This may be due to an \
+                issue with the upstream Debian package repository.
+                !
+                ! Checksum:
+                ! - Expected - `7931f51fd704f93171f36f5f6f1d7b7b`
+                ! - Actual - `19a47cdb280539511523382fa1cabbe5`
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_open_package_archive() {
+        test_error_output(
+            InstallPackagesError::OpenPackageArchive(
+                "/path/to/layer/archive-file.tgz".into(),
+                create_io_error("permission denied"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - permission denied
+
+                ! Failed to open package archive
+                !
+                ! An unexpected I/O error occurred while trying to open the archive at `/path/to/layer/archive-file.tgz`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_open_package_archive_entry() {
+        test_error_output(
+            InstallPackagesError::OpenPackageArchiveEntry(
+                "/path/to/layer/archive-file.tgz".into(),
+                create_io_error("invalid header entry"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - invalid header entry
+
+                ! Failed to read package archive entry
+                !
+                ! An unexpected I/O error occurred while trying to read the entries of the archive at \
+                `/path/to/layer/archive-file.tgz`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_unpack_tarball() {
+        test_error_output(
+            InstallPackagesError::UnpackTarball(
+                "/path/to/layer/archive-file.tgz".into(),
+                create_io_error("directory not empty"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - directory not empty
+
+                ! Failed to unpack package archive
+                !
+                ! An unexpected I/O error occurred while trying to unpack the archive at `/path/to/layer/archive-file.tgz`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_unsupported_compression() {
+        test_error_output(
+            InstallPackagesError::UnsupportedCompression(
+                "/path/to/layer/archive-file.tgz".into(),
+                "lz".to_string(),
+            ),
+            indoc! {"
+                ! Unsupported compression format for package archive
+                !
+                ! An unexpected compression format (`lz`) was used for the package archive at \
+                `/path/to/layer/archive-file.tgz`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_read_package_config() {
+        test_error_output(
+            InstallPackagesError::ReadPackageConfig(
+                "/path/to/layer/pkgconfig/somepackage.pc".into(),
+                create_io_error("invalid filename"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - invalid filename
+
+                ! Failed to read package config file
+                !
+                ! An unexpected I/O error occurred while reading the package config file at \
+                `/path/to/layer/pkgconfig/somepackage.pc`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_write_package_config() {
+        test_error_output(
+            InstallPackagesError::WritePackageConfig(
+                "/path/to/layer/pkgconfig/somepackage.pc".into(),
+                create_io_error("operation interrupted"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - operation interrupted
+
+                ! Failed to write package config file
+                !
+                ! An unexpected I/O error occurred while writing the package config file to \
+                `/path/to/layer/pkgconfig/somepackage.pc`.
+                !
+                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn framework_error() {
+        test_error_output(
+            Error::CannotWriteBuildSbom(create_io_error("operation interrupted")),
+            indoc! {"
+                - Debug Info:
+                  - Couldn't write build SBOM files: operation interrupted
+
+                ! Heroku Deb Packages Buildpack internal error
+                !
+                ! The framework used by this buildpack encountered an unexpected error.
+                !
+                ! If you can’t deploy to Heroku due to this issue, check the official Heroku Status \
+                page at status.heroku.com for any ongoing incidents. After all incidents resolve, retry \
+                your build.
+                !
+                ! Use the debug information above to troubleshoot and retry your build. If you think you \
+                found a bug in the buildpack, reproduce the issue locally with a minimal example and file \
+                an issue here:
+                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+            "},
+        );
+    }
+
+    fn test_error_output(
+        error: impl Into<Error<DebianPackagesBuildpackError>>,
+        expected_text: &str,
+    ) {
+        test_error_output_with_custom_assertion(error, |actual_text| {
+            assert_eq!(normalize_text(&actual_text), normalize_text(expected_text));
+        });
+    }
+
+    fn test_error_output_with_custom_assertion(
+        error: impl Into<Error<DebianPackagesBuildpackError>>,
+        assert_fn: impl FnOnce(String),
+    ) {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let reader = file.reopen().unwrap();
+        let writer = strip_ansi_escapes::Writer::new(file);
+        on_error(error.into(), writer);
+        let actual_text = std::io::read_to_string(reader).unwrap();
+        assert_fn(actual_text);
+    }
+
+    fn normalize_text(input: impl AsRef<str>) -> String {
+        // this transformation helps to reduce some whitespace noise seen when doing output comparisons
+        input
+            .as_ref()
+            .lines()
+            .map(str::trim_end)
+            .collect::<Vec<_>>()
+            .join("\n")
+            .trim()
+            .to_string()
+    }
+
+    fn create_io_error(text: &str) -> std::io::Error {
+        std::io::Error::new(std::io::ErrorKind::Other, text)
+    }
+
+    fn async_runtime() -> tokio::runtime::Runtime {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .build()
+            .unwrap()
+    }
+
+    fn create_join_error() -> tokio::task::JoinError {
+        async_runtime().block_on(async {
+            tokio::spawn(async {
+                panic!("uh oh!");
+            })
+            .await
+            .unwrap_err()
+        })
+    }
+
+    fn create_recv_error() -> tokio::sync::oneshot::error::RecvError {
+        async_runtime().block_on(async {
+            let (send, recv) = tokio::sync::oneshot::channel::<u32>();
+            tokio::spawn(async move {
+                drop(send);
+            });
+            recv.await.unwrap_err()
+        })
+    }
+
+    fn create_reqwest_middleware_error() -> reqwest_middleware::Error {
+        create_reqwest_error().into()
+    }
+
+    fn create_reqwest_error() -> reqwest::Error {
+        async_runtime().block_on(async { reqwest::get("https://test/error").await.unwrap_err() })
+    }
+}
