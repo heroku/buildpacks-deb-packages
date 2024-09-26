@@ -1146,7 +1146,8 @@ mod tests {
                         !
                         ! A background task responsible for updating sources failed to complete.
                         !
-                        ! Use the debug information above to troubleshoot and retry your build.
+                        ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                        ! https://github.com/heroku/buildpacks-debian-packages/issues/new
                     "}
                 );
             },
