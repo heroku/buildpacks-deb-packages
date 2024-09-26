@@ -916,7 +916,7 @@ mod tests {
                 to complete the build but the file can't be read.
                 !
                 ! Suggestions:
-                ! - Ensure the file has read permissions
+                ! - Ensure the file has read permissions.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
             "},
@@ -938,17 +938,16 @@ mod tests {
                 ParseConfigError::WrongConfigType,
             ),
             indoc! {"
-                ! Error parsing `/path/to/project.toml`
+                ! Error parsing `/path/to/project.toml` with invalid key
                 !
-                ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                ! The Heroku Deb Packages buildpack reads the configuration from `/path/to/project.toml` \
                 to complete the build but the configuration for the key `[com.heroku.buildpacks.debian-packages]` \
-                is not the correct type. This value of this key is expected to be a TOML Table.
+                isn't the correct type. The value of this key must be a TOML table.
                 !
                 ! Suggestions:
-                ! - Refer to the buildpack documentation for this configuration at \
-                https://github.com/heroku/buildpacks-debian-packages?tab=readme-ov-file#configuration \
-                for proper buildpack usage
-                ! - Refer to the TOML documentation for more details on the TOML Table type at \
+                ! - See the buildpack documentation for the proper usage for this configuration at \
+                https://github.com/heroku/buildpacks-debian-packages?tab=readme-ov-file#configuration
+                ! - See the TOML documentation for more details on the TOML table type at \
                 https://toml.io/en/v1.0.0
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
@@ -979,13 +978,13 @@ mod tests {
                     invalid table header
                     expected `.`, `]`
 
-                ! Error parsing `/path/to/project.toml`
+                ! Error parsing `/path/to/project.toml` with invalid TOML file
                 !
                 ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
-                to complete the build but this file is not valid TOML.
+                to complete the build but this file isn't a valid TOML file.
                 !
                 ! Suggestions:
-                ! - Ensure the file conforms to the TOML format described at https://toml.io/en/v1.0.0
+                ! - Ensure the file follows the TOML format described at https://toml.io/en/v1.0.0
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
             "},
@@ -1011,19 +1010,19 @@ mod tests {
                 ),
             ),
             indoc! {"
-                ! Error parsing `/path/to/project.toml`
+                ! Error parsing `/path/to/project.toml` with invalid package name
                 !
                 ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
-                to complete the build but an invalid package name (`invalid!package!name`) was found \
+                to complete the build but we found an invalid package name `invalid!package!name` \
                 in the key `[com.heroku.buildpacks.debian-packages]`.
                 !
-                ! Package names must consist only of lower case letters (a-z), digits (0-9), plus (+) \
-                and minus (-) signs, and periods (.). They must be at least two characters long and \
+                ! Package names must consist only of lowercase letters (a-z), digits (0-9), plus (+) \
+                and minus (-) signs, and periods (.). Names must be at least two characters long and \
                 must start with an alphanumeric character. \
-                (See https://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-source).
+                See https://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-source
                 !
                 ! Suggestions:
-                ! - Verify the package name at https://packages.ubuntu.com/
+                ! - Verify the package name is correct and exists for the target distribution at https://packages.ubuntu.com/
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
             "},
@@ -1053,22 +1052,21 @@ mod tests {
                 - Debug Info:
                   - Invalid type `integer` with value `37`
 
-                ! Error parsing `/path/to/project.toml`
+                ! Error parsing `/path/to/project.toml` with invalid package format
                 !
                 ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
-                to complete the build but an invalid package format was found in the key \
+                to complete the build but we found an invalid package format in the key \
                 `[com.heroku.buildpacks.debian-packages]`.
                 !
-                ! Packages are expected to be specified using the following TOML values:
+                ! Packages must either be the following TOML values:
                 ! - String (e.g.; \"package-name\")
-                ! - Inline Table (e.g.; { name = \"package-name\", skip_dependencies = true })
+                ! - Inline table (e.g.; { name = \"package-name\", skip_dependencies = true })
                 !
                 ! Suggestions:
-                ! - Refer to the buildpack documentation for this configuration at \
+                ! - See the buildpack documentation for the proper usage for this configuration at \
                 https://github.com/heroku/buildpacks-debian-packages?tab=readme-ov-file#configuration \
-                for proper buildpack usage
-                ! - Refer to the TOML documentation for more details on the TOML String and Inline \
-                Table types at https://toml.io/en/v1.0.0
+                ! - See the TOML documentation for more details on the TOML string and inline \
+                table types at https://toml.io/en/v1.0.0
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
             "},
@@ -1096,7 +1094,7 @@ mod tests {
             indoc! {"
                 ! Unsupported distribution
                 !
-                ! The distribution Windows XP (x86) is not supported by the Heroku Deb Packages buildpack.
+                ! The Heroku Deb Packages buildpack doesn't support the Windows XP (x86) distribution.
                 !
                 ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
@@ -1118,7 +1116,7 @@ mod tests {
             indoc! {"
                 ! No sources to update
                 !
-                ! No sources were configured for the distribution to update packages from.
+                ! The distribution has no sources to update packages from.
                 !
                 ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
@@ -1146,7 +1144,9 @@ mod tests {
 
                         ! Task failure while updating sources
                         !
-                        ! A background task responsible for updating sources failed to execute to \
+                        ! A background task responsible for updating sources failed to complete.
+                        !
+                        ! Use the debug information above to troubleshoot and retry your build.
                         completion.
                     "}
                 );
@@ -1180,10 +1180,10 @@ mod tests {
                 !
                 ! For caching purposes, a unique layer name is generated for Debian Release files \
                 and Package indices based on their download urls. The generated name for the following \
-                url was determined to be invalid:
+                url was invalid:
                 ! - http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease
                 !
-                ! The invalid layer name can be found in the debug information above.
+                ! You can find the invalid layer name in the debug information above.
                 !
                 ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
@@ -1209,12 +1209,12 @@ mod tests {
 
                 ! Failed to request Release file
                 !
-                ! While updating package sources, a request to download a Release file failed. This \
-                may be due to an unstable network connection or an issue with the upstream Debian \
+                ! While updating package sources, a request to download a Release file failed. This error \
+                can occur due to an unstable network connection or an issue with the upstream Debian \
                 package repository.
                 !
                 ! Suggestions:
-                ! - Check the status of https://status.canonical.com/ for any reported issues
+                ! - Check the status of https://status.canonical.com/ for any reported issues.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
                 !
@@ -1246,11 +1246,11 @@ mod tests {
                 ! Failed to download Release file
                 !
                 ! While updating package sources, an error occurred while downloading a Release \
-                file. This may be due to an unstable network connection or an issue with the upstream \
+                file. This error can occur due to an unstable network connection or an issue with the upstream \
                 Debian package repository.
                 !
                 ! Suggestions:
-                ! - Check the status of https://status.canonical.com/ for any reported issues
+                ! - Check the status of https://status.canonical.com/ for any reported issues.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
                 !
@@ -1282,13 +1282,13 @@ mod tests {
 
                 ! Failed to load verifying PGP certificate
                 !
-                ! The PGP certificate used to verify downloaded release files failed to load. This \
-                would indicate there is a problem with the format of the certificate file used by \
-                this distribution.
+                ! The PGP certificate used to verify downloaded release files failed to load. This error \
+                indicates there's a problem with the format of the certificate file the \
+                distribution uses.
                 !
                 ! Suggestions:
                 ! - Verify the format of the certificates found in the ./keys directory of this \
-                buildpack's repository (see https://cirw.in/gpg-decoder)
+                buildpack's repository. See https://cirw.in/gpg-decoder
                 ! - Extract new certificates by running the ./scripts/extract_keys.sh script found \
                 in this buildpack's repository.
                 !
@@ -1317,12 +1317,12 @@ mod tests {
 
                 ! Failed to verify Release file
                 !
-                ! The PGP signature of the downloaded release file failed verification. This can \
-                happen if the process for signing release files was changed by the maintainers of \
-                the Debian repository.
+                ! The PGP signature of the downloaded release file failed verification. This error can \
+                occur if the the maintainers of the Debian repository changed the process \
+                for signing release files.
                 !
                 ! Suggestions:
-                ! - Verify if the keys have changed by running the ./scripts/extract_keys.sh script \
+                ! - Verify if the keys changed by running the ./scripts/extract_keys.sh script \
                 found in this buildpack's repository.
                 !
                 ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
@@ -1409,12 +1409,12 @@ mod tests {
 
                 ! Failed to parse Release file data
                 !
-                ! The Release file data stored in `/path/to/layer/release-file` could not be parsed. \
-                This is most likely a bug with this buildpack but could also be caused by cached data \
-                that is no longer valid or an issue with the upstream repository.
+                ! We couldn't parse the Release file data stored in `/path/to/layer/release-file`. \
+                This error is most likely a buildpack bug. It can also be caused by cached data \
+                that's no longer valid or an issue with the upstream repository
                 !
                 ! Suggestions:
-                ! - Run the build again with a clean cache
+                ! - Run the build again with a clean cache.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
                 !
@@ -1439,12 +1439,12 @@ mod tests {
                 "http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease",
             )),
             indoc! {"
-                ! Missing SHA256 Release Hash
+                ! Missing SHA256 Release hash
                 !
                 ! The Release file from http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease \
-                is missing the SHA256 key which, according to the documented Debian repository format \
-                is required. This is most likely an issue with the upstream repository. (See \
-                https://wiki.debian.org/DebianRepository/Format)
+                is missing the SHA256 key which is required according to the documented Debian repository format. \
+                This error is most likely an issue with the upstream repository. See \
+                https://wiki.debian.org/DebianRepository/Format
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
                 !
@@ -1473,12 +1473,12 @@ mod tests {
                 ! Missing Package Index
                 !
                 ! The Release file from http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease is \
-                missing an entry for `main/binary-amd64/Packages.gz` within the SHA256 section. This \
-                is most likely a bug with this buildpack but could also be an issue with the upstream \
+                missing an entry for `main/binary-amd64/Packages.gz` within the SHA256 section. This error \
+                is most likely a buildpack bug but can also be an issue with the upstream \
                 repository.
                 !
                 ! Suggestions:
-                ! - Verify if `main/binary-amd64/Packages.gz` is found under the SHA256 section of \
+                ! - Verify if `main/binary-amd64/Packages.gz` is under the SHA256 section of \
                 http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
@@ -1510,11 +1510,11 @@ mod tests {
                 ! Failed to request Package Index file
                 !
                 ! While updating package sources, a request to download a Package Index file failed. \
-                This may be due to an unstable network connection or an issue with the upstream Debian \
+                This error can occur due to an unstable network connection or an issue with the upstream Debian \
                 package repository.
                 !
                 ! Suggestions:
-                ! - Check the status of https://status.canonical.com/ for any reported issues
+                ! - Check the status of https://status.canonical.com/ for any reported issues.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
                 !
@@ -1574,11 +1574,11 @@ mod tests {
                 ! Failed to download Package Index file
                 !
                 ! While updating package sources, an error occurred while downloading a Package Index \
-                file to `/path/to/layer/package-index`. This may be due to an unstable network connection \
+                file to `/path/to/layer/package-index`. This error can occur due to an unstable network connection \
                 or an issue with the upstream Debian package repository.
                 !
                 ! Suggestions:
-                ! - Check the status of https://status.canonical.com/ for any reported issues
+                ! - Check the status of https://status.canonical.com/ for any reported issues.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
                 !
@@ -1610,11 +1610,11 @@ mod tests {
                 !
                 ! While updating package sources, an error occurred while verifying the checksum of \
                 the Package Index at http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/d41d8cd98f00b204e9800998ecf8427e. \
-                This may be due to an issue with the upstream Debian package repository.
+                This error can occur due to an issue with the upstream Debian package repository.
                 !
                 ! Checksum:
-                ! - Expected - `d41d8cd98f00b204e9800998ecf8427e`
-                ! - Actual - `e62ff0123a74adfc6903d59a449cbdb0`
+                ! - Expected: `d41d8cd98f00b204e9800998ecf8427e`
+                ! - Actual: `e62ff0123a74adfc6903d59a449cbdb0`
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
             "},
@@ -1640,8 +1640,7 @@ mod tests {
 
                 ! Task failure while reading Package Index data
                 !
-                ! A background task responsible for reading Package Index data failed to execute to \
-                completion.
+                ! A background task responsible for reading Package Index data failed to complete.
                 !
                 ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
@@ -1703,15 +1702,15 @@ mod tests {
             indoc! {"
                 ! Failed to parse Package Index file
                 !
-                ! The Package Index file data stored in `/path/to/layer/packages-file` could not be \
-                parsed. This is most likely a bug with this buildpack but could also be caused by \
-                cached data that is no longer valid or an issue with the upstream repository.
+                ! We can't parse the Package Index file data stored in `/path/to/layer/packages-file`. \
+                This error is most likely a buildpack bug. It can also be caused by \
+                cached data that's no longer valid or an issue with the upstream repository.
                 !
                 ! Parsing errors:
-                ! - There is an entry that is missing the required Package key
-                ! - Package package-a is missing the required Version key
-                ! - Package package-b is missing the required Filename key
-                ! - Package package-c is missing the required SHA256 key
+                ! - There's an entry that's missing the required Package key.
+                ! - Package package-a is missing the required Version key.
+                ! - Package package-b is missing the required Filename key.
+                ! - Package package-c is missing the required SHA256 key.
                 !
                 ! Suggestions:
                 ! - Run the build again with a clean cache
@@ -1800,9 +1799,9 @@ mod tests {
             indoc! {"
                 ! Package not found
                 !
-                ! No package matching the name `some-package` could be found in the Package Index. If \
-                this package is listed in the packages to install for this buildpack then it is most \
-                likely due to the package being misspelled. Otherwise, it could be an issue with the \
+                ! We can't find `some-package` in the Package Index. If \
+                this package is listed in the packages to install for this buildpack then the name is most \
+                likely misspelled. Otherwise, it can be an issue with the \
                 upstream Debian package repository.
                 !
                 ! Suggestions:
@@ -1836,12 +1835,10 @@ mod tests {
                 ! Sometimes there are several packages which offer more-or-less the same functionality. \
                 In this case, Debian repositories define a virtual package and one or more actual packages \
                 provide an implementation for this virtual package. When multiple providers are found for \
-                a requested package, this buildpack cannot automatically choose which one is the desired \
+                a requested package, this buildpack can't automatically choose which one is the desired \
                 implementation.
                 !
                 ! Providing packages:
-                !
-                !
                 ! - package-a
                 ! - package-b
                 !
@@ -1873,7 +1870,7 @@ mod tests {
 
                     ! Task failure while installing packages
                     !
-                    ! A background task responsible for installing failed to execute to completion.
+                    ! A background task responsible for installing failed to complete.
                     !
                     ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
                     ! https://github.com/heroku/buildpacks-debian-packages/issues/new
@@ -1900,7 +1897,7 @@ mod tests {
                 ! Could not determine file name for `some-package`
                 !
                 ! The package information for `some-package` contains a Filename field of `..` which \
-                failed to produce a valid name to use as a download path.
+                produces an invalid name to use as a download path.
                 !
                 ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
@@ -1927,12 +1924,12 @@ mod tests {
 
                 ! Failed to request package
                 !
-                ! While installing packages, an error occurred while downloading `some-package`. This \
-                may be due to an unstable network connection or an issue with the upstream Debian package \
+                ! While installing packages, an error occurred while downloading `some-package`. This error \
+                can occur due to an unstable network connection or an issue with the upstream Debian package \
                 repository.
                 !
                 ! Suggestions:
-                ! - Check the status of https://status.canonical.com/ for any reported issues
+                ! - Check the status of https://status.canonical.com/ for any reported issues.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
                 !
@@ -1966,11 +1963,11 @@ mod tests {
                 ! Failed to download package
                 !
                 ! An unexpected I/O error occured while downloading `some-package` from https://test/error \
-                to `/path/to/layer/download-file`. This may be due to an unstable network connection or \
+                to `/path/to/layer/download-file`. This error can occur due to an unstable network connection or \
                 an issue with the upstream Debian package repository.
                 !
                 ! Suggestions:
-                ! - Check the status of https://status.canonical.com/ for any reported issues
+                ! - Check the status of https://status.canonical.com/ for any reported issues.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
                 !
@@ -2001,12 +1998,12 @@ mod tests {
                 ! Package checksum verification failed
                 !
                 ! An error occurred while verifying the checksum of the package at \
-                http://archive.ubuntu.com/ubuntu/dists/jammy/some-package.tgz. This may be due to an \
+                http://archive.ubuntu.com/ubuntu/dists/jammy/some-package.tgz. This error can occur due to an \
                 issue with the upstream Debian package repository.
                 !
                 ! Checksum:
-                ! - Expected - `7931f51fd704f93171f36f5f6f1d7b7b`
-                ! - Actual - `19a47cdb280539511523382fa1cabbe5`
+                ! - Expected: `7931f51fd704f93171f36f5f6f1d7b7b`
+                ! - Actual: `19a47cdb280539511523382fa1cabbe5`
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
             "},
