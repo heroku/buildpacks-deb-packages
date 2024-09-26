@@ -67,7 +67,7 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
                     the file can't be read.
 
                     Suggestions:
-                    - Ensure the file has read permissions
+                    - Ensure the file has read permissions.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -87,13 +87,13 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
                 ParseConfigError::InvalidToml(error) => {
                     create_error()
                         .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
-                        .header(format!("Error parsing {config_file}"))
+                        .header(format!("Error parsing {config_file} with invalid TOML file"))
                         .body(formatdoc! { "
                             The {BUILDPACK_NAME} reads configuration from {config_file} to complete the build but \
-                            this file is not valid TOML.
+                            this file isn't a valid TOML file.
 
                             Suggestions:
-                            - Ensure the file conforms to the TOML format described at {toml_spec_url}
+                            - Ensure the file follows the TOML format described at {toml_spec_url}
                         " })
                         .debug_info(error.to_string())
                         .call()
@@ -102,17 +102,17 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
                 ParseConfigError::WrongConfigType => {
                     create_error()
                         .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
-                        .header(format!("Error parsing {config_file}"))
+                        .header(format!("Error parsing {config_file} with invalid key"))
                         .body(formatdoc! { "
-                            The {BUILDPACK_NAME} reads configuration from {config_file} to complete \
-                            the build but the configuration for the key {root_config_key} is not the \
-                            correct type. This value of this key is expected to be a TOML Table.
+                            The {BUILDPACK_NAME} reads the configuration from {config_file} to complete \
+                            the build but the configuration for the key {root_config_key} isn't the \
+                            correct type. The value of this key must be a TOML table.
 
                             Suggestions:
-                            - Refer to the buildpack documentation for this configuration at \
-                            {configuration_doc_url} for proper buildpack usage
-                            - Refer to the TOML documentation for more details on the TOML Table \
-                            type at {toml_spec_url}
+                            - See the buildpack documentation for the proper usage for this configuration at \
+                            {configuration_doc_url}
+                            - See the TOML documentation for more details on the TOML table type at \
+                            {toml_spec_url}
                         " })
                         .call()
                 }
@@ -123,19 +123,20 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
 
                         create_error()
                             .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
-                            .header(format!("Error parsing {config_file}"))
+                            .header(format!("Error parsing {config_file} with invalid package name"))
                             .body(formatdoc! { "
                                 The {BUILDPACK_NAME} reads configuration from {config_file} to \
-                                complete the build but an invalid package name ({invalid_package_name}) \
-                                was found in the key {root_config_key}.
+                                complete the build but we found an invalid package name {invalid_package_name} \
+                                in the key {root_config_key}.
 
-                                Package names must consist only of lower case letters (a-z), \
-                                digits (0-9), plus (+) and minus (-) signs, and periods (.). They \
+                                Package names must consist only of lowercase letters (a-z), \
+                                digits (0-9), plus (+) and minus (-) signs, and periods (.). Names \
                                 must be at least two characters long and must start with an alphanumeric \
-                                character. (See {debian_package_name_format_url}).
+                                character. See {debian_package_name_format_url}
 
                                 Suggestions:
-                                - Verify the package name at {package_search_url}
+                                - Verify the package name is correct and exists for the target distribution at \
+                                 {package_search_url}
                             " })
                             .call()
                     }
@@ -149,21 +150,21 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
 
                         create_error()
                             .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
-                            .header(format!("Error parsing {config_file}"))
+                            .header(format!("Error parsing {config_file} with invalid package format"))
                             .body(formatdoc! { "
                                 The {BUILDPACK_NAME} reads configuration from {config_file} to \
-                                complete the build but an invalid package format was found in the \
+                                complete the build but we found an invalid package format in the \
                                 key {root_config_key}.
 
-                                Packages are expected to be specified using the following TOML values:
+                                Packages must either be the following TOML values:
                                 - String (e.g.; {string_example})
-                                - Inline Table (e.g.; {inline_table_example})
+                                - Inline table (e.g.; {inline_table_example})
 
                                 Suggestions:
-                                - Refer to the buildpack documentation for this configuration at \
-                                {configuration_doc_url} for proper buildpack usage
-                                - Refer to the TOML documentation for more details on the TOML String \
-                                and Inline Table types at {toml_spec_url}
+                                - See the buildpack documentation for the proper usage for this configuration at \
+                                {configuration_doc_url}
+                                - See the TOML documentation for more details on the TOML string \
+                                and inline table types at {toml_spec_url}
                             " })
                             .debug_info(format!("Invalid type {value_type} with value {value}"))
                             .call()
@@ -185,8 +186,7 @@ fn on_unsupported_distro_error(error: UnsupportedDistroError) -> ErrorMessage {
         .error_type(Internal)
         .header("Unsupported distribution")
         .body(formatdoc! { "
-            The distribution {name} {version} ({architecture}) is not supported by the \
-            {BUILDPACK_NAME}.
+            The {BUILDPACK_NAME} doesn't support the {name} {version} ({architecture}) distribution.
         " })
         .call()
 }
@@ -201,7 +201,7 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .error_type(Internal)
                 .header("No sources to update")
                 .body(indoc! { "
-                    No sources were configured for the distribution to update packages from.
+                    The distribution has no sources to update packages from.
                 " })
                 .call()
         }
@@ -211,8 +211,7 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .error_type(Internal)
                 .header("Task failure while updating sources")
                 .body(indoc! { "
-                    A background task responsible for updating sources failed to execute to \
-                    completion.
+                    A background task responsible for updating sources failed to complete.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -225,10 +224,10 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .body(formatdoc! { "
                     For caching purposes, a unique layer name is generated for Debian Release files \
                     and Package indices based on their download urls. The generated name for the \
-                    following url was determined to be invalid:
+                    following url was invalid:
                     - {url}
 
-                    The invalid layer name can be found in the debug information above.
+                    You can find the invalid layer name in the debug information above.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -240,11 +239,11 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .header("Failed to request Release file")
                 .body(formatdoc! { "
                     While updating package sources, a request to download a Release file failed. \
-                    This may be due to an unstable network connection or an issue with the upstream \
+                    This error can occur due to an unstable network connection or an issue with the upstream \
                     Debian package repository.
 
                     Suggestions:
-                    - Check the status of {canonical_status_url} for any reported issues
+                    - Check the status of {canonical_status_url} for any reported issues.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -256,11 +255,11 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .header("Failed to download Release file")
                 .body(formatdoc! { "
                     While updating package sources, an error occurred while downloading a Release file. \
-                    This may be due to an unstable network connection or an issue with the upstream \
+                    This error can occur due to an unstable network connection or an issue with the upstream \
                     Debian package repository.
 
                     Suggestions:
-                    - Check the status of {canonical_status_url} for any reported issues
+                    - Check the status of {canonical_status_url} for any reported issues.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -272,12 +271,12 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .header("Failed to load verifying PGP certificate")
                 .body(indoc! { "
                     The PGP certificate used to verify downloaded release files failed to load. This \
-                    would indicate there is a problem with the format of the certificate file used \
-                    by this distribution.
+                    error indicates there's a problem with the format of the certificate file the \
+                    distribution uses.
 
                     Suggestions:
                     - Verify the format of the certificates found in the ./keys directory of this \
-                    buildpack's repository (see https://cirw.in/gpg-decoder)
+                    buildpack's repository. See https://cirw.in/gpg-decoder
                     - Extract new certificates by running the ./scripts/extract_keys.sh script found \
                     in this buildpack's repository.
                 " })
@@ -290,12 +289,12 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .error_type(Internal)
                 .header("Failed to verify Release file")
                 .body(indoc! { "
-                    The PGP signature of the downloaded release file failed verification. This can \
-                    happen if the process for signing release files was changed by the maintainers \
-                    of the Debian repository.
+                    The PGP signature of the downloaded release file failed verification. This error can \
+                    occur if the maintainers of the Debian repository changed the process for signing \
+                    release files.
 
                     Suggestions:
-                    - Verify if the keys have changed by running the ./scripts/extract_keys.sh \
+                    - Verify if the keys changed by running the ./scripts/extract_keys.sh \
                     script found in this buildpack's repository.
                 " })
                 .debug_info(e.to_string())
@@ -332,12 +331,12 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::Yes))
                 .header("Failed to parse Release file data")
                 .body(formatdoc! { "
-                    The Release file data stored in {file} could not be parsed. This is most likely \
-                    a bug with this buildpack but could also be caused by cached data that is no \
-                    longer valid or an issue with the upstream repository.
+                    We couldn't parse the Release file data stored in {file}. This error is most likely \
+                    a buildpack bug. It can also be caused by cached data that's no longer valid or an \
+                    issue with the upstream repository.
 
                     Suggestions:
-                    - Run the build again with a clean cache
+                    - Run the build again with a clean cache.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -347,11 +346,11 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
             let release_uri = style::url(release_uri.as_str());
             create_error()
                 .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::Yes))
-                .header("Missing SHA256 Release Hash")
+                .header("Missing SHA256 Release hash")
                 .body(formatdoc! { "
-                    The Release file from {release_uri} is missing the SHA256 key which, according to \
-                    the documented Debian repository format is required. This is most likely an issue \
-                    with the upstream repository. (See https://wiki.debian.org/DebianRepository/Format)
+                    The Release file from {release_uri} is missing the SHA256 key which is required \
+                    according to the documented Debian repository format. This error is most likely an issue \
+                    with the upstream repository. See https://wiki.debian.org/DebianRepository/Format
                 " })
                 .call()
         }
@@ -364,11 +363,11 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .header("Missing Package Index")
                 .body(formatdoc! { "
                     The Release file from {release_uri} is missing an entry for {package_index} within \
-                    the SHA256 section. This is most likely a bug with this buildpack but could also \
+                    the SHA256 section. This error is most likely a buildpack bug but can also \
                     be an issue with the upstream repository.
 
                     Suggestions:
-                    - Verify if {package_index} is found under the SHA256 section of {release_uri}
+                    - Verify if {package_index} is under the SHA256 section of {release_uri}
                 " })
                 .call()
         }
@@ -379,11 +378,11 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .header("Failed to request Package Index file")
                 .body(formatdoc! { "
                     While updating package sources, a request to download a Package Index file failed. \
-                    This may be due to an unstable network connection or an issue with the upstream \
+                    This error can occur due to an unstable network connection or an issue with the upstream \
                     Debian package repository.
 
                     Suggestions:
-                    - Check the status of {canonical_status_url} for any reported issues
+                    - Check the status of {canonical_status_url} for any reported issues.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -408,11 +407,11 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .header("Failed to download Package Index file")
                 .body(formatdoc! { "
                     While updating package sources, an error occurred while downloading a Package Index \
-                    file to {file}. This may be due to an unstable network connection or an issue \
+                    file to {file}. This error can occur due to an unstable network connection or an issue \
                     with the upstream Debian package repository.
 
                     Suggestions:
-                    - Check the status of {canonical_status_url} for any reported issues
+                    - Check the status of {canonical_status_url} for any reported issues.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -431,12 +430,12 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .header("Package Index checksum verification failed")
                 .body(formatdoc! { "
                     While updating package sources, an error occurred while verifying the checksum \
-                    of the Package Index at {url}. This may be due to an issue with the upstream \
+                    of the Package Index at {url}. This error can occur due to an issue with the upstream \
                     Debian package repository.
 
                     Checksum:
-                    - Expected - {expected}
-                    - Actual - {actual}
+                    - Expected: {expected}
+                    - Actual: {actual}
                 " })
                 .call()
         }
@@ -446,8 +445,7 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .error_type(Internal)
                 .header("Task failure while reading Package Index data")
                 .body(indoc! { "
-                    A background task responsible for reading Package Index data failed to execute to \
-                    completion.
+                    A background task responsible for reading Package Index data failed to complete.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -468,9 +466,9 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
         CreatePackageIndexError::ParsePackages(file, errors) => {
             let file = file_value(file);
             let body_start = formatdoc! { "
-                The Package Index file data stored in {file} could not be parsed. This is most likely \
-                a bug with this buildpack but could also be caused by cached data that is no \
-                longer valid or an issue with the upstream repository.
+                We can't parse the Package Index file data stored in {file}. This error is most likely \
+                a buildpack bug. It can also be caused by cached data that's no longer valid or an issue \
+                with the upstream repository.
 
                 Parsing errors:
             " }.trim_end().to_string();
@@ -527,10 +525,9 @@ fn on_determine_packages_to_install_error(error: DeterminePackagesToInstallError
                 .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
                 .header("Package not found")
                 .body(formatdoc! { "
-                    No package matching the name {package_name} could be found in the Package Index. \
-                    If this package is listed in the packages to install for this buildpack then it \
-                    is most likely due to the package being misspelled. Otherwise, it could be an \
-                    issue with the upstream Debian package repository.
+                    We can't find {package_name} in the Package Index. If this package is listed in the \
+                    packages to install for this buildpack then the name is most likely misspelled. Otherwise, \
+                    it can be an issue with the upstream Debian package repository.
 
                     Suggestions:
                     - Verify the package name is correct and exists for the target distribution at \
@@ -545,7 +542,7 @@ fn on_determine_packages_to_install_error(error: DeterminePackagesToInstallError
                 Sometimes there are several packages which offer more-or-less the same functionality. \
                 In this case, Debian repositories define a virtual package and one or more actual \
                 packages provide an implementation for this virtual package. When multiple providers \
-                are found for a requested package, this buildpack cannot automatically choose which \
+                are found for a requested package, this buildpack can't automatically choose which \
                 one is the desired implementation.
 
                 Providing packages:
@@ -566,9 +563,7 @@ fn on_determine_packages_to_install_error(error: DeterminePackagesToInstallError
                 .header(format!(
                     "Multiple providers were found for the package {package}"
                 ))
-                .body(format!(
-                    "{body_start}\n\n{body_provider_details}\n\n{body_end}"
-                ))
+                .body(format!("{body_start}{body_provider_details}\n\n{body_end}"))
                 .call()
         }
     }
@@ -583,9 +578,8 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
             .error_type(Internal)
             .header("Task failure while installing packages")
             .body(indoc! { "
-            A background task responsible for installing failed to execute to \
-                    completion.
-                " })
+                A background task responsible for installing failed to complete.
+            " })
             .debug_info(e.to_string())
             .call(),
 
@@ -597,7 +591,7 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
                 .header(format!("Could not determine file name for {package}"))
                 .body(formatdoc! { "
                     The package information for {package} contains a Filename field of {filename} \
-                    which failed to produce a valid name to use as a download path.
+                    which produces an invalid name to use as a download path.
                 " })
                 .call()
         }
@@ -609,11 +603,11 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
                 .header("Failed to request package")
                 .body(formatdoc! { "
                     While installing packages, an error occurred while downloading {package}. \
-                    This may be due to an unstable network connection or an issue \
+                    This error can occur due to an unstable network connection or an issue \
                     with the upstream Debian package repository.
 
                     Suggestions:
-                    - Check the status of {canonical_status_url} for any reported issues
+                    - Check the status of {canonical_status_url} for any reported issues.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -628,11 +622,11 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
                 .header("Failed to download package")
                 .body(formatdoc! { "
                     An unexpected I/O error occured while downloading {package} from {download_url} \
-                    to {destination_path}. This may be due to an unstable network connection or an issue \
+                    to {destination_path}. This error can occur due to an unstable network connection or an issue \
                     with the upstream Debian package repository.
 
                     Suggestions:
-                    - Check the status of {canonical_status_url} for any reported issues
+                    - Check the status of {canonical_status_url} for any reported issues.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -651,11 +645,11 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
                 .header("Package checksum verification failed")
                 .body(formatdoc! { "
                     An error occurred while verifying the checksum of the package at {url}. \
-                    This may be due to an issue with the upstream Debian package repository.
+                    This error can occur due to an issue with the upstream Debian package repository.
 
                     Checksum:
-                    - Expected - {expected}
-                    - Actual - {actual}
+                    - Expected: {expected}
+                    - Actual: {actual}
                 " })
                 .call()
         }

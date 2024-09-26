@@ -134,25 +134,25 @@ impl Display for ParseRepositoryPackageError {
             ParseRepositoryPackageError::MissingPackageName => {
                 write!(
                     f,
-                    "There is an entry that is missing the required {PACKAGE_KEY} key"
+                    "There's an entry that's missing the required {PACKAGE_KEY} key."
                 )
             }
             ParseRepositoryPackageError::MissingVersion(package_name) => {
                 write!(
                     f,
-                    "Package {package_name} is missing the required {VERSION_KEY} key"
+                    "Package {package_name} is missing the required {VERSION_KEY} key."
                 )
             }
             ParseRepositoryPackageError::MissingFilename(package_name) => {
                 write!(
                     f,
-                    "Package {package_name} is missing the required {FILENAME_KEY} key"
+                    "Package {package_name} is missing the required {FILENAME_KEY} key."
                 )
             }
             ParseRepositoryPackageError::MissingSha256(package_name) => {
                 write!(
                     f,
-                    "Package {package_name} is missing the required {SHA256_KEY} key"
+                    "Package {package_name} is missing the required {SHA256_KEY} key."
                 )
             }
         }
