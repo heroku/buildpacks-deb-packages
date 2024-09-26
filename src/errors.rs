@@ -1318,7 +1318,7 @@ mod tests {
                 ! Failed to verify Release file
                 !
                 ! The PGP signature of the downloaded release file failed verification. This error can \
-                occur if the the maintainers of the Debian repository changed the process \
+                occur if the maintainers of the Debian repository changed the process \
                 for signing release files.
                 !
                 ! Suggestions:
@@ -1411,7 +1411,7 @@ mod tests {
                 !
                 ! We couldn't parse the Release file data stored in `/path/to/layer/release-file`. \
                 This error is most likely a buildpack bug. It can also be caused by cached data \
-                that's no longer valid or an issue with the upstream repository
+                that's no longer valid or an issue with the upstream repository.
                 !
                 ! Suggestions:
                 ! - Run the build again with a clean cache.
