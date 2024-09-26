@@ -1147,7 +1147,6 @@ mod tests {
                         ! A background task responsible for updating sources failed to complete.
                         !
                         ! Use the debug information above to troubleshoot and retry your build.
-                        completion.
                     "}
                 );
             },
