@@ -1064,7 +1064,7 @@ mod tests {
                 !
                 ! Suggestions:
                 ! - See the buildpack documentation for the proper usage for this configuration at \
-                https://github.com/heroku/buildpacks-debian-packages?tab=readme-ov-file#configuration \
+                https://github.com/heroku/buildpacks-debian-packages?tab=readme-ov-file#configuration
                 ! - See the TOML documentation for more details on the TOML string and inline \
                 table types at https://toml.io/en/v1.0.0
                 !
