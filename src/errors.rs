@@ -187,6 +187,10 @@ fn on_unsupported_distro_error(error: UnsupportedDistroError) -> ErrorMessage {
         .header("Unsupported distribution")
         .body(formatdoc! { "
             The {BUILDPACK_NAME} doesn't support the {name} {version} ({architecture}) distribution.
+
+            Supported distributions:
+            - Ubuntu 24.04 (amd64, arm64)
+            - Ubuntu 22.04 (amd64)
         " })
         .call()
 }
@@ -479,7 +483,7 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
                 .join("\n");
             let body_end = indoc! { "
                 Suggestions:
-                - Run the build again with a clean cache
+                - Run the build again with a clean cache.
             " };
             create_error()
                 .error_type(Internal)
@@ -556,7 +560,7 @@ fn on_determine_packages_to_install_error(error: DeterminePackagesToInstallError
                 .join("\n");
             let body_end = formatdoc! { "
                 Suggestions:
-                - Replace the virtual package {package} with one of the above providers
+                - Replace the virtual package {package} with one of the above providers.
             " };
             create_error()
                 .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
