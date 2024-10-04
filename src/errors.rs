@@ -1096,6 +1096,10 @@ mod tests {
                 !
                 ! The Heroku Deb Packages buildpack doesn't support the Windows XP (x86) distribution.
                 !
+                ! Supported distributions:
+                ! - Ubuntu 24.04 (amd64, arm64)
+                ! - Ubuntu 22.04 (amd64)
+                !
                 ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
             "},
