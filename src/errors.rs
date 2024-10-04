@@ -1713,7 +1713,7 @@ mod tests {
                 ! - Package package-c is missing the required SHA256 key.
                 !
                 ! Suggestions:
-                ! - Run the build again with a clean cache
+                ! - Run the build again with a clean cache.
                 !
                 ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
@@ -1843,7 +1843,7 @@ mod tests {
                 ! - package-b
                 !
                 ! Suggestions:
-                ! - Replace the virtual package `some-package` with one of the above providers
+                ! - Replace the virtual package `some-package` with one of the above providers.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
             "},
