@@ -287,9 +287,11 @@ dependencies = [
  "ar",
  "async-compression",
  "bon",
+ "bullet_stream",
  "debversion",
  "futures 0.3.30",
  "indexmap",
+ "indoc",
  "libcnb",
  "libcnb-test",
  "rayon",
@@ -307,6 +309,12 @@ dependencies = [
  "toml_edit",
  "walkdir",
 ]
+
+[[package]]
+name = "bullet_stream"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bec939946cfeb7d4ba709fb24f035a14b78b89641cd4a09434a6d317c0ae28a6"
 
 [[package]]
 name = "bumpalo"
