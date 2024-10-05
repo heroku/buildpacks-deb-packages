@@ -1144,7 +1144,7 @@ mod tests {
                     actual_text,
                     indoc! {"
                         - Debug Info:
-                          - task \\d+ panicked
+                          - task \\d+ panicked with message \"uh oh!\"
 
                         ! Task failure while updating sources
                         !
@@ -1870,7 +1870,7 @@ mod tests {
                     actual_text,
                     indoc! {"
                     - Debug Info:
-                      - task \\d+ panicked
+                      - task \\d+ panicked with message \"uh oh!\"
 
                     ! Task failure while installing packages
                     !
