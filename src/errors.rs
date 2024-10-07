@@ -952,7 +952,7 @@ mod tests {
                 ! Error parsing `/path/to/project.toml` with invalid key
                 !
                 ! The Heroku Deb Packages buildpack reads the configuration from `/path/to/project.toml` \
-                to complete the build but the configuration for the key `[com.heroku.buildpacks.debian-packages]` \
+                to complete the build but the configuration for the key `[com.heroku.buildpacks.deb-packages]` \
                 isn't the correct type. The value of this key must be a TOML table.
                 !
                 ! Suggestions:
@@ -1025,7 +1025,7 @@ mod tests {
                 !
                 ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
                 to complete the build but we found an invalid package name `invalid!package!name` \
-                in the key `[com.heroku.buildpacks.debian-packages]`.
+                in the key `[com.heroku.buildpacks.deb-packages]`.
                 !
                 ! Package names must consist only of lowercase letters (a-z), digits (0-9), plus (+) \
                 and minus (-) signs, and periods (.). Names must be at least two characters long and \
@@ -1067,7 +1067,7 @@ mod tests {
                 !
                 ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
                 to complete the build but we found an invalid package format in the key \
-                `[com.heroku.buildpacks.debian-packages]`.
+                `[com.heroku.buildpacks.deb-packages]`.
                 !
                 ! Packages must either be the following TOML values:
                 ! - String (e.g.; \"package-name\")
@@ -1264,7 +1264,7 @@ mod tests {
                 ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
                 issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
                 and include the details here:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
             "},
         );
     }
@@ -1300,7 +1300,7 @@ mod tests {
                 ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
                 issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
                 and include the details here:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
             "},
         );
     }
@@ -1492,7 +1492,7 @@ mod tests {
                 ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
                 issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
                 and include the details here:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
             "},
         );
     }
@@ -1522,7 +1522,7 @@ mod tests {
                 ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
                 issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
                 and include the details here:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
             "},
         );
     }
@@ -1557,7 +1557,7 @@ mod tests {
                 ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
                 issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
                 and include the details here:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
             "},
         );
     }
@@ -1592,7 +1592,7 @@ mod tests {
                 ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
                 issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
                 and include the details here:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
             "},
         );
     }
@@ -1663,7 +1663,7 @@ mod tests {
                 ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
                 issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
                 and include the details here:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
             "},
         );
     }
@@ -2063,7 +2063,7 @@ mod tests {
                 ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
                 issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
                 and include the details here:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
             "},
         );
     }
@@ -2101,7 +2101,7 @@ mod tests {
                 ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
                 issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
                 and include the details here:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
             "},
         );
     }
@@ -2379,7 +2379,7 @@ mod tests {
                 ! Use the debug information above to troubleshoot and retry your build. If you think you \
                 found a bug in the buildpack, reproduce the issue locally with a minimal example and file \
                 an issue here:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
             "},
         );
     }
