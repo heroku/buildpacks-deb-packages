@@ -1,7 +1,7 @@
 [_]
 schema-version = "0.2"
 
-[com.heroku.buildpacks.debian-packages]
+[com.heroku.buildpacks.deb-packages]
 install = [
   # basic package with some dependencies
   "libgwenhywfar79",

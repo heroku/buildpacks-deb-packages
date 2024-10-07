@@ -15,7 +15,7 @@ use toml_edit::{value, Array, DocumentMut, InlineTable};
 #[ignore = "integration test"]
 fn test_successful_detection() {
     integration_test_with_config(
-        "fixtures/general_usage",
+        "fixtures/project_file_with_empty_config",
         |config| {
             config.expected_pack_result(PackResult::Success);
         },
@@ -58,7 +58,7 @@ fn test_failed_detection_when_project_file_has_no_config() {
 #[allow(clippy::too_many_lines)]
 fn test_general_usage_output() {
     integration_test("fixtures/general_usage", |ctx| {
-        assert_contains_match!(ctx.pack_stdout, r"# Heroku Debian Packages Buildpack \(v\d+\.\d+\.\d+\)");
+        assert_contains_match!(ctx.pack_stdout, r"# Heroku deb Packages Buildpack \(v\d+\.\d+\.\d+\)");
 
         match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
             ("heroku/builder:22", "amd64") => {
@@ -224,7 +224,7 @@ fn test_general_usage_output_on_rebuild() {
     integration_test("fixtures/general_usage", |ctx| {
         let config = ctx.config.clone();
         ctx.rebuild(config, |ctx| {
-            assert_contains_match!(ctx.pack_stdout, r"# Heroku Debian Packages Buildpack \(v\d+\.\d+\.\d+\)");
+            assert_contains_match!(ctx.pack_stdout, r"# Heroku deb Packages Buildpack \(v\d+\.\d+\.\d+\)");
 
             match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
                 ("heroku/builder:22", "amd64") => {
@@ -283,7 +283,7 @@ fn test_general_usage_output_on_rebuild() {
 #[allow(clippy::too_many_lines)]
 fn test_general_usage_env() {
     integration_test("fixtures/general_usage", |ctx| {
-        let layer_path = "/layers/heroku_debian-packages/packages";
+        let layer_path = "/layers/heroku_deb-packages/packages";
 
         let path = get_env_var(&ctx, "PATH");
         let ld_library_path = get_env_var(&ctx, "LD_LIBRARY_PATH");
@@ -342,16 +342,16 @@ fn test_package_config_rewrite() {
         |ctx| {
             match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
                 ("heroku/builder:22", "amd64") => {
-                    assert_contains!(read_package_config(&ctx, "usr/lib/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/packages/usr");
-                    assert_contains!(read_package_config(&ctx, "usr/lib/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/packages/usr");
+                    assert_contains!(read_package_config(&ctx, "usr/lib/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
+                    assert_contains!(read_package_config(&ctx, "usr/lib/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
                 }
                 ("heroku/builder:24", "amd64") => {
-                    assert_contains!(read_package_config(&ctx, "usr/lib/x86_64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/packages/usr");
-                    assert_contains!(read_package_config(&ctx, "usr/lib/x86_64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/packages/usr");
+                    assert_contains!(read_package_config(&ctx, "usr/lib/x86_64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
+                    assert_contains!(read_package_config(&ctx, "usr/lib/x86_64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
                 }
                 ("heroku/builder:24", "arm64") => {
-                    assert_contains!(read_package_config(&ctx, "usr/lib/aarch64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_debian-packages/packages/usr");
-                    assert_contains!(read_package_config(&ctx, "usr/lib/aarch64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_debian-packages/packages/usr");
+                    assert_contains!(read_package_config(&ctx, "usr/lib/aarch64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
+                    assert_contains!(read_package_config(&ctx, "usr/lib/aarch64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
                 }
                 _ => panic_unsupported_test_configuration(),
             };
@@ -523,7 +523,7 @@ fn get_env_var(ctx: &TestContext, env_var_name: &str) -> String {
 }
 
 fn read_package_config(ctx: &TestContext, package_config_path: &str) -> String {
-    ctx.run_shell_command(format!("cat /layers/heroku_debian-packages/packages/{package_config_path}")).stdout
+    ctx.run_shell_command(format!("cat /layers/heroku_deb-packages/packages/{package_config_path}")).stdout
 }
 
 fn set_install_config<I>(app_dir: &Path, requested_packages: I)
@@ -538,7 +538,7 @@ where
             .and_then(|item| item.as_table_like_mut())
             .and_then(|heroku| heroku.get_mut("buildpacks"))
             .and_then(|item| item.as_table_like_mut())
-            .and_then(|buildpacks| buildpacks.get_mut("debian-packages"))
+            .and_then(|buildpacks| buildpacks.get_mut("deb-packages"))
             .and_then(|item| item.as_table_like_mut())
             .unwrap();
         root_config.insert("install", value(Array::from_iter(requested_packages)));

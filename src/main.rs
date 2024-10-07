@@ -75,7 +75,7 @@ impl Buildpack for DebianPackagesBuildpack {
 No configured packages to install found in project.toml file. You may need to \
 add a list of packages to install in your project.toml like this:
 
-[com.heroku.buildpacks.debian-packages]
+[com.heroku.buildpacks.deb-packages]
 install = [
   \"package-name\",
 ]

@@ -40,7 +40,7 @@ impl FromStr for BuildpackConfig {
     fn from_str(contents: &str) -> Result<Self, Self::Err> {
         let doc = DocumentMut::from_str(contents).map_err(Self::Err::InvalidToml)?;
 
-        // the root config is the table named `[com.heroku.buildpacks.debian-packages]` in project.toml
+        // the root config is the table named `[com.heroku.buildpacks.deb-packages]` in project.toml
         let root_config_item = doc
             .get("com")
             .and_then(|item| item.as_table_like())
@@ -48,7 +48,7 @@ impl FromStr for BuildpackConfig {
             .and_then(|item| item.as_table_like())
             .and_then(|heroku| heroku.get("buildpacks"))
             .and_then(|item| item.as_table_like())
-            .and_then(|buildpacks| buildpacks.get("debian-packages"));
+            .and_then(|buildpacks| buildpacks.get("deb-packages"));
 
         match root_config_item {
             None => Ok(BuildpackConfig::default()),
@@ -117,7 +117,7 @@ mod test {
 [_]
 schema-version = "0.2"
 
-[com.heroku.buildpacks.debian-packages]
+[com.heroku.buildpacks.deb-packages]
 install = [
     "package1",
     { name = "package2" },
@@ -153,7 +153,7 @@ install = [
 [_]
 schema-version = "0.2"
 
-[com.heroku.buildpacks.debian-packages]
+[com.heroku.buildpacks.deb-packages]
 
         "#
         .trim();
@@ -178,7 +178,7 @@ schema-version = "0.2"
 [_]
 schema-version = "0.2"
 
-[com.heroku.buildpacks.debian-packages]
+[com.heroku.buildpacks.deb-packages]
 install = [
     "not-a-package*",
 ]
@@ -196,7 +196,7 @@ install = [
 [_]
 schema-version = "0.2"
 
-[com.heroku.buildpacks.debian-packages]
+[com.heroku.buildpacks.deb-packages]
 install = [
     { name = "not-a-package*" },
 ]
@@ -215,7 +215,7 @@ install = [
 schema-version = "0.2"
 
 [com.heroku.buildpacks]
-debian-packages = ["wrong"]
+deb-packages = ["wrong"]
 
         "#
         .trim();

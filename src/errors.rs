@@ -76,7 +76,7 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
         ConfigError::ParseConfig(config_file, error) => {
             let config_file = file_value(config_file);
             let toml_spec_url = style::url("https://toml.io/en/v1.0.0");
-            let root_config_key = style::value("[com.heroku.buildpacks.debian-packages]");
+            let root_config_key = style::value("[com.heroku.buildpacks.deb-packages]");
             let configuration_doc_url =
                 style::url("https://github.com/heroku/buildpacks-deb-packages#configuration");
             let debian_package_name_format_url = style::url(
@@ -746,7 +746,7 @@ fn on_framework_error(error: &Error<DebianPackagesBuildpackError>) -> ErrorMessa
 
             Use the debug information above to troubleshoot and retry your build. If you think you found a \
             bug in the buildpack, reproduce the issue locally with a minimal example and file an issue here:
-            https://github.com/heroku/buildpacks-debian-packages/issues/new
+            https://github.com/heroku/buildpacks-deb-packages/issues/new
         "})
         .debug_info(error.to_string())
         .call()
@@ -763,7 +763,7 @@ fn create_error(
         header.as_ref().trim().to_string(),
         body.as_ref().trim().to_string(),
     ];
-    let issues_url = style::url("https://github.com/heroku/buildpacks-debian-packages/issues/new");
+    let issues_url = style::url("https://github.com/heroku/buildpacks-deb-packages/issues/new");
     let pack = style::value("pack");
     let pack_url =
         style::url("https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/");
@@ -776,7 +776,7 @@ fn create_error(
                 workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
                 {issues_url}
-                
+
                 If you're able to reproduce the problem with an example application and the {pack} \
                 build tool ({pack_url}), adding that information to the discussion will also help. Once \
                 we have more information around the causes of this error we may update this message.

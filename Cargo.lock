@@ -279,7 +279,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "buildpacks-debian-packages"
+name = "buildpacks-deb-packages"
 version = "0.0.0"
 dependencies = [
  "anyhow",
