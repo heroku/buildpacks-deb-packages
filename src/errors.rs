@@ -601,7 +601,7 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
         }
 
         InstallPackagesError::RequestPackage(package, e) => {
-            let package = style::value(package);
+            let package = style::value(package.name);
             create_error()
                 .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::Yes))
                 .header("Failed to request package")
@@ -618,7 +618,7 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
         }
 
         InstallPackagesError::WritePackage(package, download_url, destination_path, e) => {
-            let package = style::value(package);
+            let package = style::value(package.name);
             let download_url = style::url(download_url);
             let destination_path = file_value(destination_path);
             create_error()
@@ -857,7 +857,9 @@ enum SuggestSubmitIssue {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::debian::{ParsePackageNameError, ParseRepositoryPackageError, RepositoryUri};
+    use crate::debian::{
+        ParsePackageNameError, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
+    };
     use crate::DebianPackagesBuildpackError::UnsupportedDistro;
     use anyhow::anyhow;
     use libcnb::data::layer::LayerNameError;
@@ -1711,10 +1713,10 @@ mod tests {
                 cached data that's no longer valid or an issue with the upstream repository.
                 !
                 ! Parsing errors:
-                ! - There's an entry that's missing the required Package key.
-                ! - Package package-a is missing the required Version key.
-                ! - Package package-b is missing the required Filename key.
-                ! - Package package-c is missing the required SHA256 key.
+                ! - There's an entry that's missing the required `Package` key.
+                ! - Package `package-a` is missing the required `Version` key.
+                ! - Package `package-b` is missing the required `Filename` key.
+                ! - Package `package-c` is missing the required `SHA256` key.
                 !
                 ! Suggestions:
                 ! - Run the build again with a clean cache.
@@ -1919,7 +1921,7 @@ mod tests {
                 of reasons but the most likely here would be a problem with the upstream.
             ",
             InstallPackagesError::RequestPackage(
-                "some-package".to_string(),
+                repository_package("some-package"),
                 create_reqwest_middleware_error(),
             ),
             indoc! {"
@@ -1955,7 +1957,7 @@ mod tests {
                 can fail for any number of reasons but the most likely here would be a problem with the upstream.
             ",
             InstallPackagesError::WritePackage(
-                "some-package".to_string(),
+                repository_package("some-package"),
                 "https://test/error".to_string(),
                 "/path/to/layer/download-file".into(),
                 create_io_error("stream closed"),
@@ -2293,5 +2295,18 @@ mod tests {
 
     fn create_reqwest_error() -> reqwest::Error {
         async_runtime().block_on(async { reqwest::get("https://test/error").await.unwrap_err() })
+    }
+
+    fn repository_package(package_name: &str) -> RepositoryPackage {
+        RepositoryPackage {
+            name: package_name.to_string(),
+            version: "1.0.0".to_string(),
+            filename: format!("{package_name}.tgz"),
+            repository_uri: RepositoryUri::from("https://test/path/to/repository"),
+            sha256sum: String::new(),
+            depends: None,
+            pre_depends: None,
+            provides: None,
+        }
     }
 }

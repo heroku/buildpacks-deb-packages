@@ -229,18 +229,14 @@ struct InstallRecord {
 
 #[cfg(test)]
 mod test {
-    use std::collections::{BTreeSet, HashSet};
+    use super::*;
+
+    use std::collections::BTreeSet;
     use std::str::FromStr;
 
-    use apt_parser::Control;
     use bon::builder;
-    use indexmap::{IndexMap, IndexSet};
 
-    use crate::debian::{PackageIndex, RepositoryPackage, RepositoryUri};
-    use crate::determine_packages_to_install::{
-        visit, DeterminePackagesToInstallError, InstallRecord,
-    };
-    use crate::{BuildpackResult, DebianPackagesBuildpackError};
+    use crate::debian::RepositoryUri;
 
     #[test]
     fn install_package_already_on_the_system() {

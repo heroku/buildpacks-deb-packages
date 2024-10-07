@@ -146,7 +146,7 @@ async fn download(
         .send()
         .await
         .and_then(|res| res.error_for_status().map_err(Reqwest))
-        .map_err(|e| RequestPackage(repository_package.name.clone(), e))?;
+        .map_err(|e| RequestPackage(repository_package.clone(), e))?;
 
     let mut hasher = Sha256::new();
 
@@ -154,7 +154,7 @@ async fn download(
         .await
         .map_err(|e| {
             WritePackage(
-                repository_package.name.clone(),
+                repository_package.clone(),
                 download_url.clone(),
                 download_path.clone(),
                 e,
@@ -176,7 +176,7 @@ async fn download(
 
     async_copy(&mut reader, &mut writer).await.map_err(|e| {
         WritePackage(
-            repository_package.name.clone(),
+            repository_package.clone(),
             download_url.clone(),
             download_path.clone(),
             e,
@@ -414,8 +414,8 @@ async fn rewrite_package_config(package_config: &Path, install_path: &Path) -> B
 pub(crate) enum InstallPackagesError {
     TaskFailed(JoinError),
     InvalidFilename(String, String),
-    RequestPackage(String, reqwest_middleware::Error),
-    WritePackage(String, String, PathBuf, std::io::Error),
+    RequestPackage(RepositoryPackage, reqwest_middleware::Error),
+    WritePackage(RepositoryPackage, String, PathBuf, std::io::Error),
     ChecksumFailed {
         url: String,
         expected: String,

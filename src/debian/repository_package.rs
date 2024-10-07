@@ -1,8 +1,8 @@
+use crate::debian::RepositoryUri;
+use bullet_stream::style;
 use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-
-use crate::debian::RepositoryUri;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct RepositoryPackage {
@@ -134,25 +134,32 @@ impl Display for ParseRepositoryPackageError {
             ParseRepositoryPackageError::MissingPackageName => {
                 write!(
                     f,
-                    "There's an entry that's missing the required {PACKAGE_KEY} key."
+                    "There's an entry that's missing the required {package_key} key.",
+                    package_key = style::value(PACKAGE_KEY)
                 )
             }
             ParseRepositoryPackageError::MissingVersion(package_name) => {
                 write!(
                     f,
-                    "Package {package_name} is missing the required {VERSION_KEY} key."
+                    "Package {package_name} is missing the required {version_key} key.",
+                    package_name = style::value(package_name),
+                    version_key = style::value(VERSION_KEY)
                 )
             }
             ParseRepositoryPackageError::MissingFilename(package_name) => {
                 write!(
                     f,
-                    "Package {package_name} is missing the required {FILENAME_KEY} key."
+                    "Package {package_name} is missing the required {filename_key} key.",
+                    package_name = style::value(package_name),
+                    filename_key = style::value(FILENAME_KEY)
                 )
             }
             ParseRepositoryPackageError::MissingSha256(package_name) => {
                 write!(
                     f,
-                    "Package {package_name} is missing the required {SHA256_KEY} key."
+                    "Package {package_name} is missing the required {sha256_key} key.",
+                    package_name = style::value(package_name),
+                    sha256_key = style::value(SHA256_KEY)
                 )
             }
         }

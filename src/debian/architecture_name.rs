@@ -33,7 +33,12 @@ impl Display for ArchitectureName {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)] // TODO: remove this once error messages are added
+// Due to how this error rolls into the broader `Distro::try_from(Target)` implementation, the
+// architecture name stored in this struct isn't used directly which triggers a `dead_code`
+// warning. I could eliminate this by not capturing the architecture name that failed to parse
+// but that doesn't seem right. I'd rather keep this information attached to this struct even
+// if it's not used at this point in time.
+#[allow(dead_code)]
 pub(crate) struct UnsupportedArchitectureNameError(String);
 
 #[cfg(test)]
