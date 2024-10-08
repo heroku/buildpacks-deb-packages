@@ -77,7 +77,8 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
             let config_file = file_value(config_file);
             let toml_spec_url = style::url("https://toml.io/en/v1.0.0");
             let root_config_key = style::value("[com.heroku.buildpacks.debian-packages]");
-            let configuration_doc_url = style::url("https://github.com/heroku/buildpacks-debian-packages?tab=readme-ov-file#configuration");
+            let configuration_doc_url =
+                style::url("https://github.com/heroku/buildpacks-debian-packages#configuration");
             let debian_package_name_format_url = style::url(
                 "https://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-source",
             );
@@ -948,7 +949,7 @@ mod tests {
                 !
                 ! Suggestions:
                 ! - See the buildpack documentation for the proper usage for this configuration at \
-                https://github.com/heroku/buildpacks-debian-packages?tab=readme-ov-file#configuration
+                https://github.com/heroku/buildpacks-debian-packages#configuration
                 ! - See the TOML documentation for more details on the TOML table type at \
                 https://toml.io/en/v1.0.0
                 !
@@ -1066,7 +1067,7 @@ mod tests {
                 !
                 ! Suggestions:
                 ! - See the buildpack documentation for the proper usage for this configuration at \
-                https://github.com/heroku/buildpacks-debian-packages?tab=readme-ov-file#configuration
+                https://github.com/heroku/buildpacks-debian-packages#configuration
                 ! - See the TOML documentation for more details on the TOML string and inline \
                 table types at https://toml.io/en/v1.0.0
                 !
