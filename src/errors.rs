@@ -764,14 +764,22 @@ fn create_error(
         body.as_ref().trim().to_string(),
     ];
     let issues_url = style::url("https://github.com/heroku/buildpacks-debian-packages/issues/new");
+    let pack = style::value("pack");
+    let pack_url =
+        style::url("https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/");
 
     match error_type {
         Framework => {}
         Internal => {
             message_parts.push(formatdoc! { "
-                This error is almost always a buildpack bug. If you see this error, please file an \
-                issue here:
+                The causes for this error are unknown. We do not have suggestions for diagnosis or a \
+                workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 {issues_url}
+                
+                If you're able to reproduce the problem with an example application and the {pack} \
+                build tool ({pack_url}), adding that information to the discussion will also help. Once \
+                we have more information around the causes of this error we may update this message.
             "});
         }
         UserFacing(suggest_retry_build, suggest_submit_issue) => {
@@ -1103,8 +1111,15 @@ mod tests {
                 ! - Ubuntu 24.04 (amd64, arm64)
                 ! - Ubuntu 22.04 (amd64)
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1125,8 +1140,15 @@ mod tests {
                 !
                 ! The distribution has no sources to update packages from.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1153,8 +1175,15 @@ mod tests {
                         !
                         ! A background task responsible for updating sources failed to complete.
                         !
-                        ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                        ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                        a workaround at this time. You can help our understanding by sharing your buildpack log \
+                        and a description of the issue at:
                         ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                        !
+                        ! If you're able to reproduce the problem with an example application and the `pack` \
+                        build tool \\(https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/\\), \
+                        adding that information to the discussion will also help. Once we have more information \
+                        around the causes of this error we may update this message.
                     "}
                 );
             },
@@ -1192,8 +1221,15 @@ mod tests {
                 !
                 ! You can find the invalid layer name in the debug information above.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1299,8 +1335,15 @@ mod tests {
                 ! - Extract new certificates by running the ./scripts/extract_keys.sh script found \
                 in this buildpack's repository.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1332,8 +1375,15 @@ mod tests {
                 ! - Verify if the keys changed by running the ./scripts/extract_keys.sh script \
                 found in this buildpack's repository.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1361,8 +1411,15 @@ mod tests {
                 !
                 ! An unexpected I/O error occurred while writing release data to `/path/to/layer/file`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1390,8 +1447,15 @@ mod tests {
                 !
                 ! An unexpected I/O error occurred while reading Release data from `/path/to/layer/release-file`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1554,8 +1618,15 @@ mod tests {
                 !
                 ! An unexpected I/O error occurred while writing Package Index data to `/path/to/layer/package`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1649,8 +1720,15 @@ mod tests {
                 !
                 ! A background task responsible for reading Package Index data failed to complete.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1679,8 +1757,15 @@ mod tests {
                 ! An unexpected I/O error occurred while reading Package Index data from \
                 `/path/to/layer/packages-file`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1722,8 +1807,15 @@ mod tests {
                 ! Suggestions:
                 ! - Run the build again with a clean cache.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1752,8 +1844,15 @@ mod tests {
                 !
                 ! An unexpected I/O error occurred while reading system packages from `/var/lib/dpkg/status`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1785,8 +1884,15 @@ mod tests {
                 !
                 ! An unexpected parsing error occurred while reading system packages from `/var/lib/dpkg/status`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -1879,8 +1985,15 @@ mod tests {
                     !
                     ! A background task responsible for installing failed to complete.
                     !
-                    ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                    ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                    a workaround at this time. You can help our understanding by sharing your buildpack log \
+                    and a description of the issue at:
                     ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                    !
+                    ! If you're able to reproduce the problem with an example application and the `pack` \
+                    build tool \\(https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/\\), \
+                    adding that information to the discussion will also help. Once we have more information \
+                    around the causes of this error we may update this message.
                 "}
                 );
             },
@@ -1906,8 +2019,15 @@ mod tests {
                 ! The package information for `some-package` contains a Filename field of `..` which \
                 produces an invalid name to use as a download path.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -2039,8 +2159,15 @@ mod tests {
                 !
                 ! An unexpected I/O error occurred while trying to open the archive at `/path/to/layer/archive-file.tgz`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -2069,8 +2196,15 @@ mod tests {
                 ! An unexpected I/O error occurred while trying to read the entries of the archive at \
                 `/path/to/layer/archive-file.tgz`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -2098,8 +2232,15 @@ mod tests {
                 !
                 ! An unexpected I/O error occurred while trying to unpack the archive at `/path/to/layer/archive-file.tgz`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -2124,8 +2265,15 @@ mod tests {
                 ! An unexpected compression format (`lz`) was used for the package archive at \
                 `/path/to/layer/archive-file.tgz`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -2155,8 +2303,15 @@ mod tests {
                 ! An unexpected I/O error occurred while reading the package config file at \
                 `/path/to/layer/pkgconfig/somepackage.pc`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
@@ -2186,8 +2341,15 @@ mod tests {
                 ! An unexpected I/O error occurred while writing the package config file to \
                 `/path/to/layer/pkgconfig/somepackage.pc`.
                 !
-                ! This error is almost always a buildpack bug. If you see this error, please file an issue here:
+                ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
+                a workaround at this time. You can help our understanding by sharing your buildpack log \
+                and a description of the issue at:
                 ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                !
+                ! If you're able to reproduce the problem with an example application and the `pack` \
+                build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
+                adding that information to the discussion will also help. Once we have more information \
+                around the causes of this error we may update this message.
             "},
         );
     }
