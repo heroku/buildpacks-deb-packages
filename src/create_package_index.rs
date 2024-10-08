@@ -153,6 +153,8 @@ async fn update_source(
             client.clone(),
             package_release_url,
             package_index_release_hash.hash.to_string(),
+            package_index_release_hash.size,
+            format!("{}/dists/{suite}/InRelease", uri.as_str()),
         ));
     }
 
@@ -269,6 +271,8 @@ async fn get_package_list(
     client: ClientWithMiddleware,
     package_release_url: String,
     hash: String,
+    size: u64,
+    release_url: String,
 ) -> Result<PathBuf> {
     // it would be nice to use the url as the layer name but urls don't make for good file names
     // so instead we'll convert the url to a sha256 hex value
@@ -325,10 +329,10 @@ async fn get_package_list(
                 .map_err(GetPackagesRequest)?;
 
             let mut hasher = Sha256::new();
-
+            let mut bytes_seen: usize = 0;
             // the package list we request uses gzip compression so we'll decode that directly from the response
             let mut reader = GzipDecoder::new(AsyncBufReader::new(
-                // the inspect reader lets us pipe this decompressed output to both the ouptut file and the hash digest
+                // the inspect reader lets us pipe this decompressed output to both the output file and the hash digest
                 InspectReader::new(
                     // and we need to convert the http stream into an async reader
                     FuturesAsyncReadCompatExt::compat(
@@ -337,7 +341,10 @@ async fn get_package_list(
                             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
                             .into_async_read(),
                     ),
-                    |bytes| hasher.update(bytes),
+                    |bytes| {
+                        bytes_seen += bytes.len();
+                        hasher.update(bytes);
+                    },
                 ),
             ));
 
@@ -353,6 +360,40 @@ async fn get_package_list(
             let calculated_hash = format!("{:x}", hasher.finalize());
 
             if hash != calculated_hash {
+                let cmd_sha = std::process::Command::new("sha256sum")
+                    .arg(&package_index_path)
+                    .output()
+                    .map(|output| {
+                        if output.status.success() {
+                            String::from_utf8(output.stdout)
+                                .unwrap()
+                                .split(' ')
+                                .next()
+                                .unwrap_or("!sha256sum split failed")
+                                .to_string()
+                        } else {
+                            "!sha256sum output failed".to_string()
+                        }
+                    })
+                    .unwrap_or("!sha256sum command failed".to_string());
+                let file_size = package_index_path
+                    .metadata()
+                    .map(|m| m.len().to_string())
+                    .unwrap_or("!file size error".to_string());
+                println!(
+                    "
+***
+release_url: {release_url}
+url: {package_release_url}
+uncompressed size: {file_size}
+compressed size:   {bytes_seen}
+expected size:     {size}
+sha256sum hash:  {cmd_sha}
+calculated hash: {calculated_hash}
+expected hash:   {hash}
+***
+            "
+                );
                 Err(ChecksumFailed(package_release_url, hash, calculated_hash))?;
             }
         }
