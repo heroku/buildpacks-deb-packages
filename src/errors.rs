@@ -78,7 +78,7 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
             let toml_spec_url = style::url("https://toml.io/en/v1.0.0");
             let root_config_key = style::value("[com.heroku.buildpacks.debian-packages]");
             let configuration_doc_url =
-                style::url("https://github.com/heroku/buildpacks-debian-packages#configuration");
+                style::url("https://github.com/heroku/buildpacks-deb-packages#configuration");
             let debian_package_name_format_url = style::url(
                 "https://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-source",
             );
@@ -932,8 +932,8 @@ mod tests {
                 Context
                 -------
                 We read the buildpack configuration from project.toml which must be a valid TOML file.
-                If the file is valid but the value supplied using the configuration key for this buildpack 
-                is not a TOML table then the configuration is incorrect and we can provide details to the 
+                If the file is valid but the value supplied using the configuration key for this buildpack
+                is not a TOML table then the configuration is incorrect and we can provide details to the
                 user on how they can fix this.
             ",
             ConfigError::ParseConfig(
@@ -949,7 +949,7 @@ mod tests {
                 !
                 ! Suggestions:
                 ! - See the buildpack documentation for the proper usage for this configuration at \
-                https://github.com/heroku/buildpacks-debian-packages#configuration
+                https://github.com/heroku/buildpacks-deb-packages#configuration
                 ! - See the TOML documentation for more details on the TOML table type at \
                 https://toml.io/en/v1.0.0
                 !
@@ -1000,9 +1000,9 @@ mod tests {
                 Context
                 -------
                 We read the buildpack configuration from project.toml which must be a valid TOML file.
-                If the file is valid but the value supplied using the configuration for this buildpack 
-                contains a package name that would be invalid according to Debian package naming policies, 
-                we report this package name to the user and ask them to verify it. 
+                If the file is valid but the value supplied using the configuration for this buildpack
+                contains a package name that would be invalid according to Debian package naming policies,
+                we report this package name to the user and ask them to verify it.
             ",
             ConfigError::ParseConfig(
                 "/path/to/project.toml".into(),
@@ -1038,7 +1038,7 @@ mod tests {
                 Context
                 -------
                 We read the buildpack configuration from project.toml which must be a valid TOML file.
-                If the file is valid but the value supplied using the configuration for this buildpack 
+                If the file is valid but the value supplied using the configuration for this buildpack
                 contains a package entry that is neither a string nor inline table value, it is invalid.
                 We report this to the user and request they check the buildpack documentation for proper
                 usage.
@@ -1067,7 +1067,7 @@ mod tests {
                 !
                 ! Suggestions:
                 ! - See the buildpack documentation for the proper usage for this configuration at \
-                https://github.com/heroku/buildpacks-debian-packages#configuration
+                https://github.com/heroku/buildpacks-deb-packages#configuration
                 ! - See the TOML documentation for more details on the TOML string and inline \
                 table types at https://toml.io/en/v1.0.0
                 !
@@ -1082,12 +1082,12 @@ mod tests {
                 Context
                 -------
                 This buildpack only supports the following distributions:
-                - Ubuntu 22.04 (amd64) 
-                - Ubuntu 24.04 (amd64, arm64) 
-                
+                - Ubuntu 22.04 (amd64)
+                - Ubuntu 24.04 (amd64, arm64)
+
                 Anything else is unsupported. This error is unlikely to be seen by an end-user but may
-                be helpful for developers hacking on this buildpack. Tools like pack also validate 
-                buildpacks against their target distribution metadata to prevent this exact scenario. 
+                be helpful for developers hacking on this buildpack. Tools like pack also validate
+                buildpacks against their target distribution metadata to prevent this exact scenario.
             ",
             UnsupportedDistro(UnsupportedDistroError {
                 name: "Windows".to_string(),
@@ -1116,7 +1116,7 @@ mod tests {
                 -------
                 This is a developer error. It should never be seen by an end-user but could occur if
                 the registered sources for a distribution were modified or someone forgot to register
-                ones for a specific architecture. Our testing processes should always catch this but, 
+                ones for a specific architecture. Our testing processes should always catch this but,
                 if not, we should direct users to file an issue.
             ",
             CreatePackageIndexError::NoSources,
@@ -1170,8 +1170,8 @@ mod tests {
                 This is a developer error. It should never be seen by an end-user. The only restrictions
                 on layer naming are that it can't be named 'build', 'launch', or 'cache' and it must be
                 a valid filename. The hexidecimal character set used here should be safe. If a bug is
-                introduced in how this name is generated then we report this and ask the user to file 
-                an issue against this buildpack. 
+                introduced in how this name is generated then we report this and ask the user to file
+                an issue against this buildpack.
             ",
             CreatePackageIndexError::InvalidLayerName(
                 "http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease".to_string(),
@@ -1204,7 +1204,7 @@ mod tests {
             "
                 Context
                 -------
-                Package sources are requested from a Debian repository starting with a download of 
+                Package sources are requested from a Debian repository starting with a download of
                 the repository's release file. Network I/O can fail for any number of reasons but
                 the most likely here is that there is a problem with the upstream repository which
                 does have a status page we can direct the user to.
@@ -1239,7 +1239,7 @@ mod tests {
             "
                 Context
                 -------
-                Package sources are requested from a Debian repository starting with a download of 
+                Package sources are requested from a Debian repository starting with a download of
                 the repository's release file. This error happens after the request has been initiated
                 and we start reading the response body. Network I/O can fail for any number of reasons but
                 the most likely here is that there is a problem with the upstream repository which
@@ -1275,9 +1275,9 @@ mod tests {
             "
                 Context
                 -------
-                This is a developer error. It should never be seen by an end-user. We validate 
+                This is a developer error. It should never be seen by an end-user. We validate
                 release files using PGP certificates from the supported distributions and if there
-                is a problem with the certificate file, this error would happen. Our testing processes 
+                is a problem with the certificate file, this error would happen. Our testing processes
                 should always catch this but, if not, we should direct users to file an issue.
             ",
             CreatePackageIndexError::CreatePgpCertificate(anyhow!(
@@ -1311,10 +1311,10 @@ mod tests {
             "
                 Context
                 -------
-                This is a developer error. It should never be seen by an end-user. We validate 
+                This is a developer error. It should never be seen by an end-user. We validate
                 release files using PGP certificates from the supported distributions and if there
-                is a problem with how the release files are signed, this error would happen. Our 
-                testing processes should always catch this but, if not, we should direct users to file 
+                is a problem with how the release files are signed, this error would happen. Our
+                testing processes should always catch this but, if not, we should direct users to file
                 an issue.
             ",
             CreatePackageIndexError::CreatePgpVerifier(anyhow!("Malformed OpenPGP message")),
@@ -1344,7 +1344,7 @@ mod tests {
             "
                 Context
                 -------
-                We write downloaded release files and other information into the release layer. I/O 
+                We write downloaded release files and other information into the release layer. I/O
                 operations can fail for any number of reasons which we can't anticipate and since this
                 file-system area is managed by the buildpack process there is nothing the user can do
                 here other than report it.
@@ -1373,7 +1373,7 @@ mod tests {
             "
                 Context
                 -------
-                We read cached release files and other information from the release layer. I/O 
+                We read cached release files and other information from the release layer. I/O
                 operations can fail for any number of reasons which we can't anticipate and since this
                 file-system area is managed by the buildpack process there is nothing the user can do
                 here other than report it.
@@ -1402,9 +1402,9 @@ mod tests {
             "
                 Context
                 -------
-                If the release file cannot be parsed, this is either a developer error or a serious 
+                If the release file cannot be parsed, this is either a developer error or a serious
                 problem with the downloaded release file. Running the build with a clean cache
-                should force the file to be re-downloaded which may correct the issue. 
+                should force the file to be re-downloaded which may correct the issue.
             ",
             CreatePackageIndexError::ParseReleaseFile(
                 "/path/to/layer/release-file".into(),
@@ -1469,8 +1469,8 @@ mod tests {
             "
                 Context
                 -------
-                If the release file downloaded from the Debian repository is missing the package index 
-                entry for a component then there's a serious problem with the repository. 
+                If the release file downloaded from the Debian repository is missing the package index
+                entry for a component then there's a serious problem with the repository.
             ",
             CreatePackageIndexError::MissingPackageIndexReleaseHash(
                 RepositoryUri::from("http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease"),
@@ -1539,7 +1539,7 @@ mod tests {
             "
                 Context
                 -------
-                When downloading a package index the response body stream is written directly to the 
+                When downloading a package index the response body stream is written directly to the
                 file-system. This error could happen if the file to write to could not be opened.
             ",
             CreatePackageIndexError::WritePackagesLayer(
@@ -1566,8 +1566,8 @@ mod tests {
             "
                 Context
                 -------
-                When downloading a package index the response body stream is written directly to the 
-                file-system. File and network I/O can fail for any number of reasons but the most 
+                When downloading a package index the response body stream is written directly to the
+                file-system. File and network I/O can fail for any number of reasons but the most
                 likely here would be a connection interruption.
             ",
             CreatePackageIndexError::WritePackageIndexFromResponse(
@@ -1603,7 +1603,7 @@ mod tests {
             "
                 Context
                 -------
-                All downloaded package indexes are verified according to the checksum given by the 
+                All downloaded package indexes are verified according to the checksum given by the
                 owning release file. If these checksums don't match then the download is invalid. When
                 this happens a rebuild typically fixes the issue.
             ",
@@ -1634,10 +1634,10 @@ mod tests {
             "
                 Context
                 -------
-                This is a developer error. It should never be seen by an end-user. Processing package 
-                index files is a CPU-intensive operation and happens in parallel worker tasks for 
+                This is a developer error. It should never be seen by an end-user. Processing package
+                index files is a CPU-intensive operation and happens in parallel worker tasks for
                 efficiency. This error can happen if a worker task panics and the error isn't handled.
-                Our testing processes should always catch this but, if not, we should direct users to file 
+                Our testing processes should always catch this but, if not, we should direct users to file
                 an issue.
             ",
             CreatePackageIndexError::CpuTaskFailed(create_recv_error()),
@@ -1661,7 +1661,7 @@ mod tests {
             "
                 Context
                 -------
-                This is a developer error. It should never be seen by an end-user. We read from 
+                This is a developer error. It should never be seen by an end-user. We read from
                 a package index file stored in the layer directory managed by the buildpack process.
                 I/O errors can happen for any number of reasons and there's nothing the user can
                 do here.
@@ -1692,9 +1692,9 @@ mod tests {
                 Context
                 -------
                 We need to parse all packages contained in a package index file. This error could happen
-                if the package index contained bad data which would indicate a problem with the 
-                upstream repository but it's more likely to be a bug with the buildpack. Running the 
-                build with a fresh cache would force the package index to be re-downloaded which 
+                if the package index contained bad data which would indicate a problem with the
+                upstream repository but it's more likely to be a bug with the buildpack. Running the
+                build with a fresh cache would force the package index to be re-downloaded which
                 might fix the issue.
             ",
             CreatePackageIndexError::ParsePackages(
@@ -1737,7 +1737,7 @@ mod tests {
                 This is a developer error. It should never be seen by an end-user. All system packages
                 are stored in /var/lib/dpkg/status. I/O errors can happen for any number of reasons
                 but the most likely here is that the file doesn't exist for some reason or the file
-                path was accidentally modified. Our testing processes should always catch this but, 
+                path was accidentally modified. Our testing processes should always catch this but,
                 if not, we should direct users to file an issue.
             ",
             DeterminePackagesToInstallError::ReadSystemPackages(
@@ -1766,7 +1766,7 @@ mod tests {
                 -------
                 This is a developer error. It should never be seen by an end-user. All system packages
                 are stored in /var/lib/dpkg/status and it's unlikely for this file to be malformed. More
-                likely is there is a bug with the parsing logic. Our testing processes should always catch 
+                likely is there is a bug with the parsing logic. Our testing processes should always catch
                 this but, if not, we should direct users to file an issue.
             ",
             DeterminePackagesToInstallError::ParseSystemPackage(
@@ -1799,7 +1799,7 @@ mod tests {
                 -------
                 We're installing a list of packages given by the user in the buildpack configuration.
                 It's possible to provide a valid name of a package that doesn't actually exist in the
-                Debian repositories used by the distribution. If this happens we direct the user to 
+                Debian repositories used by the distribution. If this happens we direct the user to
                 the package search site for Ubuntu to verify the package name.
             ",
             DeterminePackagesToInstallError::PackageNotFound("some-package".to_string()),
@@ -1827,8 +1827,8 @@ mod tests {
                 Context
                 -------
                 We're installing a list of packages given by the user in the buildpack configuration.
-                There is a special type of package name in a Debian repository that represents a 
-                'virtual package' which may be implemented by one or more actual packages. This error 
+                There is a special type of package name in a Debian repository that represents a
+                'virtual package' which may be implemented by one or more actual packages. This error
                 is shown when there is more than one provider because we can't automatically determine
                 which one should be used without the user's input.
             ",
@@ -1893,10 +1893,10 @@ mod tests {
             "
                 Context
                 -------
-                This is a developer error. It should never be seen by an end-user. Packages 
-                specify a Filename field that can be used to form a filename to download the 
+                This is a developer error. It should never be seen by an end-user. Packages
+                specify a Filename field that can be used to form a filename to download the
                 package to. This error can only happen if that Filename field contains a value
-                of '..' which is unlikely since that would cause serious problems for the upstream 
+                of '..' which is unlikely since that would cause serious problems for the upstream
                 repository.
             ",
             InstallPackagesError::InvalidFilename("some-package".to_string(), "..".to_string()),
@@ -1918,7 +1918,7 @@ mod tests {
             "
                 Context
                 -------
-                Packages are downloaded from a Debian repository. Network I/O can fail for any number 
+                Packages are downloaded from a Debian repository. Network I/O can fail for any number
                 of reasons but the most likely here would be a problem with the upstream.
             ",
             InstallPackagesError::RequestPackage(
@@ -1954,7 +1954,7 @@ mod tests {
             "
                 Context
                 -------
-                Packages downloaded from a Debian repository are written directly to disk. Network I/O 
+                Packages downloaded from a Debian repository are written directly to disk. Network I/O
                 can fail for any number of reasons but the most likely here would be a problem with the upstream.
             ",
             InstallPackagesError::WritePackage(
@@ -1992,7 +1992,7 @@ mod tests {
             "
                 Context
                 -------
-                Packages downloaded from a Debian repository are validated against a checksum given by 
+                Packages downloaded from a Debian repository are validated against a checksum given by
                 their owning package index. If this error happens then there was a problem with the
                 download. When this happens, running the build again typically fixes it.
             ",
@@ -2023,9 +2023,9 @@ mod tests {
             "
                 Context
                 -------
-                Packages downloaded from a Debian repository are stored as tarballs which need to be 
+                Packages downloaded from a Debian repository are stored as tarballs which need to be
                 opened for extraction. I/O can fail for any number of reasons but since the buildpack
-                process owns this content, there's nothing the user can do here. 
+                process owns this content, there's nothing the user can do here.
             ",
             InstallPackagesError::OpenPackageArchive(
                 "/path/to/layer/archive-file.tgz".into(),
@@ -2051,10 +2051,10 @@ mod tests {
             "
                 Context
                 -------
-                Packages downloaded from a Debian repository are stored as tarballs which stores file 
-                information in individual file entries which need to be read for extraction. I/O 
-                can fail for any number of reasons but since the buildpack process owns this content, 
-                there's nothing the user can do here. 
+                Packages downloaded from a Debian repository are stored as tarballs which stores file
+                information in individual file entries which need to be read for extraction. I/O
+                can fail for any number of reasons but since the buildpack process owns this content,
+                there's nothing the user can do here.
             ",
             InstallPackagesError::OpenPackageArchiveEntry(
                 "/path/to/layer/archive-file.tgz".into(),
@@ -2081,10 +2081,10 @@ mod tests {
             "
                 Context
                 -------
-                Packages downloaded from a Debian repository are stored as tarballs which need to be 
-                extracted. This is done by iterating through each archive entry and writing it's 
-                content out as a file to the file-system. I/O can fail for any number of reasons but 
-                since the buildpack process owns this content, there's nothing the user can do here. 
+                Packages downloaded from a Debian repository are stored as tarballs which need to be
+                extracted. This is done by iterating through each archive entry and writing it's
+                content out as a file to the file-system. I/O can fail for any number of reasons but
+                since the buildpack process owns this content, there's nothing the user can do here.
             ",
             InstallPackagesError::UnpackTarball(
                 "/path/to/layer/archive-file.tgz".into(),
@@ -2110,7 +2110,7 @@ mod tests {
             "
                 Context
                 -------
-                This is a developer error. It should not be seen by an end-user. Packages from a Debian 
+                This is a developer error. It should not be seen by an end-user. Packages from a Debian
                 repository can be stored using several different compression formats. Should we encounter
                 an unexpected one that we aren't handling then this is a buildpack bug.
             ",
@@ -2137,10 +2137,10 @@ mod tests {
                 Context
                 -------
                 After a package is extracted, we need to update any hardcoded references to it's standard
-                install location that might be referenced in any package-config (*.pc) files from the 
-                package to reflect the install location within the layer directory by reading these files. 
-                I/O can fail for any number of reasons but since the buildpack process owns this content, 
-                there's nothing  the user can do here. 
+                install location that might be referenced in any package-config (*.pc) files from the
+                package to reflect the install location within the layer directory by reading these files.
+                I/O can fail for any number of reasons but since the buildpack process owns this content,
+                there's nothing  the user can do here.
             ",
             InstallPackagesError::ReadPackageConfig(
                 "/path/to/layer/pkgconfig/somepackage.pc".into(),
@@ -2168,10 +2168,10 @@ mod tests {
                 Context
                 -------
                 After a package is extracted, we need to update any hardcoded references to it's standard
-                install location that might be referenced in any package-config (*.pc) files from the 
-                package to reflect the install location within the layer directory by writing these files. 
-                I/O can fail for any number of reasons but since the buildpack process owns this content, 
-                there's nothing  the user can do here. 
+                install location that might be referenced in any package-config (*.pc) files from the
+                package to reflect the install location within the layer directory by writing these files.
+                I/O can fail for any number of reasons but since the buildpack process owns this content,
+                there's nothing  the user can do here.
             ",
             InstallPackagesError::WritePackageConfig(
                 "/path/to/layer/pkgconfig/somepackage.pc".into(),
@@ -2199,7 +2199,7 @@ mod tests {
                 Context
                 -------
                 This message is for any framework errors caused by libcnb.rs and should be consistent
-                with how our other buildpacks report framework errors.  
+                with how our other buildpacks report framework errors.
             ",
             Error::CannotWriteBuildSbom(create_io_error("operation interrupted")),
             indoc! {"
