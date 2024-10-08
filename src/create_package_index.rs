@@ -347,6 +347,8 @@ async fn get_package_list(
                     },
                 ),
             ));
+            //
+            reader.multiple_members(true);
 
             let mut writer = AsyncFile::create(&package_index_path)
                 .await
