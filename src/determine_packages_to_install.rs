@@ -6,9 +6,6 @@ use std::path::PathBuf;
 
 use crate::config::RequestedPackage;
 use crate::debian::{PackageIndex, RepositoryPackage};
-use crate::determine_packages_to_install::DeterminePackagesToInstallError::{
-    PackageNotFound, ParseSystemPackage, ReadSystemPackages, VirtualPackageMustBeSpecified,
-};
 use crate::{BuildpackResult, DebianPackagesBuildpackError};
 
 pub(crate) fn determine_packages_to_install(
@@ -20,13 +17,19 @@ pub(crate) fn determine_packages_to_install(
 
     let system_packages_path = PathBuf::from("/var/lib/dpkg/status");
     let system_packages = read_to_string(&system_packages_path)
-        .map_err(|e| ReadSystemPackages(system_packages_path.clone(), e))?
+        .map_err(|e| {
+            DeterminePackagesToInstallError::ReadSystemPackages(system_packages_path.clone(), e)
+        })?
         .trim()
         .split("\n\n")
         .map(|control_data| {
             Control::from(control_data)
                 .map_err(|e| {
-                    ParseSystemPackage(system_packages_path.clone(), control_data.to_string(), e)
+                    DeterminePackagesToInstallError::ParseSystemPackage(
+                        system_packages_path.clone(),
+                        control_data.to_string(),
+                        e,
+                    )
                 })
                 .map(|control| (control.package.to_string(), control))
         })
@@ -192,16 +195,20 @@ fn get_provider_for_virtual_package<'a>(
                         );
                     }
                 })
-                .ok_or(PackageNotFound(package.to_string()))
+                .ok_or(DeterminePackagesToInstallError::PackageNotFound(package.to_string()))
         }
-        [] => Err(PackageNotFound(package.to_string())),
-        _ => Err(VirtualPackageMustBeSpecified(
+        [] => Err(DeterminePackagesToInstallError::PackageNotFound(
             package.to_string(),
-            providers
-                .into_iter()
-                .map(ToString::to_string)
-                .collect::<HashSet<_>>(),
         )),
+        _ => Err(
+            DeterminePackagesToInstallError::VirtualPackageMustBeSpecified(
+                package.to_string(),
+                providers
+                    .into_iter()
+                    .map(ToString::to_string)
+                    .collect::<HashSet<_>>(),
+            ),
+        ),
     }?)
 }
 

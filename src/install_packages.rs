@@ -31,11 +31,6 @@ use tokio_util::io::InspectReader;
 use walkdir::{DirEntry, WalkDir};
 
 use crate::debian::{Distro, MultiarchName, RepositoryPackage};
-use crate::install_packages::InstallPackagesError::{
-    ChecksumFailed, InvalidFilename, OpenPackageArchive, OpenPackageArchiveEntry,
-    ReadPackageConfig, RequestPackage, TaskFailed, UnpackTarball, UnsupportedCompression,
-    WritePackage, WritePackageConfig,
-};
 use crate::{BuildpackResult, DebianPackagesBuildpack, DebianPackagesBuildpackError};
 
 pub(crate) async fn install_packages(
@@ -93,7 +88,7 @@ pub(crate) async fn install_packages(
             while let Some(download_and_extract_handle) =
                 download_and_extract_handles.join_next().await
             {
-                download_and_extract_handle.map_err(TaskFailed)??;
+                download_and_extract_handle.map_err(InstallPackagesError::TaskFailed)??;
             }
         }
     }
@@ -134,7 +129,7 @@ async fn download(
     let download_file_name = PathBuf::from(repository_package.filename.as_str())
         .file_name()
         .map(ToOwned::to_owned)
-        .ok_or(InvalidFilename(
+        .ok_or(InstallPackagesError::InvalidFilename(
             repository_package.name.clone(),
             repository_package.filename.clone(),
         ))?;
@@ -146,14 +141,14 @@ async fn download(
         .send()
         .await
         .and_then(|res| res.error_for_status().map_err(Reqwest))
-        .map_err(|e| RequestPackage(repository_package.clone(), e))?;
+        .map_err(|e| InstallPackagesError::RequestPackage(repository_package.clone(), e))?;
 
     let mut hasher = Sha256::new();
 
     let mut writer = AsyncFile::create(&download_path)
         .await
         .map_err(|e| {
-            WritePackage(
+            InstallPackagesError::WritePackage(
                 repository_package.clone(),
                 download_url.clone(),
                 download_path.clone(),
@@ -175,7 +170,7 @@ async fn download(
     ));
 
     async_copy(&mut reader, &mut writer).await.map_err(|e| {
-        WritePackage(
+        InstallPackagesError::WritePackage(
             repository_package.clone(),
             download_url.clone(),
             download_path.clone(),
@@ -187,7 +182,7 @@ async fn download(
     let hash = repository_package.sha256sum.to_string();
 
     if hash != calculated_hash {
-        Err(ChecksumFailed {
+        Err(InstallPackagesError::ChecksumFailed {
             url: download_url,
             expected: hash,
             actual: calculated_hash,
@@ -201,11 +196,12 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult
     // a .deb file is an ar archive
     // https://manpages.ubuntu.com/manpages/jammy/en/man5/deb.5.html
     let mut debian_archive = File::open(&download_path)
-        .map_err(|e| OpenPackageArchive(download_path.clone(), e))
+        .map_err(|e| InstallPackagesError::OpenPackageArchive(download_path.clone(), e))
         .map(ArArchive::new)?;
 
     while let Some(entry) = debian_archive.next_entry() {
-        let entry = entry.map_err(|e| OpenPackageArchiveEntry(download_path.clone(), e))?;
+        let entry = entry
+            .map_err(|e| InstallPackagesError::OpenPackageArchiveEntry(download_path.clone(), e))?;
         let entry_path = PathBuf::from(OsString::from_vec(entry.header().identifier().to_vec()));
         let entry_reader =
             AsyncBufReader::new(FuturesAsyncReadCompatExt::compat(AllowStdIo::new(entry)));
@@ -220,24 +216,24 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult
                 tar_archive
                     .unpack(&output_dir)
                     .await
-                    .map_err(|e| UnpackTarball(download_path.clone(), e))?;
+                    .map_err(|e| InstallPackagesError::UnpackTarball(download_path.clone(), e))?;
             }
             (Some("data.tar"), Some("zstd" | "zst")) => {
                 let mut tar_archive = TarArchive::new(ZstdDecoder::new(entry_reader));
                 tar_archive
                     .unpack(&output_dir)
                     .await
-                    .map_err(|e| UnpackTarball(download_path.clone(), e))?;
+                    .map_err(|e| InstallPackagesError::UnpackTarball(download_path.clone(), e))?;
             }
             (Some("data.tar"), Some("xz")) => {
                 let mut tar_archive = TarArchive::new(XzDecoder::new(entry_reader));
                 tar_archive
                     .unpack(&output_dir)
                     .await
-                    .map_err(|e| UnpackTarball(download_path.clone(), e))?;
+                    .map_err(|e| InstallPackagesError::UnpackTarball(download_path.clone(), e))?;
             }
             (Some("data.tar"), Some(compression)) => {
-                Err(UnsupportedCompression(
+                Err(InstallPackagesError::UnsupportedCompression(
                     download_path.clone(),
                     compression.to_string(),
                 ))?;
@@ -386,7 +382,7 @@ fn is_package_config(entry: &DirEntry) -> bool {
 async fn rewrite_package_config(package_config: &Path, install_path: &Path) -> BuildpackResult<()> {
     let contents = async_read_to_string(package_config)
         .await
-        .map_err(|e| ReadPackageConfig(package_config.to_path_buf(), e))?;
+        .map_err(|e| InstallPackagesError::ReadPackageConfig(package_config.to_path_buf(), e))?;
 
     let new_contents = contents
         .lines()
@@ -407,7 +403,7 @@ async fn rewrite_package_config(package_config: &Path, install_path: &Path) -> B
 
     Ok(async_write(package_config, new_contents)
         .await
-        .map_err(|e| WritePackageConfig(package_config.to_path_buf(), e))?)
+        .map_err(|e| InstallPackagesError::WritePackageConfig(package_config.to_path_buf(), e))?)
 }
 
 #[derive(Debug)]

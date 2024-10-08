@@ -30,13 +30,6 @@ use tokio::task::{JoinError, JoinSet};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
 
-use crate::create_package_index::CreatePackageIndexError::{
-    ChecksumFailed, CpuTaskFailed, CreatePgpCertificate, CreatePgpVerifier, GetPackagesRequest,
-    GetReleaseRequest, InvalidLayerName, MissingPackageIndexReleaseHash,
-    MissingSha256ReleaseHashes, NoSources, ParsePackages, ParseReleaseFile, ReadGetReleaseResponse,
-    ReadPackagesFile, ReadReleaseFile, TaskFailed, WritePackageIndexFromResponse,
-    WritePackagesLayer, WriteReleaseLayer,
-};
 use crate::debian::{
     ArchitectureName, Distro, PackageIndex, ParseRepositoryPackageError, RepositoryPackage,
     RepositoryUri, Source,
@@ -73,7 +66,7 @@ async fn update_sources(
     sources: &[Source],
 ) -> BuildpackResult<Vec<(RepositoryUri, PathBuf)>> {
     if sources.is_empty() {
-        Err(NoSources)?;
+        Err(CreatePackageIndexError::NoSources)?;
     }
 
     let mut update_source_handles = JoinSet::new();
@@ -94,7 +87,9 @@ async fn update_sources(
 
     let mut updated_sources = vec![];
     while let Some(update_source_handle) = update_source_handles.join_next().await {
-        for updated_source in update_source_handle.map_err(TaskFailed)?? {
+        for updated_source in
+            update_source_handle.map_err(CreatePackageIndexError::TaskFailed)??
+        {
             updated_sources.push(updated_source);
         }
     }
@@ -127,10 +122,15 @@ async fn update_source(
         let package_index_release_hash = release
             .sha256sum
             .as_ref()
-            .ok_or(MissingSha256ReleaseHashes(uri.clone()))?
+            .ok_or(CreatePackageIndexError::MissingSha256ReleaseHashes(
+                uri.clone(),
+            ))?
             .iter()
             .find(|release_hash| release_hash.filename == package_index)
-            .ok_or(MissingPackageIndexReleaseHash(uri.clone(), package_index))?;
+            .ok_or(CreatePackageIndexError::MissingPackageIndexReleaseHash(
+                uri.clone(),
+                package_index,
+            ))?;
 
         let package_release_url = if release.acquire_by_hash.unwrap_or_default() {
             format!(
@@ -155,7 +155,10 @@ async fn update_source(
 
     let mut results = vec![];
     while let Some(get_package_list_handle) = get_package_list_handles.join_next().await {
-        results.push((uri.clone(), get_package_list_handle.map_err(TaskFailed)??));
+        results.push((
+            uri.clone(),
+            get_package_list_handle.map_err(CreatePackageIndexError::TaskFailed)??,
+        ));
     }
     Ok(results)
 }
@@ -174,12 +177,12 @@ async fn get_release(
         .send()
         .await
         .and_then(|res| res.error_for_status().map_err(Reqwest))
-        .map_err(GetReleaseRequest)?;
+        .map_err(CreatePackageIndexError::GetReleaseRequest)?;
 
     // it would be nice to use the url as the layer name but urls don't make for good file names
     // so instead we'll convert the url to a sha256 hex value
     let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&release_url)))
-        .map_err(|e| InvalidLayerName(release_url.clone(), e))?;
+        .map_err(|e| CreatePackageIndexError::InvalidLayerName(release_url.clone(), e))?;
 
     let new_metadata = ReleaseFileMetadata {
         etag: response.headers().get(ETAG).and_then(|header_value| {
@@ -219,44 +222,50 @@ async fn get_release(
             let raw_release_url_path = release_file_layer.path().join(".url");
             async_write(&raw_release_url_path, &release_url)
                 .await
-                .map_err(|e| WriteReleaseLayer(raw_release_url_path, e))?;
+                .map_err(|e| CreatePackageIndexError::WriteReleaseLayer(raw_release_url_path, e))?;
 
             println!("  [GET] {url}", url = &release_url);
 
-            let unverified_response_body = response.text().await.map_err(ReadGetReleaseResponse)?;
+            let unverified_response_body = response
+                .text()
+                .await
+                .map_err(CreatePackageIndexError::ReadGetReleaseResponse)?;
 
             // GPG verification
             let policy = StandardPolicy::new();
             let cert_helper = Cert::from_str(&signed_by)
-                .map_err(CreatePgpCertificate)
+                .map_err(CreatePackageIndexError::CreatePgpCertificate)
                 .map(CertHelper::new)?;
 
             let mut reader = FuturesAsyncReadCompatExt::compat(AllowStdIo::new(
                 VerifierBuilder::from_bytes(&unverified_response_body)
-                    .map_err(CreatePgpVerifier)
+                    .map_err(CreatePackageIndexError::CreatePgpVerifier)
                     .and_then(|verifier_builder| {
                         verifier_builder
                             .with_policy(&policy, None, cert_helper)
-                            .map_err(CreatePgpVerifier)
+                            .map_err(CreatePackageIndexError::CreatePgpVerifier)
                     })?,
             ));
 
             let mut writer = AsyncFile::create(&release_file_path)
                 .await
-                .map_err(|e| WriteReleaseLayer(release_file_path.clone(), e))
+                .map_err(|e| {
+                    CreatePackageIndexError::WriteReleaseLayer(release_file_path.clone(), e)
+                })
                 .map(AsyncBufWriter::new)?;
 
-            async_copy(&mut reader, &mut writer)
-                .await
-                .map_err(|e| WriteReleaseLayer(release_file_path.clone(), e))?;
+            async_copy(&mut reader, &mut writer).await.map_err(|e| {
+                CreatePackageIndexError::WriteReleaseLayer(release_file_path.clone(), e)
+            })?;
         }
     };
 
     Ok(async_read_to_string(&release_file_path)
         .await
-        .map_err(|e| ReadReleaseFile(release_file_path.clone(), e))
+        .map_err(|e| CreatePackageIndexError::ReadReleaseFile(release_file_path.clone(), e))
         .and_then(|release_data| {
-            Release::from(&release_data).map_err(|e| ParseReleaseFile(release_file_path, e))
+            Release::from(&release_data)
+                .map_err(|e| CreatePackageIndexError::ParseReleaseFile(release_file_path, e))
         })?)
 }
 
@@ -269,7 +278,7 @@ async fn get_package_list(
     // it would be nice to use the url as the layer name but urls don't make for good file names
     // so instead we'll convert the url to a sha256 hex value
     let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&package_release_url)))
-        .map_err(|e| InvalidLayerName(package_release_url.clone(), e))?;
+        .map_err(|e| CreatePackageIndexError::InvalidLayerName(package_release_url.clone(), e))?;
 
     let new_metadata = PackageIndexMetadata {
         hash: hash.to_string(),
@@ -305,14 +314,16 @@ async fn get_package_list(
             let package_index_url_path = package_index_layer.path().join(".url");
             async_write(&package_index_url_path, &package_release_url)
                 .await
-                .map_err(|e| WritePackagesLayer(package_index_url_path, e))?;
+                .map_err(|e| {
+                    CreatePackageIndexError::WritePackagesLayer(package_index_url_path, e)
+                })?;
 
             let response = client
                 .get(&package_release_url)
                 .send()
                 .await
                 .and_then(|res| res.error_for_status().map_err(Reqwest))
-                .map_err(GetPackagesRequest)?;
+                .map_err(CreatePackageIndexError::GetPackagesRequest)?;
 
             let mut hasher = Sha256::new();
 
@@ -333,17 +344,22 @@ async fn get_package_list(
 
             let mut writer = AsyncFile::create(&package_index_path)
                 .await
-                .map_err(|e| WritePackagesLayer(package_index_path.clone(), e))
+                .map_err(|e| {
+                    CreatePackageIndexError::WritePackagesLayer(package_index_path.clone(), e)
+                })
                 .map(AsyncBufWriter::new)?;
 
-            async_copy(&mut reader, &mut writer)
-                .await
-                .map_err(|e| WritePackageIndexFromResponse(package_index_path.clone(), e))?;
+            async_copy(&mut reader, &mut writer).await.map_err(|e| {
+                CreatePackageIndexError::WritePackageIndexFromResponse(
+                    package_index_path.clone(),
+                    e,
+                )
+            })?;
 
             let calculated_hash = format!("{:x}", hasher.finalize());
 
             if hash != calculated_hash {
-                Err(ChecksumFailed {
+                Err(CreatePackageIndexError::ChecksumFailed {
                     url: package_release_url,
                     expected: hash,
                     actual: calculated_hash,
@@ -365,7 +381,7 @@ async fn build_package_index(
 
     let mut package_index = PackageIndex::default();
     while let Some(get_package_handle) = get_packages_handles.join_next().await {
-        let packages = get_package_handle.map_err(TaskFailed)??;
+        let packages = get_package_handle.map_err(CreatePackageIndexError::TaskFailed)??;
         for package in packages {
             package_index.add_package(package);
         }
@@ -382,7 +398,7 @@ async fn read_packages(
 ) -> BuildpackResult<Vec<RepositoryPackage>> {
     let contents = async_read_to_string(&package_index_path)
         .await
-        .map_err(|e| ReadPackagesFile(package_index_path.clone(), e))?
+        .map_err(|e| CreatePackageIndexError::ReadPackagesFile(package_index_path.clone(), e))?
         .replace("\r\n", "\n")
         .replace('\0', "");
 
@@ -399,11 +415,11 @@ async fn read_packages(
             });
         let _ = send.send((packages, errors));
     });
-    let (packages, errors) = recv.await.map_err(CpuTaskFailed)?;
+    let (packages, errors) = recv.await.map_err(CreatePackageIndexError::CpuTaskFailed)?;
     if errors.is_empty() {
         Ok(packages)
     } else {
-        Err(ParsePackages(package_index_path, errors).into())
+        Err(CreatePackageIndexError::ParsePackages(package_index_path, errors).into())
     }
 }
 

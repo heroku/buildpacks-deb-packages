@@ -5,7 +5,6 @@ use std::str::FromStr;
 use indexmap::IndexSet;
 use toml_edit::{DocumentMut, TableLike};
 
-use crate::config::ConfigError::{CheckExists, ParseConfig, ReadConfig};
 use crate::config::{ParseRequestedPackageError, RequestedPackage};
 use crate::{BuildpackResult, DebianPackagesBuildpackError};
 
@@ -19,7 +18,7 @@ impl BuildpackConfig {
         Ok(config_file
             .as_ref()
             .try_exists()
-            .map_err(|e| CheckExists(config_file.as_ref().to_path_buf(), e))?)
+            .map_err(|e| ConfigError::CheckExists(config_file.as_ref().to_path_buf(), e))?)
     }
 }
 
@@ -28,9 +27,9 @@ impl TryFrom<PathBuf> for BuildpackConfig {
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         fs::read_to_string(&value)
-            .map_err(|e| ReadConfig(value.clone(), e))
+            .map_err(|e| ConfigError::ReadConfig(value.clone(), e))
             .and_then(|contents| {
-                BuildpackConfig::from_str(&contents).map_err(|e| ParseConfig(value, e))
+                BuildpackConfig::from_str(&contents).map_err(|e| ConfigError::ParseConfig(value, e))
             })
     }
 }
