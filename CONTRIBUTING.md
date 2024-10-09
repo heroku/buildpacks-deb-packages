@@ -1,4 +1,4 @@
-# Contributing Guide For Heroku's deb Packages Buildpack
+# Contributing Guide For Heroku's `.deb` Packages Buildpack
 
 This page lists the operational governance model of this project, as well as the recommendations and requirements for
 how to best contribute to `heroku/buildpacks-deb-packages`. We strive to obey these as best as possible. As always,
