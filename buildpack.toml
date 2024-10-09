@@ -27,4 +27,4 @@ distros = [
 ]
 
 [metadata.release]
-image = { repository = "docker.io/heroku/buildpacks-deb-packages" }
+image = { repository = "docker.io/heroku/buildpack-deb-packages" }
