@@ -351,16 +351,9 @@ async fn get_package_list(
                 ),
             ));
 
-            // Enable support for multistream gz files. In this mode, the reader expects the input to
-            // be a sequence of individually gzipped data streams, each with its own header and trailer,
-            // ending at EOF. This is standard behavior for gzip readers.
-            //reader.multiple_members(true);
-
-            let mut writer = AsyncFile::create(&package_index_path)
-                .await
-                .map_err(|e| {
-                    CreatePackageIndexError::WritePackagesLayer(package_index_path.clone(), e)
-                })?;
+            let mut writer = AsyncFile::create(&package_index_path).await.map_err(|e| {
+                CreatePackageIndexError::WritePackagesLayer(package_index_path.clone(), e)
+            })?;
 
             async_copy(&mut reader, &mut writer).await.map_err(|e| {
                 CreatePackageIndexError::WritePackageIndexFromResponse(
@@ -368,8 +361,6 @@ async fn get_package_list(
                     e,
                 )
             })?;
-
-            // writer.flush().await.unwrap();
 
             let calculated_hash = format!("{:x}", hasher.finalize());
 
