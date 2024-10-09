@@ -364,7 +364,7 @@ async fn get_package_list(
                 .await
                 .map_err(WritePackagesLayer)?;
 
-            writer.shutdown().await.unwrap();
+            writer.flush().await.unwrap();
 
             let calculated_hash = format!("{:x}", hasher.finalize());
 
