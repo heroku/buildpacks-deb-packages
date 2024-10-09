@@ -898,7 +898,7 @@ mod tests {
                 ! Unable to complete buildpack detection
                 !
                 ! An unexpected I/O error occurred while checking `/path/to/project.toml` to \
-                determine if the Heroku Deb Packages buildpack is compatible for this application.
+                determine if the Heroku .deb Packages buildpack is compatible for this application.
             "},
         );
     }
@@ -923,7 +923,7 @@ mod tests {
 
                 ! Error reading `/path/to/project.toml`
                 !
-                ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` \
                 to complete the build but the file can't be read.
                 !
                 ! Suggestions:
@@ -951,7 +951,7 @@ mod tests {
             indoc! {"
                 ! Error parsing `/path/to/project.toml` with invalid key
                 !
-                ! The Heroku Deb Packages buildpack reads the configuration from `/path/to/project.toml` \
+                ! The Heroku .deb Packages buildpack reads the configuration from `/path/to/project.toml` \
                 to complete the build but the configuration for the key `[com.heroku.buildpacks.deb-packages]` \
                 isn't the correct type. The value of this key must be a TOML table.
                 !
@@ -991,7 +991,7 @@ mod tests {
 
                 ! Error parsing `/path/to/project.toml` with invalid TOML file
                 !
-                ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` \
                 to complete the build but this file isn't a valid TOML file.
                 !
                 ! Suggestions:
@@ -1023,7 +1023,7 @@ mod tests {
             indoc! {"
                 ! Error parsing `/path/to/project.toml` with invalid package name
                 !
-                ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` \
                 to complete the build but we found an invalid package name `invalid!package!name` \
                 in the key `[com.heroku.buildpacks.deb-packages]`.
                 !
@@ -1065,7 +1065,7 @@ mod tests {
 
                 ! Error parsing `/path/to/project.toml` with invalid package format
                 !
-                ! The Heroku Deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` \
                 to complete the build but we found an invalid package format in the key \
                 `[com.heroku.buildpacks.deb-packages]`.
                 !
@@ -1105,7 +1105,7 @@ mod tests {
             indoc! {"
                 ! Unsupported distribution
                 !
-                ! The Heroku Deb Packages buildpack doesn't support the Windows XP (x86) distribution.
+                ! The Heroku .deb Packages buildpack doesn't support the Windows XP (x86) distribution.
                 !
                 ! Supported distributions:
                 ! - Ubuntu 24.04 (amd64, arm64)
