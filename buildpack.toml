@@ -3,10 +3,10 @@ api = "0.10"
 [buildpack]
 id = "heroku/deb-packages"
 version = "0.0.1"
-name = "Heroku deb Packages Buildpack"
-description = "Heroku's buildpack for installing Debian packages."
+name = "Heroku .deb Packages Buildpack"
+description = "Heroku's buildpack for installing .deb packages."
 homepage = "https://github.com/heroku/buildpacks-deb-packages"
-keywords = ["debian", "packages"]
+keywords = ["deb", "debian", "packages"]
 
 [[buildpack.licenses]]
 type = "Apache-2.0"

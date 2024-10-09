@@ -14,7 +14,7 @@ use libcnb::Error;
 use std::io::Write;
 use std::path::Path;
 
-const BUILDPACK_NAME: &str = "Heroku Deb Packages buildpack";
+const BUILDPACK_NAME: &str = "Heroku .deb Packages buildpack";
 
 pub(crate) fn on_error<W>(error: Error<DebianPackagesBuildpackError>, writer: W)
 where
@@ -1114,7 +1114,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1143,7 +1143,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1178,7 +1178,7 @@ mod tests {
                         ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                         a workaround at this time. You can help our understanding by sharing your buildpack log \
                         and a description of the issue at:
-                        ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                        ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                         !
                         ! If you're able to reproduce the problem with an example application and the `pack` \
                         build tool \\(https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/\\), \
@@ -1224,7 +1224,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1338,7 +1338,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1378,7 +1378,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1414,7 +1414,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1450,7 +1450,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1621,7 +1621,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1723,7 +1723,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1760,7 +1760,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1810,7 +1810,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1847,7 +1847,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1887,7 +1887,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -1988,7 +1988,7 @@ mod tests {
                     ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                     a workaround at this time. You can help our understanding by sharing your buildpack log \
                     and a description of the issue at:
-                    ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                    ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                     !
                     ! If you're able to reproduce the problem with an example application and the `pack` \
                     build tool \\(https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/\\), \
@@ -2022,7 +2022,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -2162,7 +2162,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -2199,7 +2199,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -2235,7 +2235,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -2268,7 +2268,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -2306,7 +2306,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \
@@ -2344,7 +2344,7 @@ mod tests {
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \
                 and a description of the issue at:
-                ! https://github.com/heroku/buildpacks-debian-packages/issues/new
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
                 !
                 ! If you're able to reproduce the problem with an example application and the `pack` \
                 build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), \

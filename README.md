@@ -1,10 +1,14 @@
-# Heroku's deb Packages Buildpack
+# Heroku's `.deb` Packages Buildpack
 
 [![CI][ci-badge]][ci-link] [![Registry][registry-badge]][registry-link]
 
 `heroku/deb-packages` is a [Heroku Cloud Native Buildpack][heroku-cnbs] that adds support for installing Debian
-packages required by an application that are not available in the build or run image used. It's roughly the equivalent
-of `apt install {package}` for [Cloud Native Buildpacks][cnb].
+packages required by an application that are not available in the build or run image used.
+
+System dependencies on Debian distributions like Ubuntu are described by `<package-name>.deb` files. These are
+typically installed using CLI tools such as `apt` or `dpkg`. This buildpack implements logic to install packages
+from `.deb` files in a CNB-friendly manner that does not require root permissions or modifications to system files
+that could invalidate how [CNB rebasing][cnb-rebase] functionality works.
 
 > [!IMPORTANT]
 > This is a [Cloud Native Buildpack][cnb], and is a component of the [Heroku Cloud Native Buildpacks][heroku-cnbs]
@@ -199,6 +203,8 @@ Issues and pull requests are welcome. See our [contributing guidelines](./CONTRI
 [cnb-environment]: https://github.com/buildpacks/spec/blob/main/buildpack.md#environment
 
 [cnb-layer]: https://github.com/buildpacks/spec/blob/main/buildpack.md#layer-types
+
+[cnb-rebase]: https://buildpacks.io/docs/for-app-developers/concepts/rebase/
 
 [debian-archive]: https://www.man7.org/linux/man-pages/man5/deb.5.html
 
