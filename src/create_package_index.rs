@@ -342,12 +342,9 @@ async fn get_package_list(
                 ),
             ));
 
-            let mut writer = AsyncFile::create(&package_index_path)
-                .await
-                .map_err(|e| {
-                    CreatePackageIndexError::WritePackagesLayer(package_index_path.clone(), e)
-                })
-                .map(AsyncBufWriter::new)?;
+            let mut writer = AsyncFile::create(&package_index_path).await.map_err(|e| {
+                CreatePackageIndexError::WritePackagesLayer(package_index_path.clone(), e)
+            })?;
 
             async_copy(&mut reader, &mut writer).await.map_err(|e| {
                 CreatePackageIndexError::WritePackageIndexFromResponse(
