@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::io::stdout;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -11,11 +12,6 @@ use reqwest_middleware::ClientBuilder;
 use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
 
-#[cfg(test)]
-use libcnb_test as _;
-#[cfg(test)]
-use regex as _;
-
 use crate::config::{BuildpackConfig, ConfigError};
 use crate::create_package_index::{create_package_index, CreatePackageIndexError};
 use crate::debian::{Distro, UnsupportedDistroError};
@@ -23,38 +19,23 @@ use crate::determine_packages_to_install::{
     determine_packages_to_install, DeterminePackagesToInstallError,
 };
 use crate::install_packages::{install_packages, InstallPackagesError};
-use crate::DebianPackagesBuildpackError::{
-    Config, CreateAsyncRuntime, CreateHttpClient, CreatePackageIndex, DetectConfigFile,
-    InstallPackages, SolvePackagesToInstall, UnsupportedDistro,
-};
+
+#[cfg(test)]
+use libcnb_test as _;
+#[cfg(test)]
+use regex as _;
 
 mod config;
 mod create_package_index;
 mod debian;
 mod determine_packages_to_install;
+mod errors;
 mod install_packages;
 mod pgp;
 
 buildpack_main!(DebianPackagesBuildpack);
 
-#[derive(Debug)]
-#[allow(dead_code)] // TODO: remove this once error messages are added
-pub(crate) enum DebianPackagesBuildpackError {
-    DetectConfigFile(std::io::Error),
-    Config(ConfigError),
-    CreateHttpClient(reqwest::Error),
-    CreateAsyncRuntime(std::io::Error),
-    UnsupportedDistro(UnsupportedDistroError),
-    CreatePackageIndex(CreatePackageIndexError),
-    SolvePackagesToInstall(DeterminePackagesToInstallError),
-    InstallPackages(InstallPackagesError),
-}
-
-impl From<DebianPackagesBuildpackError> for libcnb::Error<DebianPackagesBuildpackError> {
-    fn from(value: DebianPackagesBuildpackError) -> Self {
-        Self::BuildpackError(value)
-    }
-}
+type BuildpackResult<T> = Result<T, libcnb::Error<DebianPackagesBuildpackError>>;
 
 struct DebianPackagesBuildpack;
 
@@ -64,12 +45,7 @@ impl Buildpack for DebianPackagesBuildpack {
     type Error = DebianPackagesBuildpackError;
 
     fn detect(&self, context: DetectContext<Self>) -> libcnb::Result<DetectResult, Self::Error> {
-        if context
-            .app_dir
-            .join("project.toml")
-            .try_exists()
-            .map_err(DetectConfigFile)?
-        {
+        if BuildpackConfig::exists(context.app_dir.join("project.toml"))? {
             DetectResultBuilder::pass().build()
         } else {
             println!("No project.toml file found.");
@@ -90,8 +66,7 @@ impl Buildpack for DebianPackagesBuildpack {
         );
         println!();
 
-        let config =
-            BuildpackConfig::try_from(context.app_dir.join("project.toml")).map_err(Config)?;
+        let config = BuildpackConfig::try_from(context.app_dir.join("project.toml"))?;
 
         if config.install.is_empty() {
             println!(
@@ -111,7 +86,7 @@ install = [
             return BuildResultBuilder::new().build();
         }
 
-        let distro = Distro::try_from(&context.target).map_err(UnsupportedDistro)?;
+        let distro = Distro::try_from(&context.target)?;
 
         let shared_context = Arc::new(context);
 
@@ -120,7 +95,7 @@ install = [
                 .use_rustls_tls()
                 .timeout(Duration::from_secs(60 * 5))
                 .build()
-                .map_err(CreateHttpClient)?,
+                .expect("Should be able to construct the HTTP Client"),
         )
         .with(RetryTransientMiddleware::new_with_policy(
             ExponentialBackoff::builder().build_with_max_retries(5),
@@ -131,7 +106,7 @@ install = [
             .enable_io()
             .enable_time()
             .build()
-            .map_err(CreateAsyncRuntime)?;
+            .expect("Should be able to construct the Async Runtime");
 
         println!("## Distribution Info");
         println!();
@@ -141,22 +116,37 @@ install = [
         println!("- Architecture: {}", &distro.architecture);
         println!();
 
-        let package_index = runtime
-            .block_on(create_package_index(&shared_context, &client, &distro))
-            .map_err(CreatePackageIndex)?;
+        let package_index =
+            runtime.block_on(create_package_index(&shared_context, &client, &distro))?;
 
-        let packages_to_install = determine_packages_to_install(&package_index, config.install)
-            .map_err(SolvePackagesToInstall)?;
+        let packages_to_install = determine_packages_to_install(&package_index, config.install)?;
 
-        runtime
-            .block_on(install_packages(
-                &shared_context,
-                &client,
-                &distro,
-                packages_to_install,
-            ))
-            .map_err(InstallPackages)?;
+        runtime.block_on(install_packages(
+            &shared_context,
+            &client,
+            &distro,
+            packages_to_install,
+        ))?;
 
         BuildResultBuilder::new().build()
+    }
+
+    fn on_error(&self, error: libcnb::Error<Self::Error>) {
+        errors::on_error(error, stdout());
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum DebianPackagesBuildpackError {
+    Config(ConfigError),
+    UnsupportedDistro(UnsupportedDistroError),
+    CreatePackageIndex(CreatePackageIndexError),
+    DeterminePackagesToInstall(DeterminePackagesToInstallError),
+    InstallPackages(InstallPackagesError),
+}
+
+impl From<DebianPackagesBuildpackError> for libcnb::Error<DebianPackagesBuildpackError> {
+    fn from(value: DebianPackagesBuildpackError) -> Self {
+        Self::BuildpackError(value)
     }
 }

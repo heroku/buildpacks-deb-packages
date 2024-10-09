@@ -1,7 +1,8 @@
-use crate::config::ParseRequestedPackageError::{InvalidPackageName, UnexpectedTomlValue};
-use crate::debian::{PackageName, ParsePackageNameError};
 use std::str::FromStr;
+
 use toml_edit::{Formatted, InlineTable, Value};
+
+use crate::debian::{PackageName, ParsePackageNameError};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub(crate) struct RequestedPackage {
@@ -14,7 +15,8 @@ impl FromStr for RequestedPackage {
 
     fn from_str(package_name: &str) -> Result<Self, Self::Err> {
         Ok(RequestedPackage {
-            name: PackageName::from_str(package_name).map_err(InvalidPackageName)?,
+            name: PackageName::from_str(package_name)
+                .map_err(ParseRequestedPackageError::InvalidPackageName)?,
             skip_dependencies: false,
         })
     }
@@ -27,7 +29,9 @@ impl TryFrom<&Value> for RequestedPackage {
         match value {
             Value::String(formatted_string) => RequestedPackage::try_from(formatted_string),
             Value::InlineTable(inline_table) => RequestedPackage::try_from(inline_table),
-            _ => Err(UnexpectedTomlValue(value.clone())),
+            _ => Err(ParseRequestedPackageError::UnexpectedTomlValue(
+                value.clone(),
+            )),
         }
     }
 }
@@ -51,7 +55,7 @@ impl TryFrom<&InlineTable> for RequestedPackage {
                     .and_then(Value::as_str)
                     .unwrap_or_default(),
             )
-            .map_err(InvalidPackageName)?,
+            .map_err(ParseRequestedPackageError::InvalidPackageName)?,
 
             skip_dependencies: table
                 .get("skip_dependencies")
@@ -62,7 +66,6 @@ impl TryFrom<&InlineTable> for RequestedPackage {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub(crate) enum ParseRequestedPackageError {
     InvalidPackageName(ParsePackageNameError),
     UnexpectedTomlValue(Value),

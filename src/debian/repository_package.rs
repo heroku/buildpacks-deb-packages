@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
-
-use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
-
 use crate::debian::RepositoryUri;
+use bullet_stream::style;
+use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
+use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct RepositoryPackage {
@@ -44,24 +44,30 @@ impl RepositoryPackage {
             .filter_map(|line| line.split_once(':'))
             .collect::<HashMap<&str, &str>>();
 
+        let package_name = values
+            .get(PACKAGE_KEY)
+            .map(|v| v.trim().to_string())
+            .ok_or(ParseRepositoryPackageError::MissingPackageName)?;
+
         Ok(RepositoryPackage {
             repository_uri,
-            name: values
-                .get(PACKAGE_KEY)
-                .map(|v| v.trim().to_string())
-                .ok_or(ParseRepositoryPackageError::MissingPackageName)?,
+            name: package_name.clone(),
             version: values
                 .get(VERSION_KEY)
                 .map(|v| v.trim().to_string())
-                .ok_or(ParseRepositoryPackageError::MissingVersionKey)?,
+                .ok_or(ParseRepositoryPackageError::MissingVersion(
+                    package_name.clone(),
+                ))?,
             filename: values
                 .get(FILENAME_KEY)
                 .map(|v| v.trim().to_string())
-                .ok_or(ParseRepositoryPackageError::MissingFilename)?,
+                .ok_or(ParseRepositoryPackageError::MissingFilename(
+                    package_name.clone(),
+                ))?,
             sha256sum: values
                 .get(SHA256_KEY)
                 .map(|v| v.trim().to_string())
-                .ok_or(ParseRepositoryPackageError::MissingSha256)?,
+                .ok_or(ParseRepositoryPackageError::MissingSha256(package_name))?,
             depends: values.get(DEPENDS_KEY).map(|v| v.trim().to_string()),
             pre_depends: values.get(PRE_DEPENDS_KEY).map(|v| v.trim().to_string()),
             provides: values.get(PROVIDES_KEY).map(|v| v.trim().to_string()),
@@ -117,9 +123,47 @@ impl RepositoryPackage {
 #[derive(Debug)]
 pub(crate) enum ParseRepositoryPackageError {
     MissingPackageName,
-    MissingVersionKey,
-    MissingFilename,
-    MissingSha256,
+    MissingVersion(String),
+    MissingFilename(String),
+    MissingSha256(String),
+}
+
+impl Display for ParseRepositoryPackageError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseRepositoryPackageError::MissingPackageName => {
+                write!(
+                    f,
+                    "There's an entry that's missing the required {package_key} key.",
+                    package_key = style::value(PACKAGE_KEY)
+                )
+            }
+            ParseRepositoryPackageError::MissingVersion(package_name) => {
+                write!(
+                    f,
+                    "Package {package_name} is missing the required {version_key} key.",
+                    package_name = style::value(package_name),
+                    version_key = style::value(VERSION_KEY)
+                )
+            }
+            ParseRepositoryPackageError::MissingFilename(package_name) => {
+                write!(
+                    f,
+                    "Package {package_name} is missing the required {filename_key} key.",
+                    package_name = style::value(package_name),
+                    filename_key = style::value(FILENAME_KEY)
+                )
+            }
+            ParseRepositoryPackageError::MissingSha256(package_name) => {
+                write!(
+                    f,
+                    "Package {package_name} is missing the required {sha256_key} key.",
+                    package_name = style::value(package_name),
+                    sha256_key = style::value(SHA256_KEY)
+                )
+            }
+        }
+    }
 }
 
 static PACKAGE_KEY: &str = "Package";

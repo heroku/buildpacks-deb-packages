@@ -28,7 +28,9 @@ impl FromStr for PackageName {
         if is_valid_package_name {
             Ok(PackageName(value.to_string()))
         } else {
-            Err(ParsePackageNameError(value.to_string()))
+            Err(ParsePackageNameError {
+                package_name: value.to_string(),
+            })
         }
     }
 }
@@ -40,7 +42,9 @@ impl Display for PackageName {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) struct ParsePackageNameError(String);
+pub(crate) struct ParsePackageNameError {
+    pub(crate) package_name: String,
+}
 
 #[cfg(test)]
 mod tests {
@@ -75,7 +79,9 @@ mod tests {
         for invalid_name in invalid_names {
             assert_eq!(
                 PackageName::from_str(invalid_name).unwrap_err(),
-                ParsePackageNameError(invalid_name.to_string())
+                ParsePackageNameError {
+                    package_name: invalid_name.to_string()
+                }
             );
         }
     }

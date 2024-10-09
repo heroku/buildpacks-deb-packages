@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::debian::ArchitectureName::{AMD_64, ARM_64};
 use crate::debian::{ArchitectureName, DistroCodename, Source};
+use crate::DebianPackagesBuildpackError;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub(crate) struct Distro {
@@ -43,7 +44,7 @@ impl TryFrom<&Target> for Distro {
                 architecture: target_arch.to_string(),
             })?;
 
-        match (name.as_str(), version.as_str()) {
+        match (name.to_lowercase().as_str(), version.as_str()) {
             ("ubuntu", "22.04") => Ok(Distro {
                 name,
                 version,
@@ -118,9 +119,14 @@ fn get_noble_source_list() -> Vec<Source> {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub(crate) struct UnsupportedDistroError {
     pub(crate) name: String,
     pub(crate) version: String,
     pub(crate) architecture: String,
+}
+
+impl From<UnsupportedDistroError> for libcnb::Error<DebianPackagesBuildpackError> {
+    fn from(value: UnsupportedDistroError) -> Self {
+        Self::BuildpackError(DebianPackagesBuildpackError::UnsupportedDistro(value))
+    }
 }

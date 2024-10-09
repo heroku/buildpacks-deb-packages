@@ -1,34 +1,39 @@
-use std::collections::{HashMap, HashSet};
-use std::fs::read_to_string;
-
 use apt_parser::Control;
 use indexmap::{IndexMap, IndexSet};
+use std::collections::{HashMap, HashSet};
+use std::fs::read_to_string;
+use std::path::PathBuf;
 
 use crate::config::RequestedPackage;
 use crate::debian::{PackageIndex, RepositoryPackage};
-use crate::determine_packages_to_install::DeterminePackagesToInstallError::{
-    PackageNotFound, ParseSystemPackage, ReadSystemPackages, VirtualPackageMustBeSpecified,
-};
-
-type Result<T> = std::result::Result<T, DeterminePackagesToInstallError>;
+use crate::{BuildpackResult, DebianPackagesBuildpackError};
 
 pub(crate) fn determine_packages_to_install(
     package_index: &PackageIndex,
     requested_packages: IndexSet<RequestedPackage>,
-) -> Result<Vec<RepositoryPackage>> {
+) -> BuildpackResult<Vec<RepositoryPackage>> {
     println!("## Determining packages to install");
     println!();
 
-    let system_packages = read_to_string("/var/lib/dpkg/status")
-        .map_err(ReadSystemPackages)?
+    let system_packages_path = PathBuf::from("/var/lib/dpkg/status");
+    let system_packages = read_to_string(&system_packages_path)
+        .map_err(|e| {
+            DeterminePackagesToInstallError::ReadSystemPackages(system_packages_path.clone(), e)
+        })?
         .trim()
         .split("\n\n")
         .map(|control_data| {
             Control::from(control_data)
-                .map_err(ParseSystemPackage)
+                .map_err(|e| {
+                    DeterminePackagesToInstallError::ParseSystemPackage(
+                        system_packages_path.clone(),
+                        control_data.to_string(),
+                        e,
+                    )
+                })
                 .map(|control| (control.package.to_string(), control))
         })
-        .collect::<Result<HashMap<_, _>>>()?;
+        .collect::<Result<HashMap<_, _>, _>>()?;
 
     let mut install_details = IndexMap::new();
     for requested_package in requested_packages {
@@ -71,7 +76,6 @@ pub(crate) fn determine_packages_to_install(
 //       The dependency solving done here is mostly for convenience. Any transitive packages added
 //       will be reported to the user and, if they aren't correct, the user may disable this dependency
 //       resolution on a per-package basis and specify a more appropriate set of packages.
-#[allow(clippy::too_many_lines)]
 fn visit(
     package: &str,
     skip_dependencies: bool,
@@ -79,7 +83,7 @@ fn visit(
     install_details: &mut IndexMap<String, InstallRecord>,
     system_packages: &HashMap<String, Control>,
     package_index: &PackageIndex,
-) -> Result<()> {
+) -> BuildpackResult<()> {
     if let Some(system_package) = system_packages.get(package) {
         // only show this message if the package is a top-level dependency
         if visit_stack.is_empty() {
@@ -175,9 +179,9 @@ fn get_provider_for_virtual_package<'a>(
     package: &str,
     package_index: &'a PackageIndex,
     visit_stack: &IndexSet<String>,
-) -> Result<&'a RepositoryPackage> {
+) -> BuildpackResult<&'a RepositoryPackage> {
     let providers = package_index.get_providers(package);
-    match providers.iter().collect::<Vec<_>>().as_slice() {
+    Ok(match providers.iter().collect::<Vec<_>>().as_slice() {
         [providing_package] => {
             package_index
                 .get_highest_available_version(providing_package)
@@ -191,25 +195,37 @@ fn get_provider_for_virtual_package<'a>(
                         );
                     }
                 })
-                .ok_or(PackageNotFound(package.to_string()))
+                .ok_or(DeterminePackagesToInstallError::PackageNotFound(package.to_string()))
         }
-        [] => Err(PackageNotFound(package.to_string())),
-        _ => Err(VirtualPackageMustBeSpecified(
-            providers
-                .into_iter()
-                .map(ToString::to_string)
-                .collect::<HashSet<_>>(),
+        [] => Err(DeterminePackagesToInstallError::PackageNotFound(
+            package.to_string(),
         )),
-    }
+        _ => Err(
+            DeterminePackagesToInstallError::VirtualPackageMustBeSpecified(
+                package.to_string(),
+                providers
+                    .into_iter()
+                    .map(ToString::to_string)
+                    .collect::<HashSet<_>>(),
+            ),
+        ),
+    }?)
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub(crate) enum DeterminePackagesToInstallError {
-    ReadSystemPackages(std::io::Error),
-    ParseSystemPackage(apt_parser::errors::APTError),
+    ReadSystemPackages(PathBuf, std::io::Error),
+    ParseSystemPackage(PathBuf, String, apt_parser::errors::APTError),
     PackageNotFound(String),
-    VirtualPackageMustBeSpecified(HashSet<String>),
+    VirtualPackageMustBeSpecified(String, HashSet<String>),
+}
+
+impl From<DeterminePackagesToInstallError> for libcnb::Error<DebianPackagesBuildpackError> {
+    fn from(value: DeterminePackagesToInstallError) -> Self {
+        Self::BuildpackError(DebianPackagesBuildpackError::DeterminePackagesToInstall(
+            value,
+        ))
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -220,17 +236,14 @@ struct InstallRecord {
 
 #[cfg(test)]
 mod test {
-    use std::collections::{BTreeSet, HashSet};
+    use super::*;
+
+    use std::collections::BTreeSet;
     use std::str::FromStr;
 
-    use apt_parser::Control;
     use bon::builder;
-    use indexmap::{IndexMap, IndexSet};
 
-    use crate::debian::{PackageIndex, RepositoryPackage, RepositoryUri};
-    use crate::determine_packages_to_install::{
-        visit, DeterminePackagesToInstallError, InstallRecord,
-    };
+    use crate::debian::RepositoryUri;
 
     #[test]
     fn install_package_already_on_the_system() {
@@ -309,18 +322,23 @@ mod test {
             .call()
             .unwrap_err();
 
-        match error {
-            DeterminePackagesToInstallError::VirtualPackageMustBeSpecified(names) => {
-                assert_eq!(
-                    names,
-                    HashSet::from([
-                        virtual_package_provider1.name,
-                        virtual_package_provider2.name
-                    ])
-                );
-            }
-            e => panic!("not the expected error: {e:?}"),
-        };
+        if let libcnb::Error::BuildpackError(
+            DebianPackagesBuildpackError::DeterminePackagesToInstall(
+                DeterminePackagesToInstallError::VirtualPackageMustBeSpecified(package, providers),
+            ),
+        ) = error
+        {
+            assert_eq!(package, virtual_package);
+            assert_eq!(
+                providers,
+                HashSet::from([
+                    virtual_package_provider1.name,
+                    virtual_package_provider2.name
+                ])
+            );
+        } else {
+            panic!("not the expected error: {error:?}")
+        }
     }
 
     #[test]
@@ -333,12 +351,16 @@ mod test {
             .call()
             .unwrap_err();
 
-        match error {
-            DeterminePackagesToInstallError::PackageNotFound(name) => {
-                assert_eq!(name, virtual_package.to_string());
-            }
-            e => panic!("not the expected error: {e:?}"),
-        };
+        if let libcnb::Error::BuildpackError(
+            DebianPackagesBuildpackError::DeterminePackagesToInstall(
+                DeterminePackagesToInstallError::PackageNotFound(name),
+            ),
+        ) = error
+        {
+            assert_eq!(name, virtual_package.to_string());
+        } else {
+            panic!("not the expected error: {error:?}")
+        }
     }
 
     #[test]
@@ -496,7 +518,7 @@ mod test {
         with_installed: Option<Vec<&RepositoryPackage>>,
         with_system_packages: Option<Vec<&RepositoryPackage>>,
         skip_dependencies: Option<bool>,
-    ) -> Result<IndexMap<String, InstallRecord>, DeterminePackagesToInstallError> {
+    ) -> BuildpackResult<IndexMap<String, InstallRecord>> {
         let package_to_install = install;
 
         let mut package_index = PackageIndex::default();
