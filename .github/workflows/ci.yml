@@ -80,3 +80,168 @@ jobs:
           docker pull "${RUN_IMAGE}"
       - name: Run integration tests
         run: cargo test --locked -- --ignored --test-threads $(($(nproc)+1))
+
+
+  integration-test2:
+    runs-on: ${{ matrix.arch == 'arm64' && 'pub-hk-ubuntu-24.04-arm-ip' || 'pub-hk-ubuntu-24.04-ip' }} # TODO: change to ubuntu-24.04 once repo is public
+    strategy:
+      fail-fast: false
+      matrix:
+        builder: ["builder:24", "builder:22"]
+        arch: ["amd64", "arm64"]
+        exclude:
+          - builder: "builder:22"
+            arch: "arm64"
+    env:
+      INTEGRATION_TEST_CNB_BUILDER: heroku/${{ matrix.builder }}
+      INTEGRATION_TEST_CNB_ARCH: ${{ matrix.arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install musl-tools
+        run: sudo apt-get install musl-tools --no-install-recommends
+      - name: Update Rust toolchain
+        run: rustup update
+      - name: Install Rust linux-musl target
+        run: rustup target add ${{ matrix.arch == 'arm64' && 'aarch64-unknown-linux-musl' || 'x86_64-unknown-linux-musl' }}
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.3
+      - name: Install Pack CLI
+        uses: buildpacks/github-actions/setup-pack@v5.7.4
+      # The images are pulled up front to prevent duplicate pulls due to the tests being run concurrently.
+      - name: Pull builder image
+        run: docker pull ${{ env.INTEGRATION_TEST_CNB_BUILDER }}
+      - name: Pull run image
+        # Using `docker inspect` rather than `pack builder inspect` since the latter makes
+        # additional requests to Docker Hub even when the image is available locally.
+        run: |
+          RUN_IMAGE=$(
+            docker inspect --format='{{index .Config.Labels "io.buildpacks.builder.metadata"}}' '${{ env.INTEGRATION_TEST_CNB_BUILDER }}' \
+              | jq --exit-status --raw-output '.stack.runImage.image'
+          )
+          docker pull "${RUN_IMAGE}"
+      - name: Run integration tests
+        run: cargo test --locked -- --ignored --test-threads $(($(nproc)+1))
+
+  integration-test3:
+    runs-on: ${{ matrix.arch == 'arm64' && 'pub-hk-ubuntu-24.04-arm-ip' || 'pub-hk-ubuntu-24.04-ip' }} # TODO: change to ubuntu-24.04 once repo is public
+    strategy:
+      fail-fast: false
+      matrix:
+        builder: ["builder:24", "builder:22"]
+        arch: ["amd64", "arm64"]
+        exclude:
+          - builder: "builder:22"
+            arch: "arm64"
+    env:
+      INTEGRATION_TEST_CNB_BUILDER: heroku/${{ matrix.builder }}
+      INTEGRATION_TEST_CNB_ARCH: ${{ matrix.arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install musl-tools
+        run: sudo apt-get install musl-tools --no-install-recommends
+      - name: Update Rust toolchain
+        run: rustup update
+      - name: Install Rust linux-musl target
+        run: rustup target add ${{ matrix.arch == 'arm64' && 'aarch64-unknown-linux-musl' || 'x86_64-unknown-linux-musl' }}
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.3
+      - name: Install Pack CLI
+        uses: buildpacks/github-actions/setup-pack@v5.7.4
+      # The images are pulled up front to prevent duplicate pulls due to the tests being run concurrently.
+      - name: Pull builder image
+        run: docker pull ${{ env.INTEGRATION_TEST_CNB_BUILDER }}
+      - name: Pull run image
+        # Using `docker inspect` rather than `pack builder inspect` since the latter makes
+        # additional requests to Docker Hub even when the image is available locally.
+        run: |
+          RUN_IMAGE=$(
+            docker inspect --format='{{index .Config.Labels "io.buildpacks.builder.metadata"}}' '${{ env.INTEGRATION_TEST_CNB_BUILDER }}' \
+              | jq --exit-status --raw-output '.stack.runImage.image'
+          )
+          docker pull "${RUN_IMAGE}"
+      - name: Run integration tests
+        run: cargo test --locked -- --ignored --test-threads $(($(nproc)+1))
+
+  integration-test4:
+    runs-on: ${{ matrix.arch == 'arm64' && 'pub-hk-ubuntu-24.04-arm-ip' || 'pub-hk-ubuntu-24.04-ip' }} # TODO: change to ubuntu-24.04 once repo is public
+    strategy:
+      fail-fast: false
+      matrix:
+        builder: ["builder:24", "builder:22"]
+        arch: ["amd64", "arm64"]
+        exclude:
+          - builder: "builder:22"
+            arch: "arm64"
+    env:
+      INTEGRATION_TEST_CNB_BUILDER: heroku/${{ matrix.builder }}
+      INTEGRATION_TEST_CNB_ARCH: ${{ matrix.arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install musl-tools
+        run: sudo apt-get install musl-tools --no-install-recommends
+      - name: Update Rust toolchain
+        run: rustup update
+      - name: Install Rust linux-musl target
+        run: rustup target add ${{ matrix.arch == 'arm64' && 'aarch64-unknown-linux-musl' || 'x86_64-unknown-linux-musl' }}
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.3
+      - name: Install Pack CLI
+        uses: buildpacks/github-actions/setup-pack@v5.7.4
+      # The images are pulled up front to prevent duplicate pulls due to the tests being run concurrently.
+      - name: Pull builder image
+        run: docker pull ${{ env.INTEGRATION_TEST_CNB_BUILDER }}
+      - name: Pull run image
+        # Using `docker inspect` rather than `pack builder inspect` since the latter makes
+        # additional requests to Docker Hub even when the image is available locally.
+        run: |
+          RUN_IMAGE=$(
+            docker inspect --format='{{index .Config.Labels "io.buildpacks.builder.metadata"}}' '${{ env.INTEGRATION_TEST_CNB_BUILDER }}' \
+              | jq --exit-status --raw-output '.stack.runImage.image'
+          )
+          docker pull "${RUN_IMAGE}"
+      - name: Run integration tests
+        run: cargo test --locked -- --ignored --test-threads $(($(nproc)+1))
+
+  integration-test5:
+    runs-on: ${{ matrix.arch == 'arm64' && 'pub-hk-ubuntu-24.04-arm-ip' || 'pub-hk-ubuntu-24.04-ip' }} # TODO: change to ubuntu-24.04 once repo is public
+    strategy:
+      fail-fast: false
+      matrix:
+        builder: ["builder:24", "builder:22"]
+        arch: ["amd64", "arm64"]
+        exclude:
+          - builder: "builder:22"
+            arch: "arm64"
+    env:
+      INTEGRATION_TEST_CNB_BUILDER: heroku/${{ matrix.builder }}
+      INTEGRATION_TEST_CNB_ARCH: ${{ matrix.arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install musl-tools
+        run: sudo apt-get install musl-tools --no-install-recommends
+      - name: Update Rust toolchain
+        run: rustup update
+      - name: Install Rust linux-musl target
+        run: rustup target add ${{ matrix.arch == 'arm64' && 'aarch64-unknown-linux-musl' || 'x86_64-unknown-linux-musl' }}
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.3
+      - name: Install Pack CLI
+        uses: buildpacks/github-actions/setup-pack@v5.7.4
+      # The images are pulled up front to prevent duplicate pulls due to the tests being run concurrently.
+      - name: Pull builder image
+        run: docker pull ${{ env.INTEGRATION_TEST_CNB_BUILDER }}
+      - name: Pull run image
+        # Using `docker inspect` rather than `pack builder inspect` since the latter makes
+        # additional requests to Docker Hub even when the image is available locally.
+        run: |
+          RUN_IMAGE=$(
+            docker inspect --format='{{index .Config.Labels "io.buildpacks.builder.metadata"}}' '${{ env.INTEGRATION_TEST_CNB_BUILDER }}' \
+              | jq --exit-status --raw-output '.stack.runImage.image'
+          )
+          docker pull "${RUN_IMAGE}"
+      - name: Run integration tests
+        run: cargo test --locked -- --ignored --test-threads $(($(nproc)+1))
