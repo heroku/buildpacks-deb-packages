@@ -23,7 +23,9 @@ use sequoia_openpgp::Cert;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::fs::{read_to_string as async_read_to_string, write as async_write, File as AsyncFile};
-use tokio::io::{copy as async_copy, BufReader as AsyncBufReader, BufWriter as AsyncBufWriter};
+use tokio::io::{
+    copy as async_copy, AsyncWriteExt, BufReader as AsyncBufReader, BufWriter as AsyncBufWriter,
+};
 use tokio::sync::oneshot::channel;
 use tokio::sync::oneshot::error::RecvError;
 use tokio::task::{JoinError, JoinSet};
@@ -318,7 +320,7 @@ async fn get_package_list(
                     CreatePackageIndexError::WritePackagesLayer(package_index_url_path, e)
                 })?;
 
-            let response = client
+            let mut response = client
                 .get(&package_release_url)
                 .send()
                 .await
@@ -342,11 +344,23 @@ async fn get_package_list(
                 ),
             ));
 
+            // Enable support for multistream gz files. In this mode, the reader expects the input to
+            // be a sequence of individually gzipped data streams, each with its own header and trailer,
+            // ending at EOF. This is standard behavior for gzip readers.
+            reader.multiple_members(true);
+
             let mut writer = AsyncFile::create(&package_index_path).await.map_err(|e| {
                 CreatePackageIndexError::WritePackagesLayer(package_index_path.clone(), e)
             })?;
 
             async_copy(&mut reader, &mut writer).await.map_err(|e| {
+                CreatePackageIndexError::WritePackageIndexFromResponse(
+                    package_index_path.clone(),
+                    e,
+                )
+            })?;
+
+            writer.flush().await.map_err(|e| {
                 CreatePackageIndexError::WritePackageIndexFromResponse(
                     package_index_path.clone(),
                     e,
