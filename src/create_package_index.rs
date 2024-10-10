@@ -320,7 +320,7 @@ async fn get_package_list(
                     CreatePackageIndexError::WritePackagesLayer(package_index_url_path, e)
                 })?;
 
-            let mut response = client
+            let response = client
                 .get(&package_release_url)
                 .send()
                 .await
