@@ -58,7 +58,7 @@ fn test_failed_detection_when_project_file_has_no_config() {
 #[allow(clippy::too_many_lines)]
 fn test_general_usage_output() {
     integration_test("fixtures/general_usage", |ctx| {
-        assert_contains_match!(ctx.pack_stdout, r"# Heroku .deb Packages Buildpack \(v\d+\.\d+\.\d+\)");
+        assert_contains_match!(ctx.pack_stdout, r"# Heroku .deb Packages \(v\d+\.\d+\.\d+\)");
 
         match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
             ("heroku/builder:22", "amd64") => {
@@ -224,7 +224,7 @@ fn test_general_usage_output_on_rebuild() {
     integration_test("fixtures/general_usage", |ctx| {
         let config = ctx.config.clone();
         ctx.rebuild(config, |ctx| {
-            assert_contains_match!(ctx.pack_stdout, r"# Heroku .deb Packages Buildpack \(v\d+\.\d+\.\d+\)");
+            assert_contains_match!(ctx.pack_stdout, r"# Heroku .deb Packages \(v\d+\.\d+\.\d+\)");
 
             match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
                 ("heroku/builder:22", "amd64") => {
