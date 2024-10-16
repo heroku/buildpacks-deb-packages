@@ -430,8 +430,8 @@ fn test_cache_invalidated_when_configuration_changes() {
                 }
                 ("heroku/builder:24", "arm64") => {
                     assert_contains!(ctx.pack_stdout, "Requesting packages");
-                    assert_contains!(ctx.pack_stdout, "Adding libxmlsec1t64@1.2.39-5build2");
-                    assert_contains!(ctx.pack_stdout, "Downloading and extracting libxmlsec1t64");
+                    assert_contains!(ctx.pack_stdout, "Adding `libxmlsec1t64@1.2.39-5build2`");
+                    assert_contains!(ctx.pack_stdout, "`libxmlsec1t64@1.2.39-5build2` from http://ports.ubuntu.com/ubuntu-ports/pool/main/x/xmlsec1/libxmlsec1t64_1.2.39-5build2_arm64.deb");
                 }
                 _ => panic_unsupported_test_configuration(),
             }
@@ -509,7 +509,7 @@ fn geo_buildpack_use_case() {
                 .buildpacks(vec![BuildpackReference::CurrentCrate, BuildpackReference::Other("heroku/python".to_string())]);
         },
         |ctx| {
-            assert_contains!(ctx.pack_stdout, "Adding libgdal-dev@3.4.1");
+            assert_contains!(ctx.pack_stdout, "Adding `libgdal-dev@3.4.1");
             assert_contains!(ctx.pack_stdout, "Collecting GDAL==3.4.1 (from -r requirements.txt (line 1))");
             assert_contains!(ctx.pack_stdout, "Successfully built GDAL");
             assert_contains!(ctx.pack_stdout, "Successfully installed GDAL-3.4.1");
