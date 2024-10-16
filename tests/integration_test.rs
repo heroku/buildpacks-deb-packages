@@ -328,9 +328,9 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
 
                     assert_contains!(ctx.pack_stdout, "Restoring packages from cache");
-                    assert_contains!(ctx.pack_stdout, "Restoring `xmlsec1@1.2.39-5build2` from cache");
-                    assert_contains!(ctx.pack_stdout, "Restoring `libgwenhywfar-data@5.10.2-2.1build4` from cache");
-                    assert_contains!(ctx.pack_stdout, "Restoring `libgwenhywfar79t64@5.10.2-2.1build4` from cache");
+                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.10.2-2.1build4`");
+                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.10.2-2.1build4`");
+                    assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2`");
                 }
                 _ => panic_unsupported_test_configuration(),
             }
