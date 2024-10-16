@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+use std::io::Stdout;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -5,12 +7,14 @@ use std::sync::Arc;
 use apt_parser::errors::APTError;
 use apt_parser::Release;
 use async_compression::tokio::bufread::GzipDecoder;
+use bullet_stream::state::Bullet;
+use bullet_stream::{style, Print};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
 use libcnb::build::BuildContext;
 use libcnb::data::layer::{LayerName, LayerNameError};
 use libcnb::layer::{
-    CachedLayerDefinition, InvalidMetadataAction, LayerState, RestoredLayerAction,
+    CachedLayerDefinition, EmptyLayerCause, InvalidMetadataAction, LayerState, RestoredLayerAction,
 };
 use rayon::iter::{Either, IntoParallelIterator, ParallelBridge, ParallelIterator};
 use reqwest::header::ETAG;
@@ -43,30 +47,101 @@ pub(crate) async fn create_package_index(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
     distro: &Distro,
-) -> BuildpackResult<PackageIndex> {
-    println!("## Creating package index");
-    println!();
+    log: Print<Bullet<Stdout>>,
+) -> BuildpackResult<(PackageIndex, Print<Bullet<Stdout>>)> {
+    let log = log.h2("Creating package index");
+
+    let source_list = distro.get_source_list();
+
+    let log = source_list
+        .iter()
+        .fold(log.bullet("Package sources"), |log, source| {
+            source.suites.iter().fold(log, |log, suite| {
+                log.sub_bullet(format!(
+                    "{repository_uri} {suite} [{components}]",
+                    repository_uri = style::url(source.uri.as_str()),
+                    components = source.components.join(", "),
+                ))
+            })
+        });
+
+    let timer = log.start_timer("Updating");
     let updated_sources = update_sources(context, client, &distro.get_source_list()).await?;
-    println!();
+    let log = timer.done();
 
-    println!("  Processing package files...");
-    let start = std::time::Instant::now();
-    let package_index = build_package_index(updated_sources).await?;
-    println!(
-        "  Indexed {} packages ({}ms)",
-        package_index.packages_indexed,
-        start.elapsed().as_millis()
-    );
-    println!();
+    let log = updated_sources
+        .iter()
+        .fold(log, |log, updated_source| {
+            let update_source_log =
+                log.sub_bullet(match &updated_source.release_file.cache_state {
+                    UpdatedSourceCacheState::Cached => format!(
+                        "Restored release file from cache {url}",
+                        url = style::details(style::url(
+                            &updated_source.release_file.release_file_url
+                        ))
+                    ),
+                    UpdatedSourceCacheState::New => format!(
+                        "Downloaded release file {url}",
+                        url = style::url(&updated_source.release_file.release_file_url)
+                    ),
+                    UpdatedSourceCacheState::Invalidated(reason) => format!(
+                        "Redownloaded release file {url} {reason}",
+                        url = style::url(&updated_source.release_file.release_file_url),
+                        reason = style::details(reason)
+                    ),
+                });
 
-    Ok(package_index)
+            updated_source.package_indexes.iter().fold(
+                update_source_log,
+                |update_source_log, updated_package_index| {
+                    update_source_log.sub_bullet(match &updated_package_index.cache_state {
+                        UpdatedSourceCacheState::Cached => format!(
+                            "Restored package index from cache {url}",
+                            url = style::details(style::url(
+                                &updated_package_index.package_index_url
+                            ))
+                        ),
+                        UpdatedSourceCacheState::New => format!(
+                            "Downloaded package index {url}",
+                            url = style::url(&updated_package_index.package_index_url)
+                        ),
+                        UpdatedSourceCacheState::Invalidated(reason) => format!(
+                            "Redownloaded package index {url} {reason}",
+                            url = style::url(&updated_package_index.package_index_url),
+                            reason = style::details(reason)
+                        ),
+                    })
+                },
+            )
+        })
+        .done();
+
+    let log = log.bullet("Building package index");
+    let timer = log.start_timer("Processing package files");
+    let package_index = build_package_index(
+        updated_sources
+            .into_iter()
+            .flat_map(|updated_source| updated_source.package_indexes)
+            .collect(),
+    )
+    .await?;
+    let log = timer.done();
+
+    let log = log
+        .sub_bullet(format!(
+            "Indexed {} packages",
+            package_index.packages_indexed
+        ))
+        .done();
+
+    Ok((package_index, log))
 }
 
 async fn update_sources(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
     sources: &[Source],
-) -> BuildpackResult<Vec<(RepositoryUri, PathBuf)>> {
+) -> BuildpackResult<Vec<UpdatedSource>> {
     if sources.is_empty() {
         Err(CreatePackageIndexError::NoSources)?;
     }
@@ -89,11 +164,9 @@ async fn update_sources(
 
     let mut updated_sources = vec![];
     while let Some(update_source_handle) = update_source_handles.join_next().await {
-        for updated_source in
-            update_source_handle.map_err(CreatePackageIndexError::TaskFailed)??
-        {
-            updated_sources.push(updated_source);
-        }
+        let updated_source =
+            update_source_handle.map_err(CreatePackageIndexError::TaskFailed)??;
+        updated_sources.push(updated_source);
     }
 
     Ok(updated_sources)
@@ -102,20 +175,37 @@ async fn update_sources(
 async fn update_source(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
-    uri: RepositoryUri,
+    repository_uri: RepositoryUri,
     suite: String,
     components: Vec<String>,
     arch: ArchitectureName,
     signed_by: String,
-) -> BuildpackResult<Vec<(RepositoryUri, PathBuf)>> {
-    let release = get_release(
+) -> BuildpackResult<UpdatedSource> {
+    let updated_release_file = get_release(
         context.clone(),
         client.clone(),
-        uri.clone(),
+        repository_uri.clone(),
         suite.clone(),
         signed_by,
     )
     .await?;
+
+    let release = async_read_to_string(&updated_release_file.release_file_path)
+        .await
+        .map_err(|e| {
+            CreatePackageIndexError::ReadReleaseFile(
+                updated_release_file.release_file_path.clone(),
+                e,
+            )
+        })
+        .and_then(|release_data| {
+            Release::from(&release_data).map_err(|e| {
+                CreatePackageIndexError::ParseReleaseFile(
+                    updated_release_file.release_file_path.clone(),
+                    e,
+                )
+            })
+        })?;
 
     let mut get_package_list_handles = JoinSet::new();
 
@@ -125,44 +215,47 @@ async fn update_source(
             .sha256sum
             .as_ref()
             .ok_or(CreatePackageIndexError::MissingSha256ReleaseHashes(
-                uri.clone(),
+                repository_uri.clone(),
             ))?
             .iter()
             .find(|release_hash| release_hash.filename == package_index)
             .ok_or(CreatePackageIndexError::MissingPackageIndexReleaseHash(
-                uri.clone(),
+                repository_uri.clone(),
                 package_index,
             ))?;
 
         let package_release_url = if release.acquire_by_hash.unwrap_or_default() {
             format!(
                 "{}/dists/{suite}/{component}/binary-{arch}/by-hash/SHA256/{}",
-                uri.as_str(),
+                repository_uri.as_str(),
                 package_index_release_hash.hash
             )
         } else {
             format!(
                 "{}/dists/{suite}/{component}/binary-{arch}/Packages.gz",
-                uri.as_str()
+                repository_uri.as_str()
             )
         };
 
         get_package_list_handles.spawn(get_package_list(
             context.clone(),
             client.clone(),
+            repository_uri.clone(),
             package_release_url,
             package_index_release_hash.hash.to_string(),
         ));
     }
 
-    let mut results = vec![];
+    let mut updated_package_indexes = vec![];
     while let Some(get_package_list_handle) = get_package_list_handles.join_next().await {
-        results.push((
-            uri.clone(),
-            get_package_list_handle.map_err(CreatePackageIndexError::TaskFailed)??,
-        ));
+        updated_package_indexes
+            .push(get_package_list_handle.map_err(CreatePackageIndexError::TaskFailed)??);
     }
-    Ok(results)
+
+    Ok(UpdatedSource {
+        release_file: updated_release_file,
+        package_indexes: updated_package_indexes,
+    })
 }
 
 async fn get_release(
@@ -171,11 +264,11 @@ async fn get_release(
     uri: RepositoryUri,
     suite: String,
     signed_by: String,
-) -> BuildpackResult<Release> {
-    let release_url = format!("{}/dists/{suite}/InRelease", uri.as_str());
+) -> BuildpackResult<UpdatedReleaseFile> {
+    let release_file_url = format!("{}/dists/{suite}/InRelease", uri.as_str());
 
     let response = client
-        .get(&release_url)
+        .get(&release_file_url)
         .send()
         .await
         .and_then(|res| res.error_for_status().map_err(Reqwest))
@@ -183,8 +276,8 @@ async fn get_release(
 
     // it would be nice to use the url as the layer name but urls don't make for good file names
     // so instead we'll convert the url to a sha256 hex value
-    let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&release_url)))
-        .map_err(|e| CreatePackageIndexError::InvalidLayerName(release_url.clone(), e))?;
+    let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&release_file_url)))
+        .map_err(|e| CreatePackageIndexError::InvalidLayerName(release_file_url.clone(), e))?;
 
     let new_metadata = ReleaseFileMetadata {
         etag: response.headers().get(ETAG).and_then(|header_value| {
@@ -214,19 +307,17 @@ async fn get_release(
 
     let release_file_path = release_file_layer.path().join("release");
 
-    match release_file_layer.state {
-        LayerState::Restored { .. } => {
-            println!("  [CACHED] {url}", url = &release_url);
-        }
-        LayerState::Empty { .. } => {
+    let cache_state = match release_file_layer.state {
+        LayerState::Restored { .. } => UpdatedSourceCacheState::Cached,
+        LayerState::Empty { cause } => {
             release_file_layer.write_metadata(new_metadata)?;
 
             let raw_release_url_path = release_file_layer.path().join(".url");
-            async_write(&raw_release_url_path, &release_url)
+            async_write(&raw_release_url_path, &release_file_url)
                 .await
                 .map_err(|e| CreatePackageIndexError::WriteReleaseLayer(raw_release_url_path, e))?;
 
-            println!("  [GET] {url}", url = &release_url);
+            // println!("  [GET] {url}", url = &release_url);
 
             let unverified_response_body = response
                 .text()
@@ -259,28 +350,37 @@ async fn get_release(
             async_copy(&mut reader, &mut writer).await.map_err(|e| {
                 CreatePackageIndexError::WriteReleaseLayer(release_file_path.clone(), e)
             })?;
+
+            match cause {
+                EmptyLayerCause::NewlyCreated => UpdatedSourceCacheState::New,
+                EmptyLayerCause::InvalidMetadataAction { .. } => {
+                    UpdatedSourceCacheState::Invalidated("Invalid metadata".to_string())
+                }
+                EmptyLayerCause::RestoredLayerAction { .. } => {
+                    UpdatedSourceCacheState::Invalidated("Stored ETag did not match".to_string())
+                }
+            }
         }
     };
 
-    Ok(async_read_to_string(&release_file_path)
-        .await
-        .map_err(|e| CreatePackageIndexError::ReadReleaseFile(release_file_path.clone(), e))
-        .and_then(|release_data| {
-            Release::from(&release_data)
-                .map_err(|e| CreatePackageIndexError::ParseReleaseFile(release_file_path, e))
-        })?)
+    Ok(UpdatedReleaseFile {
+        release_file_url,
+        release_file_path,
+        cache_state,
+    })
 }
 
 async fn get_package_list(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
-    package_release_url: String,
+    repository_uri: RepositoryUri,
+    package_index_url: String,
     hash: String,
-) -> BuildpackResult<PathBuf> {
+) -> BuildpackResult<UpdatedPackageIndex> {
     // it would be nice to use the url as the layer name but urls don't make for good file names
     // so instead we'll convert the url to a sha256 hex value
-    let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&package_release_url)))
-        .map_err(|e| CreatePackageIndexError::InvalidLayerName(package_release_url.clone(), e))?;
+    let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&package_index_url)))
+        .map_err(|e| CreatePackageIndexError::InvalidLayerName(package_index_url.clone(), e))?;
 
     let new_metadata = PackageIndexMetadata {
         hash: hash.to_string(),
@@ -304,24 +404,20 @@ async fn get_package_list(
 
     let package_index_path = package_index_layer.path().join("package_index");
 
-    match package_index_layer.state {
-        LayerState::Restored { .. } => {
-            println!("  [CACHED] {url}", url = &package_release_url);
-        }
-        LayerState::Empty { .. } => {
-            println!("  [GET] {url}", url = &package_release_url);
-
+    let cache_state = match package_index_layer.state {
+        LayerState::Restored { .. } => UpdatedSourceCacheState::Cached,
+        LayerState::Empty { cause } => {
             package_index_layer.write_metadata(new_metadata)?;
 
             let package_index_url_path = package_index_layer.path().join(".url");
-            async_write(&package_index_url_path, &package_release_url)
+            async_write(&package_index_url_path, &package_index_url)
                 .await
                 .map_err(|e| {
                     CreatePackageIndexError::WritePackagesLayer(package_index_url_path, e)
                 })?;
 
             let response = client
-                .get(&package_release_url)
+                .get(&package_index_url)
                 .send()
                 .await
                 .and_then(|res| res.error_for_status().map_err(Reqwest))
@@ -371,23 +467,40 @@ async fn get_package_list(
 
             if hash != calculated_hash {
                 Err(CreatePackageIndexError::ChecksumFailed {
-                    url: package_release_url,
+                    url: package_index_url.clone(),
                     expected: hash,
                     actual: calculated_hash,
                 })?;
             }
+
+            match cause {
+                EmptyLayerCause::NewlyCreated => UpdatedSourceCacheState::New,
+                EmptyLayerCause::InvalidMetadataAction { .. } => {
+                    UpdatedSourceCacheState::Invalidated("Invalid metadata".to_string())
+                }
+                EmptyLayerCause::RestoredLayerAction { .. } => {
+                    UpdatedSourceCacheState::Invalidated(
+                        "Stored checksum did not match".to_string(),
+                    )
+                }
+            }
         }
     };
 
-    Ok(package_index_path)
+    Ok(UpdatedPackageIndex {
+        repository_uri,
+        package_index_path,
+        package_index_url,
+        cache_state,
+    })
 }
 
 async fn build_package_index(
-    updated_sources: Vec<(RepositoryUri, PathBuf)>,
+    updated_sources: Vec<UpdatedPackageIndex>,
 ) -> BuildpackResult<PackageIndex> {
     let mut get_packages_handles = JoinSet::new();
-    for (repository, package_index_path) in updated_sources {
-        get_packages_handles.spawn(read_packages(repository, package_index_path));
+    for update_source in updated_sources {
+        get_packages_handles.spawn(read_packages(update_source));
     }
 
     let mut package_index = PackageIndex::default();
@@ -404,12 +517,13 @@ async fn build_package_index(
 // NOTE: Rayon is used here since this is a fairly CPU-intensive operation.
 //       See - https://ryhl.io/blog/async-what-is-blocking/
 async fn read_packages(
-    repository_uri: RepositoryUri,
-    package_index_path: PathBuf,
+    updated_source: UpdatedPackageIndex,
 ) -> BuildpackResult<Vec<RepositoryPackage>> {
-    let contents = async_read_to_string(&package_index_path)
+    let contents = async_read_to_string(&updated_source.package_index_path)
         .await
-        .map_err(|e| CreatePackageIndexError::ReadPackagesFile(package_index_path.clone(), e))?
+        .map_err(|e| {
+            CreatePackageIndexError::ReadPackagesFile(updated_source.package_index_path.clone(), e)
+        })?
         .replace("\r\n", "\n")
         .replace('\0', "");
 
@@ -421,8 +535,11 @@ async fn read_packages(
             .par_bridge()
             .into_par_iter()
             .partition_map(|package_data| {
-                RepositoryPackage::parse_parallel(repository_uri.clone(), package_data)
-                    .map_or_else(Either::Left, Either::Right)
+                RepositoryPackage::parse_parallel(
+                    updated_source.repository_uri.clone(),
+                    package_data,
+                )
+                .map_or_else(Either::Left, Either::Right)
             });
         let _ = send.send((packages, errors));
     });
@@ -430,7 +547,10 @@ async fn read_packages(
     if errors.is_empty() {
         Ok(packages)
     } else {
-        Err(CreatePackageIndexError::ParsePackages(package_index_path, errors).into())
+        Err(
+            CreatePackageIndexError::ParsePackages(updated_source.package_index_path, errors)
+                .into(),
+        )
     }
 }
 
@@ -475,4 +595,44 @@ struct PackageIndexMetadata {
 #[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
 struct ReleaseFileMetadata {
     etag: Option<String>,
+}
+
+#[derive(Debug)]
+struct UpdatedSource {
+    release_file: UpdatedReleaseFile,
+    package_indexes: Vec<UpdatedPackageIndex>,
+}
+
+#[derive(Debug)]
+enum UpdatedSourceCacheState {
+    Cached,
+    New,
+    Invalidated(String),
+}
+
+#[derive(Debug)]
+struct UpdatedReleaseFile {
+    release_file_url: String,
+    release_file_path: PathBuf,
+    cache_state: UpdatedSourceCacheState,
+}
+
+#[derive(Debug)]
+struct UpdatedPackageIndex {
+    repository_uri: RepositoryUri,
+    package_index_path: PathBuf,
+    package_index_url: String,
+    cache_state: UpdatedSourceCacheState,
+}
+
+impl Display for UpdatedSourceCacheState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UpdatedSourceCacheState::Cached => write!(f, "cached"),
+            UpdatedSourceCacheState::New => write!(f, "new"),
+            UpdatedSourceCacheState::Invalidated(reason) => {
+                write!(f, "updated {}", style::details(reason))
+            }
+        }
+    }
 }
