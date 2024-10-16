@@ -3,6 +3,8 @@ use std::io::stdout;
 use std::sync::Arc;
 use std::time::Duration;
 
+use bullet_stream::Print;
+use indoc::formatdoc;
 use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
 use libcnb::detect::{DetectContext, DetectResult, DetectResultBuilder};
 use libcnb::generic::{GenericMetadata, GenericPlatform};
@@ -48,14 +50,17 @@ impl Buildpack for DebianPackagesBuildpack {
         if BuildpackConfig::exists(context.app_dir.join("project.toml"))? {
             DetectResultBuilder::pass().build()
         } else {
-            println!("No project.toml file found.");
+            Print::new(stdout())
+                .without_header()
+                .important("No project.toml file found.")
+                .done();
             DetectResultBuilder::fail().build()
         }
     }
 
     fn build(&self, context: BuildContext<Self>) -> libcnb::Result<BuildResult, Self::Error> {
-        println!(
-            "# {buildpack_name} (v{buildpack_version})",
+        let mut log = Print::new(stdout()).h1(format!(
+            "{buildpack_name} (v{buildpack_version})",
             buildpack_name = context
                 .buildpack_descriptor
                 .buildpack
@@ -63,26 +68,24 @@ impl Buildpack for DebianPackagesBuildpack {
                 .as_ref()
                 .expect("buildpack name should be set"),
             buildpack_version = context.buildpack_descriptor.buildpack.version
-        );
-        println!();
+        ));
 
         let config = BuildpackConfig::try_from(context.app_dir.join("project.toml"))?;
 
         if config.install.is_empty() {
-            println!(
-                "{message}",
-                message = "
-No configured packages to install found in project.toml file. You may need to \
-add a list of packages to install in your project.toml like this:
+            log.important(
+                formatdoc! {"
+                    No configured packages to install found in project.toml file. You may need to \
+                add a list of packages to install in your project.toml like this:
 
-[com.heroku.buildpacks.deb-packages]
-install = [
-  \"package-name\",
-]
-            "
-                .trim()
-            );
-            println!();
+                [com.heroku.buildpacks.deb-packages]
+                install = [
+                    \"package-name\",
+                ]
+            " }
+                .trim(),
+            )
+            .done();
             return BuildResultBuilder::new().build();
         }
 
@@ -108,25 +111,29 @@ install = [
             .build()
             .expect("Should be able to construct the Async Runtime");
 
-        println!("## Distribution Info");
-        println!();
-        println!("- Name: {}", &distro.name);
-        println!("- Version: {}", &distro.version);
-        println!("- Codename: {}", &distro.codename);
-        println!("- Architecture: {}", &distro.architecture);
-        println!();
+        log = log
+            .bullet("Distribution Info")
+            .sub_bullet(format!("Name: {}", &distro.name))
+            .sub_bullet(format!("Version: {}", &distro.version))
+            .sub_bullet(format!("Codename: {}", &distro.codename))
+            .sub_bullet(format!("Architecture: {}", &distro.architecture))
+            .done();
 
-        let package_index =
-            runtime.block_on(create_package_index(&shared_context, &client, &distro))?;
+        let (package_index, log) =
+            runtime.block_on(create_package_index(&shared_context, &client, &distro, log))?;
 
-        let packages_to_install = determine_packages_to_install(&package_index, config.install)?;
+        let (packages_to_install, log) =
+            determine_packages_to_install(&package_index, config.install, log)?;
 
-        runtime.block_on(install_packages(
+        let log = runtime.block_on(install_packages(
             &shared_context,
             &client,
             &distro,
             packages_to_install,
+            log,
         ))?;
+
+        log.done();
 
         BuildResultBuilder::new().build()
     }

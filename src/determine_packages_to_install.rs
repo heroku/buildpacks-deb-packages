@@ -1,20 +1,24 @@
-use apt_parser::Control;
-use indexmap::{IndexMap, IndexSet};
-use std::collections::{HashMap, HashSet};
-use std::fs::read_to_string;
-use std::path::PathBuf;
-
 use crate::config::RequestedPackage;
 use crate::debian::{PackageIndex, RepositoryPackage};
 use crate::{BuildpackResult, DebianPackagesBuildpackError};
+use apt_parser::Control;
+use bullet_stream::state::Bullet;
+use bullet_stream::{style, Print};
+use indexmap::{IndexMap, IndexSet};
+use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
+use std::fs::read_to_string;
+use std::io::Stdout;
+use std::path::PathBuf;
 
 pub(crate) fn determine_packages_to_install(
     package_index: &PackageIndex,
     requested_packages: IndexSet<RequestedPackage>,
-) -> BuildpackResult<Vec<RepositoryPackage>> {
-    println!("## Determining packages to install");
-    println!();
+    mut log: Print<Bullet<Stdout>>,
+) -> BuildpackResult<(Vec<RepositoryPackage>, Print<Bullet<Stdout>>)> {
+    log = log.h2("Determining packages to install");
 
+    let sub_bullet = log.bullet("Collecting system install information");
     let system_packages_path = PathBuf::from("/var/lib/dpkg/status");
     let system_packages = read_to_string(&system_packages_path)
         .map_err(|e| {
@@ -34,26 +38,51 @@ pub(crate) fn determine_packages_to_install(
                 .map(|control| (control.package.to_string(), control))
         })
         .collect::<Result<HashMap<_, _>, _>>()?;
+    log = sub_bullet.done();
 
-    let mut install_details = IndexMap::new();
+    let mut system_install_details = IndexMap::new();
+    let mut warnings = Vec::new();
     for requested_package in requested_packages {
+        let mut install_log = log.bullet(format!(
+            "Determining install requirements for requested package {package}",
+            package = style::value(requested_package.name.as_str())
+        ));
         let mut visit_stack = IndexSet::new();
+        let mut package_install_details = IndexMap::new();
+
         visit(
             requested_package.name.as_str(),
             requested_package.skip_dependencies,
             &mut visit_stack,
-            &mut install_details,
+            &mut package_install_details,
+            &system_install_details,
+            &mut warnings,
             &system_packages,
             package_index,
         )?;
+
+        if package_install_details.is_empty() {
+            install_log = install_log.sub_bullet("Nothing to add");
+        } else {
+            for (name, install_record) in package_install_details {
+                install_log = install_log.sub_bullet(install_record.to_string());
+                system_install_details.insert(name, install_record);
+            }
+        }
+
+        log = install_log.done();
     }
-    let packages_to_install = install_details
+
+    for warning in warnings {
+        log = log.warning(warning.to_string());
+    }
+
+    let packages_to_install = system_install_details
         .into_iter()
         .map(|(_, install_record)| install_record.repository_package)
         .collect();
 
-    println!();
-    Ok(packages_to_install)
+    Ok((packages_to_install, log))
 }
 
 // NOTE: Since this buildpack is not meant to be a replacement for a fully-featured dependency
@@ -76,66 +105,56 @@ pub(crate) fn determine_packages_to_install(
 //       The dependency solving done here is mostly for convenience. Any transitive packages added
 //       will be reported to the user and, if they aren't correct, the user may disable this dependency
 //       resolution on a per-package basis and specify a more appropriate set of packages.
+#[allow(clippy::too_many_arguments)]
 fn visit(
     package: &str,
     skip_dependencies: bool,
     visit_stack: &mut IndexSet<String>,
-    install_details: &mut IndexMap<String, InstallRecord>,
+    package_install_details: &mut IndexMap<String, InstallRecord>,
+    system_install_details: &IndexMap<String, InstallRecord>,
+    warnings: &mut Vec<DependencyWarning>,
     system_packages: &HashMap<String, Control>,
     package_index: &PackageIndex,
 ) -> BuildpackResult<()> {
+    // check if this package is already on the system
     if let Some(system_package) = system_packages.get(package) {
         // only show this message if the package is a top-level dependency
         if visit_stack.is_empty() {
-            println!(
-                "  ! Skipping {package} because {name}@{version} is already installed on the system (consider removing {package} from your project.toml configuration for this buildpack)",
-                name = system_package.package,
-                version = system_package.version
-            );
+            warnings.push(DependencyWarning::AlreadyInstalledOnSystem {
+                requested_package: package.to_string(),
+                system_package_name: system_package.package.clone(),
+                system_package_version: system_package.version.clone(),
+            });
         }
         return Ok(());
     }
 
-    if let Some(install_record) = install_details.get(package) {
+    // check if the package is already marked to be installed on the system
+    if let Some(install_record) = system_install_details.get(package) {
         // only show this message if the package is a top-level dependency
         if visit_stack.is_empty() {
-            println!(
-                "  ! Skipping {package} because {name}@{version} was already installed as a dependency of {top_level_dependency} (consider removing {package} from your project.toml configuration for this buildpack)",
-                name = install_record.repository_package.name,
-                version = install_record.repository_package.version,
-                top_level_dependency = install_record.dependency_path.first().expect("The dependency path should always have at least 1 item")
-            );
+            warnings.push(DependencyWarning::AlreadyInstalledByOtherPackage {
+                requested_package: package.to_string(),
+                installed_package: install_record.repository_package.clone(),
+                installed_by: install_record
+                    .dependency_path
+                    .first()
+                    .expect("The dependency path should always have at least 1 item")
+                    .clone(),
+            });
         }
         return Ok(());
     }
 
     if let Some(package) = package_index.get_highest_available_version(package) {
-        if visit_stack.is_empty() {
-            println!(
-                "  Adding {name}@{version}",
-                name = package.name,
-                version = package.version
-            );
-        } else {
-            println!(
-                "  Adding {name}@{version} [from {path}]",
-                name = package.name,
-                version = package.version,
-                path = visit_stack
-                    .iter()
-                    .rev()
-                    .cloned()
-                    .collect::<Vec<_>>()
-                    .join(" ← ")
-            );
-        }
-        install_details.insert(
+        package_install_details.insert(
             package.name.to_string(),
             InstallRecord {
                 repository_package: package.clone(),
                 dependency_path: visit_stack.iter().cloned().collect(),
             },
         );
+
         visit_stack.insert(package.name.to_string());
 
         if !skip_dependencies {
@@ -144,13 +163,15 @@ fn visit(
                 // on the system because it'll just cause a bunch of noisy output. We only want
                 // output details about requested packages and any transitive dependencies added.
                 let already_processed = system_packages.contains_key(dependency)
-                    || install_details.contains_key(dependency);
+                    || package_install_details.contains_key(dependency);
                 if !already_processed {
                     visit(
                         dependency,
                         skip_dependencies,
                         visit_stack,
-                        install_details,
+                        package_install_details,
+                        system_install_details,
+                        warnings,
                         system_packages,
                         package_index,
                     )?;
@@ -161,12 +182,14 @@ fn visit(
         visit_stack.shift_remove(&package.name);
     } else {
         let virtual_package_provider =
-            get_provider_for_virtual_package(package, package_index, visit_stack)?;
+            get_provider_for_virtual_package(package, package_index, visit_stack, warnings)?;
         visit(
             virtual_package_provider.name.as_str(),
             skip_dependencies,
             visit_stack,
-            install_details,
+            package_install_details,
+            system_install_details,
+            warnings,
             system_packages,
             package_index,
         )?;
@@ -179,6 +202,7 @@ fn get_provider_for_virtual_package<'a>(
     package: &str,
     package_index: &'a PackageIndex,
     visit_stack: &IndexSet<String>,
+    warnings: &mut Vec<DependencyWarning>,
 ) -> BuildpackResult<&'a RepositoryPackage> {
     let providers = package_index.get_providers(package);
     Ok(match providers.iter().collect::<Vec<_>>().as_slice() {
@@ -188,14 +212,15 @@ fn get_provider_for_virtual_package<'a>(
                 .inspect(|repository_package| {
                     // only show this message if the package is a top-level dependency
                     if visit_stack.is_empty() {
-                        println!(
-                            "  ! Virtual package {package} is provided by {name}@{version} (consider replacing {package} for {name} in your project.toml configuration for this buildpack)",
-                            name = repository_package.name,
-                            version = repository_package.version
-                        );
+                        warnings.push(DependencyWarning::VirtualPackageHasOnlyOneImplementor {
+                            requested_package: package.to_string(),
+                            implementor: (*repository_package).clone(),
+                        });
                     }
                 })
-                .ok_or(DeterminePackagesToInstallError::PackageNotFound(package.to_string()))
+                .ok_or(DeterminePackagesToInstallError::PackageNotFound(
+                    package.to_string(),
+                ))
         }
         [] => Err(DeterminePackagesToInstallError::PackageNotFound(
             package.to_string(),
@@ -232,6 +257,81 @@ impl From<DeterminePackagesToInstallError> for libcnb::Error<DebianPackagesBuild
 struct InstallRecord {
     repository_package: RepositoryPackage,
     dependency_path: Vec<String>,
+}
+
+impl Display for InstallRecord {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.dependency_path.is_empty() {
+            write!(
+                f,
+                "Adding {name_with_version}",
+                name_with_version = style::value(format!(
+                    "{name}@{version}",
+                    name = self.repository_package.name,
+                    version = self.repository_package.version
+                ))
+            )
+        } else {
+            write!(
+                f,
+                "Adding {name_with_version} [from {path}]",
+                name_with_version = style::value(format!(
+                    "{name}@{version}",
+                    name = self.repository_package.name,
+                    version = self.repository_package.version
+                )),
+                path = self
+                    .dependency_path
+                    .iter()
+                    .rev()
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(" ← ")
+            )
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum DependencyWarning {
+    AlreadyInstalledOnSystem {
+        requested_package: String,
+        system_package_name: String,
+        system_package_version: String,
+    },
+    AlreadyInstalledByOtherPackage {
+        requested_package: String,
+        installed_package: RepositoryPackage,
+        installed_by: String,
+    },
+    VirtualPackageHasOnlyOneImplementor {
+        requested_package: String,
+        implementor: RepositoryPackage,
+    },
+}
+
+impl Display for DependencyWarning {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DependencyWarning::AlreadyInstalledOnSystem { requested_package, system_package_name, system_package_version } => write!(f,
+                "Skipping {package} because {name_with_version} is already installed on the system (consider removing {package} from your project.toml configuration for this buildpack)",
+                package = style::value(requested_package),
+                name_with_version = style::value(format!("{system_package_name}@{system_package_version}")),
+            ),
+            DependencyWarning::AlreadyInstalledByOtherPackage { requested_package, installed_package, installed_by } => write!(f,
+                "Skipping {package} because {name_with_version} was already installed as a dependency of {installed_by} (consider removing {package} from your project.toml configuration for this buildpack)",
+                package = style::value(requested_package),
+                name_with_version = style::value(format!("{name}@{version}", name = &installed_package.name, version = &installed_package.version)),
+                installed_by = style::value(installed_by),
+            ),
+            DependencyWarning::VirtualPackageHasOnlyOneImplementor { requested_package, implementor } => write!(f,
+                "Virtual package {package} is provided by {name_with_version} (consider replacing {package} with {name} in your project.toml configuration for this buildpack)",
+                package = style::value(requested_package),
+                name_with_version = style::value(format!("{name}@{version}", name = &implementor.name, version = &implementor.version)),
+                name = style::value(&implementor.name)
+            )
+        }
+    }
 }
 
 #[cfg(test)]
@@ -275,10 +375,7 @@ mod test {
             .call()
             .unwrap();
 
-        assert_eq!(
-            installed_package_names(&install_state),
-            vec!["package-a", "package-b"]
-        );
+        assert!(installed_package_names(&install_state).is_empty());
     }
 
     #[test]
@@ -526,7 +623,7 @@ mod test {
             package_index.add_package(value.clone());
         }
 
-        let mut install_state = with_installed
+        let system_install_state = with_installed
             .unwrap_or_default()
             .into_iter()
             .map(|repository_package| {
@@ -540,9 +637,13 @@ mod test {
             })
             .collect();
 
+        let mut package_install_state = IndexMap::new();
+
         let skip_dependencies = skip_dependencies.unwrap_or(false);
 
         let mut visit_stack = IndexSet::new();
+
+        let mut warnings = vec![];
 
         let system_packages = with_system_packages
             .unwrap_or_default()
@@ -563,11 +664,13 @@ mod test {
             package_to_install,
             skip_dependencies,
             &mut visit_stack,
-            &mut install_state,
+            &mut package_install_state,
+            &system_install_state,
+            &mut warnings,
             &system_packages,
             &package_index,
         )
-        .map(|()| install_state)
+        .map(|()| package_install_state)
     }
 
     #[builder]

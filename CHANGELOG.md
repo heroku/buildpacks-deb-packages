@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated the buildpack display name and keywords to be more consistent with our other CNBs. ([#59](https://github.com/heroku/buildpacks-deb-packages/pull/59))
+- Updated the buildpack display name and keywords to be more consistent with our other
+  CNBs. ([#59](https://github.com/heroku/buildpacks-deb-packages/pull/59))
+- Modified the buildpack output format to align with our other
+  CNBs. ([#60](https://github.com/heroku/buildpacks-deb-packages/pull/60))
 
 ## [0.0.1] - 2024-10-10
 
@@ -18,4 +21,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release.
 
 [unreleased]: https://github.com/heroku/buildpacks-deb-packages/compare/v0.0.1...HEAD
+
 [0.0.1]: https://github.com/heroku/buildpacks-deb-packages/releases/tag/v0.0.1

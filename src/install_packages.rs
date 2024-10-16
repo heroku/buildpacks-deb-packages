@@ -2,20 +2,22 @@ use std::collections::HashMap;
 use std::env::temp_dir;
 use std::ffi::OsString;
 use std::fs::File;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Stdout, Write};
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use ar::Archive as ArArchive;
 use async_compression::tokio::bufread::{GzipDecoder, XzDecoder, ZstdDecoder};
+use bullet_stream::state::Bullet;
+use bullet_stream::{style, Print};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
 use indexmap::IndexSet;
 use libcnb::build::BuildContext;
 use libcnb::data::layer_name;
 use libcnb::layer::{
-    CachedLayerDefinition, InvalidMetadataAction, LayerState, RestoredLayerAction,
+    CachedLayerDefinition, EmptyLayerCause, InvalidMetadataAction, LayerState, RestoredLayerAction,
 };
 use libcnb::layer_env::{LayerEnv, ModificationBehavior, Scope};
 use reqwest_middleware::ClientWithMiddleware;
@@ -38,9 +40,9 @@ pub(crate) async fn install_packages(
     client: &ClientWithMiddleware,
     distro: &Distro,
     packages_to_install: Vec<RepositoryPackage>,
-) -> BuildpackResult<()> {
-    println!("## Installing packages");
-    println!();
+    mut log: Print<Bullet<Stdout>>,
+) -> BuildpackResult<Print<Bullet<Stdout>>> {
+    log = log.h2("Installing packages");
 
     let new_metadata = InstallationMetadata {
         package_checksums: packages_to_install
@@ -68,11 +70,45 @@ pub(crate) async fn install_packages(
 
     match install_layer.state {
         LayerState::Restored { .. } => {
-            for repository_package in packages_to_install {
-                println!("  Restoring {} from cache", repository_package.name);
-            }
+            log = packages_to_install
+                .iter()
+                .fold(
+                    log.bullet("Restoring packages from cache"),
+                    |log, package_to_install| {
+                        log.sub_bullet(style::value(format!(
+                            "{name}@{version}",
+                            name = package_to_install.name,
+                            version = package_to_install.version
+                        )))
+                    },
+                )
+                .done();
         }
-        LayerState::Empty { .. } => {
+        LayerState::Empty { cause } => {
+            let install_log = packages_to_install.iter().fold(
+                log.bullet(match cause {
+                    EmptyLayerCause::NewlyCreated => "Requesting packages",
+                    EmptyLayerCause::InvalidMetadataAction { .. } => {
+                        "Requesting packages (invalid metadata)"
+                    }
+                    EmptyLayerCause::RestoredLayerAction { .. } => {
+                        "Requesting packages (packages changed)"
+                    }
+                }),
+                |log, package_to_install| {
+                    log.sub_bullet(format!(
+                        "{name_with_version} from {url}",
+                        name_with_version = style::value(format!(
+                            "{name}@{version}",
+                            name = package_to_install.name,
+                            version = package_to_install.version
+                        )),
+                        url = style::url(build_download_url(package_to_install))
+                    ))
+                },
+            );
+
+            let timer = install_log.start_timer("Downloading");
             install_layer.write_metadata(new_metadata)?;
 
             let mut download_and_extract_handles = JoinSet::new();
@@ -90,6 +126,8 @@ pub(crate) async fn install_packages(
             {
                 download_and_extract_handle.map_err(InstallPackagesError::TaskFailed)??;
             }
+
+            log = timer.done().done();
         }
     }
 
@@ -102,8 +140,33 @@ pub(crate) async fn install_packages(
 
     rewrite_package_configs(&install_layer.path()).await?;
 
-    println!();
-    Ok(())
+    log = print_layer_contents(&install_layer.path(), log);
+
+    Ok(log)
+}
+
+fn print_layer_contents(install_path: &Path, log: Print<Bullet<Stdout>>) -> Print<Bullet<Stdout>> {
+    let mut directory_log = log
+        .bullet("Installation complete")
+        .start_stream("Layer file listing");
+    WalkDir::new(install_path)
+        .into_iter()
+        .flatten()
+        .filter(|entry| {
+            // filter out the env layer that's created for CNB environment files
+            if let Some(parent) = entry.path().parent() {
+                if parent == install_path.join("env") {
+                    return false;
+                }
+            }
+            entry.file_type().is_file()
+        })
+        .map(|entry| entry.path().to_path_buf())
+        .for_each(|path| {
+            let _ = writeln!(&mut directory_log, "{}", path.to_string_lossy());
+        });
+    let _ = writeln!(&mut directory_log);
+    directory_log.done().done()
 }
 
 async fn download_and_extract(
@@ -111,7 +174,6 @@ async fn download_and_extract(
     repository_package: RepositoryPackage,
     install_dir: PathBuf,
 ) -> BuildpackResult<()> {
-    println!("  Downloading and extracting {}", repository_package.name);
     let download_path = download(client, &repository_package).await?;
     extract(download_path, install_dir).await
 }
@@ -120,11 +182,7 @@ async fn download(
     client: ClientWithMiddleware,
     repository_package: &RepositoryPackage,
 ) -> BuildpackResult<PathBuf> {
-    let download_url = format!(
-        "{}/{}",
-        repository_package.repository_uri.as_str(),
-        repository_package.filename.as_str()
-    );
+    let download_url = build_download_url(repository_package);
 
     let download_file_name = PathBuf::from(repository_package.filename.as_str())
         .file_name()
@@ -404,6 +462,14 @@ async fn rewrite_package_config(package_config: &Path, install_path: &Path) -> B
     Ok(async_write(package_config, new_contents)
         .await
         .map_err(|e| InstallPackagesError::WritePackageConfig(package_config.to_path_buf(), e))?)
+}
+
+fn build_download_url(repository_package: &RepositoryPackage) -> String {
+    format!(
+        "{}/{}",
+        repository_package.repository_uri.as_str(),
+        repository_package.filename.as_str()
+    )
 }
 
 #[derive(Debug)]
