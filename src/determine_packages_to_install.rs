@@ -4,8 +4,8 @@ use crate::{BuildpackResult, DebianPackagesBuildpackError};
 use apt_parser::Control;
 use bullet_stream::state::Bullet;
 use bullet_stream::{style, Print};
-use indexmap::{IndexMap, IndexSet};
-use std::collections::{HashMap, HashSet};
+use indexmap::IndexSet;
+use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::fs::read_to_string;
 use std::io::Stdout;
@@ -35,51 +35,45 @@ pub(crate) fn determine_packages_to_install(
                         e,
                     )
                 })
-                .map(|control| (control.package.to_string(), control))
+                .map(SystemPackage::from)
         })
-        .collect::<Result<HashMap<_, _>, _>>()?;
+        .collect::<Result<IndexSet<_>, _>>()?;
     log = sub_bullet.done();
 
-    let mut system_install_details = IndexMap::new();
-    let mut warnings = Vec::new();
+    let mut packages_marked_for_install = IndexSet::new();
+
     for requested_package in requested_packages {
-        let mut install_log = log.bullet(format!(
+        let mut notification_log = log.bullet(format!(
             "Determining install requirements for requested package {package}",
             package = style::value(requested_package.name.as_str())
         ));
         let mut visit_stack = IndexSet::new();
-        let mut package_install_details = IndexMap::new();
+        let mut package_notifications = IndexSet::new();
 
         visit(
             requested_package.name.as_str(),
             requested_package.skip_dependencies,
-            &mut visit_stack,
-            &mut package_install_details,
-            &system_install_details,
-            &mut warnings,
             &system_packages,
             package_index,
+            &mut packages_marked_for_install,
+            &mut visit_stack,
+            &mut package_notifications,
         )?;
 
-        if package_install_details.is_empty() {
-            install_log = install_log.sub_bullet("Nothing to add");
+        if package_notifications.is_empty() {
+            notification_log = notification_log.sub_bullet("Nothing to add");
         } else {
-            for (name, install_record) in package_install_details {
-                install_log = install_log.sub_bullet(install_record.to_string());
-                system_install_details.insert(name, install_record);
+            for package_notification in package_notifications {
+                notification_log = notification_log.sub_bullet(package_notification.to_string());
             }
         }
 
-        log = install_log.done();
+        log = notification_log.done();
     }
 
-    for warning in warnings {
-        log = log.warning(warning.to_string());
-    }
-
-    let packages_to_install = system_install_details
+    let packages_to_install = packages_marked_for_install
         .into_iter()
-        .map(|(_, install_record)| install_record.repository_package)
+        .map(|package_marked_for_install| package_marked_for_install.repository_package)
         .collect();
 
     Ok((packages_to_install, log))
@@ -105,94 +99,81 @@ pub(crate) fn determine_packages_to_install(
 //       The dependency solving done here is mostly for convenience. Any transitive packages added
 //       will be reported to the user and, if they aren't correct, the user may disable this dependency
 //       resolution on a per-package basis and specify a more appropriate set of packages.
-#[allow(clippy::too_many_arguments)]
 fn visit(
     package: &str,
     skip_dependencies: bool,
-    visit_stack: &mut IndexSet<String>,
-    package_install_details: &mut IndexMap<String, InstallRecord>,
-    system_install_details: &IndexMap<String, InstallRecord>,
-    warnings: &mut Vec<DependencyWarning>,
-    system_packages: &HashMap<String, Control>,
+    system_packages: &IndexSet<SystemPackage>,
     package_index: &PackageIndex,
+    packages_marked_for_install: &mut IndexSet<PackageMarkedForInstall>,
+    visit_stack: &mut IndexSet<String>,
+    package_notifications: &mut IndexSet<PackageNotification>,
 ) -> BuildpackResult<()> {
-    // check if this package is already on the system
-    if let Some(system_package) = system_packages.get(package) {
-        // only show this message if the package is a top-level dependency
-        if visit_stack.is_empty() {
-            warnings.push(DependencyWarning::AlreadyInstalledOnSystem {
-                requested_package: package.to_string(),
-                system_package_name: system_package.package.clone(),
-                system_package_version: system_package.version.clone(),
-            });
-        }
+    if let Some(system_package) = find_system_package_by_name(package, system_packages) {
+        package_notifications.insert(PackageNotification::AlreadyInstalledOnSystem {
+            system_package_name: system_package.package_name.clone(),
+            system_package_version: system_package.package_version.clone(),
+        });
         return Ok(());
     }
 
-    // check if the package is already marked to be installed on the system
-    if let Some(install_record) = system_install_details.get(package) {
-        // only show this message if the package is a top-level dependency
-        if visit_stack.is_empty() {
-            warnings.push(DependencyWarning::AlreadyInstalledByOtherPackage {
-                requested_package: package.to_string(),
-                installed_package: install_record.repository_package.clone(),
-                installed_by: install_record
-                    .dependency_path
-                    .first()
-                    .expect("The dependency path should always have at least 1 item")
-                    .clone(),
-            });
-        }
+    if let Some(package_marked_for_install) =
+        find_package_marked_for_install_by_name(package, packages_marked_for_install)
+    {
+        package_notifications.insert(PackageNotification::AlreadyInstalledByOtherPackage {
+            installed_package: package_marked_for_install.repository_package.clone(),
+            installed_by: package_marked_for_install.requested_by.clone(),
+        });
         return Ok(());
     }
 
-    if let Some(package) = package_index.get_highest_available_version(package) {
-        package_install_details.insert(
-            package.name.to_string(),
-            InstallRecord {
-                repository_package: package.clone(),
-                dependency_path: visit_stack.iter().cloned().collect(),
-            },
-        );
+    if let Some(repository_package) = package_index.get_highest_available_version(package) {
+        packages_marked_for_install.insert(PackageMarkedForInstall {
+            repository_package: repository_package.clone(),
+            requested_by: visit_stack.first().cloned().unwrap_or(package.to_string()),
+        });
 
-        visit_stack.insert(package.name.to_string());
+        package_notifications.insert(PackageNotification::Added {
+            repository_package: repository_package.clone(),
+            dependency_path: visit_stack.iter().cloned().collect(),
+        });
+
+        visit_stack.insert(repository_package.name.to_string());
 
         if !skip_dependencies {
-            for dependency in package.get_dependencies() {
-                // Don't bother looking at any dependencies we've already seen or that are already
-                // on the system because it'll just cause a bunch of noisy output. We only want
-                // output details about requested packages and any transitive dependencies added.
-                let already_processed = system_packages.contains_key(dependency)
-                    || package_install_details.contains_key(dependency);
-                if !already_processed {
+            for dependency in repository_package.get_dependencies() {
+                if should_visit_dependency(dependency, system_packages, packages_marked_for_install)
+                {
                     visit(
                         dependency,
                         skip_dependencies,
-                        visit_stack,
-                        package_install_details,
-                        system_install_details,
-                        warnings,
                         system_packages,
                         package_index,
+                        packages_marked_for_install,
+                        visit_stack,
+                        package_notifications,
                     )?;
                 }
             }
         }
 
-        visit_stack.shift_remove(&package.name);
+        visit_stack.shift_remove(&repository_package.name);
     } else {
         let virtual_package_provider =
-            get_provider_for_virtual_package(package, package_index, visit_stack, warnings)?;
+            get_provider_for_virtual_package(package, package_index, package_notifications)?;
+
+        visit_stack.insert(package.to_string());
+
         visit(
             virtual_package_provider.name.as_str(),
             skip_dependencies,
-            visit_stack,
-            package_install_details,
-            system_install_details,
-            warnings,
             system_packages,
             package_index,
+            packages_marked_for_install,
+            visit_stack,
+            package_notifications,
         )?;
+
+        visit_stack.shift_remove(package);
     }
 
     Ok(())
@@ -201,27 +182,23 @@ fn visit(
 fn get_provider_for_virtual_package<'a>(
     package: &str,
     package_index: &'a PackageIndex,
-    visit_stack: &IndexSet<String>,
-    warnings: &mut Vec<DependencyWarning>,
+    package_install_details: &mut IndexSet<PackageNotification>,
 ) -> BuildpackResult<&'a RepositoryPackage> {
     let providers = package_index.get_providers(package);
     Ok(match providers.iter().collect::<Vec<_>>().as_slice() {
-        [providing_package] => {
-            package_index
-                .get_highest_available_version(providing_package)
-                .inspect(|repository_package| {
-                    // only show this message if the package is a top-level dependency
-                    if visit_stack.is_empty() {
-                        warnings.push(DependencyWarning::VirtualPackageHasOnlyOneImplementor {
-                            requested_package: package.to_string(),
-                            implementor: (*repository_package).clone(),
-                        });
-                    }
-                })
-                .ok_or(DeterminePackagesToInstallError::PackageNotFound(
-                    package.to_string(),
-                ))
-        }
+        [providing_package] => package_index
+            .get_highest_available_version(providing_package)
+            .inspect(|repository_package| {
+                package_install_details.insert(
+                    PackageNotification::VirtualPackageHasOnlyOneImplementor {
+                        requested_package: package.to_string(),
+                        implementor: (*repository_package).clone(),
+                    },
+                );
+            })
+            .ok_or(DeterminePackagesToInstallError::PackageNotFound(
+                package.to_string(),
+            )),
         [] => Err(DeterminePackagesToInstallError::PackageNotFound(
             package.to_string(),
         )),
@@ -235,6 +212,43 @@ fn get_provider_for_virtual_package<'a>(
             ),
         ),
     }?)
+}
+
+fn find_system_package_by_name<'a>(
+    package_name: &str,
+    system_packages: &'a IndexSet<SystemPackage>,
+) -> Option<&'a SystemPackage> {
+    system_packages
+        .iter()
+        .find(|system_package| system_package.package_name == package_name)
+}
+
+fn find_package_marked_for_install_by_name<'a>(
+    package_name: &str,
+    packages_marked_for_install: &'a IndexSet<PackageMarkedForInstall>,
+) -> Option<&'a PackageMarkedForInstall> {
+    packages_marked_for_install
+        .iter()
+        .find(|package_marked_for_install| {
+            package_name == package_marked_for_install.repository_package.name
+        })
+}
+
+fn should_visit_dependency(
+    dependency: &str,
+    system_packages: &IndexSet<SystemPackage>,
+    packages_marked_for_install: &IndexSet<PackageMarkedForInstall>,
+) -> bool {
+    // Don't bother looking at any dependencies we've already seen or that are already
+    // on the system because it'll just cause a bunch of noisy output. We only want
+    // output details about requested packages and any transitive dependencies added.
+    matches!(
+        (
+            find_system_package_by_name(dependency, system_packages),
+            find_package_marked_for_install_by_name(dependency, packages_marked_for_install)
+        ),
+        (None, None)
+    )
 }
 
 #[derive(Debug)]
@@ -253,54 +267,17 @@ impl From<DeterminePackagesToInstallError> for libcnb::Error<DebianPackagesBuild
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct InstallRecord {
-    repository_package: RepositoryPackage,
-    dependency_path: Vec<String>,
-}
-
-impl Display for InstallRecord {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.dependency_path.is_empty() {
-            write!(
-                f,
-                "Adding {name_with_version}",
-                name_with_version = style::value(format!(
-                    "{name}@{version}",
-                    name = self.repository_package.name,
-                    version = self.repository_package.version
-                ))
-            )
-        } else {
-            write!(
-                f,
-                "Adding {name_with_version} [from {path}]",
-                name_with_version = style::value(format!(
-                    "{name}@{version}",
-                    name = self.repository_package.name,
-                    version = self.repository_package.version
-                )),
-                path = self
-                    .dependency_path
-                    .iter()
-                    .rev()
-                    .cloned()
-                    .collect::<Vec<_>>()
-                    .join(" ← ")
-            )
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-enum DependencyWarning {
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+enum PackageNotification {
+    Added {
+        repository_package: RepositoryPackage,
+        dependency_path: Vec<String>,
+    },
     AlreadyInstalledOnSystem {
-        requested_package: String,
         system_package_name: String,
         system_package_version: String,
     },
     AlreadyInstalledByOtherPackage {
-        requested_package: String,
         installed_package: RepositoryPackage,
         installed_by: String,
     },
@@ -310,26 +287,98 @@ enum DependencyWarning {
     },
 }
 
-impl Display for DependencyWarning {
+impl Display for PackageNotification {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            DependencyWarning::AlreadyInstalledOnSystem { requested_package, system_package_name, system_package_version } => write!(f,
-                "Skipping {package} because {name_with_version} is already installed on the system (consider removing {package} from your project.toml configuration for this buildpack)",
-                package = style::value(requested_package),
-                name_with_version = style::value(format!("{system_package_name}@{system_package_version}")),
-            ),
-            DependencyWarning::AlreadyInstalledByOtherPackage { requested_package, installed_package, installed_by } => write!(f,
-                "Skipping {package} because {name_with_version} was already installed as a dependency of {installed_by} (consider removing {package} from your project.toml configuration for this buildpack)",
-                package = style::value(requested_package),
-                name_with_version = style::value(format!("{name}@{version}", name = &installed_package.name, version = &installed_package.version)),
-                installed_by = style::value(installed_by),
-            ),
-            DependencyWarning::VirtualPackageHasOnlyOneImplementor { requested_package, implementor } => write!(f,
-                "Virtual package {package} is provided by {name_with_version} (consider replacing {package} with {name} in your project.toml configuration for this buildpack)",
-                package = style::value(requested_package),
-                name_with_version = style::value(format!("{name}@{version}", name = &implementor.name, version = &implementor.version)),
-                name = style::value(&implementor.name)
-            )
+            PackageNotification::Added {
+                repository_package,
+                dependency_path,
+            } => {
+                if dependency_path.is_empty() {
+                    write!(
+                        f,
+                        "Adding {name_with_version}",
+                        name_with_version = style::value(format!(
+                            "{name}@{version}",
+                            name = repository_package.name,
+                            version = repository_package.version
+                        ))
+                    )
+                } else {
+                    write!(
+                        f,
+                        "Adding {name_with_version} [from {path}]",
+                        name_with_version = style::value(format!(
+                            "{name}@{version}",
+                            name = repository_package.name,
+                            version = repository_package.version
+                        )),
+                        path = dependency_path
+                            .iter()
+                            .rev()
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .join(" ← ")
+                    )
+                }
+            }
+            PackageNotification::AlreadyInstalledOnSystem {
+                system_package_name,
+                system_package_version,
+            } => {
+                write!(f,
+                       "Skipping {package} because {name_with_version} is already installed on the system",
+                       package = style::value(system_package_name),
+                       name_with_version = style::value(format!("{system_package_name}@{system_package_version}")),
+                )
+            }
+            PackageNotification::AlreadyInstalledByOtherPackage {
+                installed_package,
+                installed_by,
+            } => {
+                write!(f,
+                       "Skipping {package} because {name_with_version} was already installed as a dependency of {installed_by}",
+                       package = style::value(&installed_package.name),
+                       name_with_version = style::value(format!("{name}@{version}", name = &installed_package.name, version = &installed_package.version)),
+                       installed_by = style::value(installed_by),
+                )
+            }
+            PackageNotification::VirtualPackageHasOnlyOneImplementor {
+                requested_package,
+                implementor,
+            } => {
+                write!(
+                    f,
+                    "Virtual package {package} is provided by {name_with_version}",
+                    package = style::value(requested_package),
+                    name_with_version = style::value(format!(
+                        "{name}@{version}",
+                        name = &implementor.name,
+                        version = &implementor.version
+                    )),
+                )
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+struct PackageMarkedForInstall {
+    repository_package: RepositoryPackage,
+    requested_by: String,
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+struct SystemPackage {
+    package_name: String,
+    package_version: String,
+}
+
+impl From<Control> for SystemPackage {
+    fn from(value: Control) -> Self {
+        Self {
+            package_name: value.package,
+            package_version: value.version,
         }
     }
 }
@@ -338,7 +387,6 @@ impl Display for DependencyWarning {
 mod test {
     use super::*;
 
-    use std::collections::BTreeSet;
     use std::str::FromStr;
 
     use bon::builder;
@@ -349,14 +397,24 @@ mod test {
     fn install_package_already_on_the_system() {
         let package_a = create_repository_package().name("package-a").call();
 
-        let install_state = test_install_state()
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
             .with_package_index(vec![&package_a])
-            .with_system_packages(vec![&package_a])
+            .with_system_packages(IndexSet::from([create_system_package()
+                .package_name(&package_a.name)
+                .call()]))
             .install(&package_a.name)
             .call()
             .unwrap();
 
-        assert!(install_state.is_empty());
+        assert!(new_packages_marked_for_install.is_empty());
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([PackageNotification::AlreadyInstalledOnSystem {
+                system_package_name: package_a.name.to_string(),
+                system_package_version: DEFAULT_VERSION.to_string(),
+            }])
+        );
     }
 
     #[test]
@@ -368,14 +426,30 @@ mod test {
             .depends(vec![&package_b])
             .call();
 
-        let install_state = test_install_state()
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
             .with_package_index(vec![&package_a, &package_b])
-            .with_installed(vec![&package_a, &package_b])
+            .with_installed(IndexSet::from([
+                create_package_marked_for_install()
+                    .repository_package(&package_a)
+                    .call(),
+                create_package_marked_for_install()
+                    .repository_package(&package_b)
+                    .requested_by(&package_a.name)
+                    .call(),
+            ]))
             .install(&package_b.name)
             .call()
             .unwrap();
 
-        assert!(installed_package_names(&install_state).is_empty());
+        assert!(new_packages_marked_for_install.is_empty());
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([PackageNotification::AlreadyInstalledByOtherPackage {
+                installed_package: package_b,
+                installed_by: package_a.name,
+            }])
+        );
     }
 
     #[test]
@@ -387,15 +461,32 @@ mod test {
             .provides(vec![virtual_package])
             .call();
 
-        let install_state = test_install_state()
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
             .with_package_index(vec![&virtual_package_provider])
             .install(virtual_package)
             .call()
             .unwrap();
 
         assert_eq!(
-            installed_package_names(&install_state),
-            vec!["virtual-package-provider"]
+            new_packages_marked_for_install,
+            IndexSet::from([create_package_marked_for_install()
+                .repository_package(&virtual_package_provider)
+                .requested_by(virtual_package)
+                .call()])
+        );
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([
+                PackageNotification::VirtualPackageHasOnlyOneImplementor {
+                    requested_package: virtual_package.to_string(),
+                    implementor: virtual_package_provider.clone()
+                },
+                PackageNotification::Added {
+                    repository_package: virtual_package_provider,
+                    dependency_path: vec![virtual_package.to_string()],
+                },
+            ])
         );
     }
 
@@ -479,24 +570,25 @@ mod test {
                 < debversion::Version::from_str(package_v1.version.as_str()).unwrap()
         );
 
-        let install_state = test_install_state()
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
             .with_package_index(vec![&package_v0, &package_v1])
             .install(package_name)
             .call()
             .unwrap();
 
         assert_eq!(
-            install_state
-                .iter()
-                .map(|(_, install_record)| {
-                    (
-                        install_record.repository_package.name.as_str(),
-                        install_record.repository_package.version.as_str(),
-                    )
-                })
-                .next()
-                .unwrap(),
-            (package_name, package_v1.version.as_str())
+            new_packages_marked_for_install,
+            IndexSet::from([create_package_marked_for_install()
+                .repository_package(&package_v1)
+                .call()])
+        );
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([PackageNotification::Added {
+                repository_package: package_v1,
+                dependency_path: vec![],
+            }])
         );
     }
 
@@ -519,15 +611,57 @@ mod test {
             .depends(vec![&package_b])
             .call();
 
-        let install_state = test_install_state()
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
             .with_package_index(vec![&package_a, &package_b, &package_c, &package_d])
             .install(&package_a.name)
             .call()
             .unwrap();
 
         assert_eq!(
-            installed_package_names(&install_state),
-            vec!["package-a", "package-b", "package-c", "package-d"]
+            new_packages_marked_for_install,
+            IndexSet::from([
+                create_package_marked_for_install()
+                    .repository_package(&package_a)
+                    .call(),
+                create_package_marked_for_install()
+                    .repository_package(&package_b)
+                    .requested_by(&package_a.name)
+                    .call(),
+                create_package_marked_for_install()
+                    .repository_package(&package_c)
+                    .requested_by(&package_a.name)
+                    .call(),
+                create_package_marked_for_install()
+                    .repository_package(&package_d)
+                    .requested_by(&package_a.name)
+                    .call()
+            ])
+        );
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([
+                PackageNotification::Added {
+                    repository_package: package_a.clone(),
+                    dependency_path: vec![],
+                },
+                PackageNotification::Added {
+                    repository_package: package_b.clone(),
+                    dependency_path: vec![package_a.name.to_string()],
+                },
+                PackageNotification::Added {
+                    repository_package: package_c.clone(),
+                    dependency_path: vec![package_a.name.to_string(), package_b.name.to_string()],
+                },
+                PackageNotification::Added {
+                    repository_package: package_d,
+                    dependency_path: vec![
+                        package_a.name.to_string(),
+                        package_b.name.to_string(),
+                        package_c.name.to_string()
+                    ],
+                }
+            ])
         );
     }
 
@@ -550,14 +684,27 @@ mod test {
             .depends(vec![&package_b])
             .call();
 
-        let install_state = test_install_state()
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
             .with_package_index(vec![&package_a, &package_b, &package_c, &package_d])
             .install(&package_a.name)
             .skip_dependencies(true)
             .call()
             .unwrap();
 
-        assert_eq!(installed_package_names(&install_state), vec!["package-a"]);
+        assert_eq!(
+            new_packages_marked_for_install,
+            IndexSet::from([create_package_marked_for_install()
+                .repository_package(&package_a)
+                .call(),])
+        );
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([PackageNotification::Added {
+                repository_package: package_a,
+                dependency_path: vec![],
+            }])
+        );
     }
 
     #[test]
@@ -569,19 +716,33 @@ mod test {
             .provides(vec![package_a.name.as_str()])
             .call();
 
-        let install_state = test_install_state()
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
             .with_package_index(vec![&package_a, &package_providing_a])
             .install(&package_a.name)
             .call()
             .unwrap();
 
-        assert_eq!(installed_package_names(&install_state), vec!["package-a"]);
+        assert_eq!(
+            new_packages_marked_for_install,
+            IndexSet::from([create_package_marked_for_install()
+                .repository_package(&package_a)
+                .call()])
+        );
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([PackageNotification::Added {
+                repository_package: package_a,
+                dependency_path: vec![]
+            }])
+        );
     }
 
     #[test]
     fn handles_circular_dependencies() {
-        let mut package_c = create_repository_package().name("package-c").call();
         let package_d = create_repository_package().name("package-d").call();
+
+        let mut package_c = create_repository_package().name("package-c").call();
 
         let package_b = create_repository_package()
             .name("package-b")
@@ -596,15 +757,129 @@ mod test {
         // because of the circular reference, we can't set it using the builder above
         package_c.depends = Some(package_a.name.clone());
 
-        let install_state = test_install_state()
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
             .with_package_index(vec![&package_a, &package_b, &package_c, &package_d])
             .install(&package_a.name)
             .call()
             .unwrap();
 
         assert_eq!(
-            installed_package_names(&install_state),
-            vec!["package-a", "package-b", "package-c", "package-d"]
+            new_packages_marked_for_install,
+            IndexSet::from([
+                create_package_marked_for_install()
+                    .repository_package(&package_a)
+                    .call(),
+                create_package_marked_for_install()
+                    .repository_package(&package_b)
+                    .requested_by(&package_a.name)
+                    .call(),
+                create_package_marked_for_install()
+                    .repository_package(&package_c)
+                    .requested_by(&package_a.name)
+                    .call(),
+                create_package_marked_for_install()
+                    .repository_package(&package_d)
+                    .requested_by(&package_a.name)
+                    .call()
+            ])
+        );
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([
+                PackageNotification::Added {
+                    repository_package: package_a.clone(),
+                    dependency_path: vec![],
+                },
+                PackageNotification::Added {
+                    repository_package: package_b.clone(),
+                    dependency_path: vec![package_a.name.to_string()],
+                },
+                PackageNotification::Added {
+                    repository_package: package_c.clone(),
+                    dependency_path: vec![package_a.name.to_string(), package_b.name.to_string()],
+                },
+                PackageNotification::Added {
+                    repository_package: package_d,
+                    dependency_path: vec![package_a.name.to_string(), package_b.name.to_string()],
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn handle_virtual_package_with_one_implementor_that_also_exists_on_the_system() {
+        let libvips = "libvips";
+
+        let libvips42t64 = create_repository_package()
+            .name("libvips42t64")
+            .provides(vec![libvips])
+            .call();
+
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
+            .with_system_packages(IndexSet::from([create_system_package()
+                .package_name(&libvips42t64.name)
+                .call()]))
+            .with_package_index(vec![&libvips42t64])
+            .install(libvips)
+            .call()
+            .unwrap();
+
+        assert!(new_packages_marked_for_install.is_empty());
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([
+                PackageNotification::VirtualPackageHasOnlyOneImplementor {
+                    requested_package: libvips.to_string(),
+                    implementor: libvips42t64.clone()
+                },
+                PackageNotification::AlreadyInstalledOnSystem {
+                    system_package_name: libvips42t64.name.clone(),
+                    system_package_version: libvips42t64.version.clone(),
+                }
+            ])
+        );
+    }
+
+    #[test]
+    fn handle_virtual_package_with_one_implementor_that_also_was_installed_by_a_previous_package() {
+        let libvips = "libvips";
+
+        let libvips42t64 = create_repository_package()
+            .name("libvips42t64")
+            .provides(vec![libvips])
+            .call();
+
+        let package_a = create_repository_package()
+            .name("package-a")
+            .depends(vec![&libvips42t64])
+            .call();
+
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
+            .with_package_index(vec![&package_a, &libvips42t64])
+            .with_installed(IndexSet::from([create_package_marked_for_install()
+                .repository_package(&libvips42t64)
+                .requested_by(&package_a.name)
+                .call()]))
+            .install(libvips)
+            .call()
+            .unwrap();
+
+        assert!(new_packages_marked_for_install.is_empty());
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([
+                PackageNotification::VirtualPackageHasOnlyOneImplementor {
+                    requested_package: libvips.to_string(),
+                    implementor: libvips42t64.clone()
+                },
+                PackageNotification::AlreadyInstalledByOtherPackage {
+                    installed_package: libvips42t64,
+                    installed_by: package_a.name.to_string(),
+                }
+            ])
         );
     }
 
@@ -612,65 +887,48 @@ mod test {
     fn test_install_state(
         install: &str,
         with_package_index: Vec<&RepositoryPackage>,
-        with_installed: Option<Vec<&RepositoryPackage>>,
-        with_system_packages: Option<Vec<&RepositoryPackage>>,
+        with_installed: Option<IndexSet<PackageMarkedForInstall>>,
+        with_system_packages: Option<IndexSet<SystemPackage>>,
         skip_dependencies: Option<bool>,
-    ) -> BuildpackResult<IndexMap<String, InstallRecord>> {
+    ) -> BuildpackResult<(
+        IndexSet<PackageMarkedForInstall>,
+        IndexSet<PackageNotification>,
+    )> {
         let package_to_install = install;
+
+        let skip_dependencies = skip_dependencies.unwrap_or(false);
 
         let mut package_index = PackageIndex::default();
         for value in with_package_index {
             package_index.add_package(value.clone());
         }
 
-        let system_install_state = with_installed
-            .unwrap_or_default()
-            .into_iter()
-            .map(|repository_package| {
-                (
-                    repository_package.name.clone(),
-                    InstallRecord {
-                        repository_package: repository_package.clone(),
-                        dependency_path: vec!["dummy-package".to_string()],
-                    },
-                )
-            })
-            .collect();
+        let with_installed = with_installed.unwrap_or_default();
 
-        let mut package_install_state = IndexMap::new();
+        let mut packages_marked_for_install = with_installed.iter().cloned().collect();
 
-        let skip_dependencies = skip_dependencies.unwrap_or(false);
+        let system_packages = with_system_packages.unwrap_or_default();
+
+        let mut package_notifications = IndexSet::new();
 
         let mut visit_stack = IndexSet::new();
-
-        let mut warnings = vec![];
-
-        let system_packages = with_system_packages
-            .unwrap_or_default()
-            .into_iter()
-            .map(|repository_package| {
-                let name = repository_package.name.as_str();
-                (
-                    name.to_string(),
-                    Control::from(&format!(
-                        "Package: {name}\nVersion: 1.0.0\nArchitecture: test"
-                    ))
-                    .unwrap(),
-                )
-            })
-            .collect();
 
         visit(
             package_to_install,
             skip_dependencies,
-            &mut visit_stack,
-            &mut package_install_state,
-            &system_install_state,
-            &mut warnings,
             &system_packages,
             &package_index,
-        )
-        .map(|()| package_install_state)
+            &mut packages_marked_for_install,
+            &mut visit_stack,
+            &mut package_notifications,
+        )?;
+
+        let new_packages_marked_for_install = packages_marked_for_install
+            .difference(&with_installed)
+            .cloned()
+            .collect();
+
+        Ok((new_packages_marked_for_install, package_notifications))
     }
 
     #[builder]
@@ -689,7 +947,7 @@ mod test {
         };
         RepositoryPackage {
             name: name.to_string(),
-            version: version.unwrap_or("1.0.0").to_string(),
+            version: version.unwrap_or(DEFAULT_VERSION).to_string(),
             provides: provides.map(|vs| vs.join(",")),
             repository_uri: RepositoryUri::from(""),
             sha256sum: String::new(),
@@ -699,12 +957,24 @@ mod test {
         }
     }
 
-    fn installed_package_names(install_state: &IndexMap<String, InstallRecord>) -> Vec<String> {
-        install_state
-            .iter()
-            .map(|(k, _)| k.to_string())
-            .collect::<BTreeSet<_>>()
-            .into_iter()
-            .collect()
+    #[builder]
+    fn create_package_marked_for_install(
+        repository_package: &RepositoryPackage,
+        requested_by: Option<&str>,
+    ) -> PackageMarkedForInstall {
+        PackageMarkedForInstall {
+            repository_package: repository_package.clone(),
+            requested_by: requested_by.unwrap_or(&repository_package.name).to_string(),
+        }
     }
+
+    #[builder]
+    fn create_system_package(package_name: &str, package_version: Option<&str>) -> SystemPackage {
+        SystemPackage {
+            package_name: package_name.to_string(),
+            package_version: package_version.unwrap_or(DEFAULT_VERSION).to_string(),
+        }
+    }
+
+    const DEFAULT_VERSION: &str = "1.0.0";
 }

@@ -4,7 +4,7 @@ use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub(crate) struct RepositoryPackage {
     pub(crate) repository_uri: RepositoryUri,
     pub(crate) name: String,

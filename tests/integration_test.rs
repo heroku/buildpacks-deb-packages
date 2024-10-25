@@ -93,29 +93,14 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar79@5.9.0-1`");
                 assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar-data@5.9.0-1` [from libgwenhywfar79]");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar-data`");
-                assert_contains!(ctx.pack_stdout, "Nothing to add");
+                assert_contains!(ctx.pack_stdout, "Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.9.0-1` was already installed as a dependency of `libgwenhywfar79`");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `xmlsec1`");
                 assert_contains!(ctx.pack_stdout, "Adding `xmlsec1@1.2.33-1build2`");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `wget`");
-                assert_contains!(ctx.pack_stdout, "Nothing to add");
+                assert_contains_match!(ctx.pack_stdout, "Skipping `wget` because `wget@1.21.2-.*` is already installed on the system");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libvips`");
-                assert_contains!(ctx.pack_stdout, "Nothing to add");
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.9.0-1` was already installed as a dependency of `libgwenhywfar79` (consider removing `libgwenhywfar-data` from your project.toml configuration for this buildpack)"
-                );
-                assert_contains_match!(
-                    ctx.pack_stdout,
-                    "! Skipping `wget` because `wget@1.21.2-.*` is already installed on the system \\(consider removing `wget` from your project.toml configuration for this buildpack\\)"
-                );
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Virtual package `libvips` is provided by `libvips42@8.12.1-1build1` (consider replacing `libvips` with `libvips42` in your project.toml configuration for this buildpack)"
-                );
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Skipping `libvips42` because `libvips42@8.12.1-1build1` is already installed on the system (consider removing `libvips42` from your project.toml configuration for this buildpack)"
-                );
+                assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42@8.12.1-1build1`");
+                assert_contains!(ctx.pack_stdout, "Skipping `libvips42` because `libvips42@8.12.1-1build1` is already installed on the system");
 
                 assert_contains!(ctx.pack_stdout, "## Installing packages");
                 assert_contains!(ctx.pack_stdout, "Requesting packages");
@@ -157,36 +142,19 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "## Determining packages to install");
                 assert_contains!(ctx.pack_stdout, "Collecting system install information");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar79t64@5.10.2-2.1build4`");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar-data@5.10.2-2.1build4` [from libgwenhywfar79t64]");
+                assert_contains!(ctx.pack_stdout, "Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.10.2-2.1build4`");
+                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar79t64@5.10.2-2.1build4` [from libgwenhywfar79]");
+                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar-data@5.10.2-2.1build4` [from libgwenhywfar79t64 ← libgwenhywfar79]");
+
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar-data`");
-                assert_contains!(ctx.pack_stdout, "Nothing to add");
+                assert_contains!(ctx.pack_stdout, "Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.10.2-2.1build4` was already installed as a dependency of `libgwenhywfar79`");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `xmlsec1`");
                 assert_contains!(ctx.pack_stdout, "Adding `xmlsec1@1.2.39-5build2`");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `wget`");
-                assert_contains!(ctx.pack_stdout, "Nothing to add");
+                assert_contains_match!(ctx.pack_stdout, "Skipping `wget` because `wget@1.21.4-.*` is already installed on the system");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libvips`");
-                assert_contains!(ctx.pack_stdout, "Nothing to add");
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.10.2-2.1build4` (consider replacing `libgwenhywfar79` with `libgwenhywfar79t64` in your project.toml configuration for this buildpack)"
-                );
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.10.2-2.1build4` was already installed as a dependency of `libgwenhywfar79t64` (consider removing `libgwenhywfar-data` from your project.toml configuration for this buildpack)"
-                );
-                assert_contains_match!(
-                    ctx.pack_stdout,
-                    "! Skipping `wget` because `wget@1.21.4-.*` is already installed on the system \\(consider removing `wget` from your project.toml configuration for this buildpack\\)"
-                );
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Virtual package `libvips` is provided by `libvips42t64@8.15.1-1.1build4` (consider replacing `libvips` with `libvips42t64` in your project.toml configuration for this buildpack)"
-                );
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Skipping `libvips42t64` because `libvips42t64@8.15.1-1.1build4` is already installed on the system (consider removing `libvips42t64` from your project.toml configuration for this buildpack)"
-                );
+                assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42t64@8.15.1-1.1build4`");
+                assert_contains!(ctx.pack_stdout, "Skipping `libvips42t64` because `libvips42t64@8.15.1-1.1build4` is already installed on the system");
 
                 assert_contains!(ctx.pack_stdout, "## Installing packages");
                 assert_contains!(ctx.pack_stdout, "Requesting packages");
@@ -228,36 +196,18 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "## Determining packages to install");
                 assert_contains!(ctx.pack_stdout, "Collecting system install information");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar79t64@5.10.2-2.1build4`");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar-data@5.10.2-2.1build4` [from libgwenhywfar79t64]");
+                assert_contains!(ctx.pack_stdout, "Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.10.2-2.1build4`");
+                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar79t64@5.10.2-2.1build4` [from libgwenhywfar79]");
+                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar-data@5.10.2-2.1build4` [from libgwenhywfar79t64 ← libgwenhywfar79]");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar-data`");
-                assert_contains!(ctx.pack_stdout, "Nothing to add");
+                assert_contains!(ctx.pack_stdout, "Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.10.2-2.1build4` was already installed as a dependency of `libgwenhywfar79`");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `xmlsec1`");
                 assert_contains!(ctx.pack_stdout, "Adding `xmlsec1@1.2.39-5build2`");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `wget`");
-                assert_contains!(ctx.pack_stdout, "Nothing to add");
+                assert_contains_match!(ctx.pack_stdout, "Skipping `wget` because `wget@1.21.4-.*` is already installed on the system");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libvips`");
-                assert_contains!(ctx.pack_stdout, "Nothing to add");
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.10.2-2.1build4` (consider replacing `libgwenhywfar79` with `libgwenhywfar79t64` in your project.toml configuration for this buildpack)"
-                );
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.10.2-2.1build4` was already installed as a dependency of `libgwenhywfar79t64` (consider removing `libgwenhywfar-data` from your project.toml configuration for this buildpack)"
-                );
-                assert_contains_match!(
-                    ctx.pack_stdout,
-                    "! Skipping `wget` because `wget@1.21.4-.*` is already installed on the system \\(consider removing `wget` from your project.toml configuration for this buildpack\\)"
-                );
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Virtual package `libvips` is provided by `libvips42t64@8.15.1-1.1build4` (consider replacing `libvips` with `libvips42t64` in your project.toml configuration for this buildpack)"
-                );
-                assert_contains!(
-                    ctx.pack_stdout,
-                    "! Skipping `libvips42t64` because `libvips42t64@8.15.1-1.1build4` is already installed on the system (consider removing `libvips42t64` from your project.toml configuration for this buildpack)"
-                );
+                assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42t64@8.15.1-1.1build4`");
+                assert_contains!(ctx.pack_stdout, "Skipping `libvips42t64` because `libvips42t64@8.15.1-1.1build4` is already installed on the system");
 
                 assert_contains!(ctx.pack_stdout, "## Installing packages");
                 assert_contains!(ctx.pack_stdout, "Requesting packages");
