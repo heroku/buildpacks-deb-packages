@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use ar::Archive as ArArchive;
 use async_compression::tokio::bufread::{GzipDecoder, XzDecoder, ZstdDecoder};
-use bullet_stream::state::Bullet;
+use bullet_stream::state::{Bullet, SubBullet};
 use bullet_stream::{style, Print};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
@@ -33,7 +33,10 @@ use tokio_util::io::InspectReader;
 use walkdir::{DirEntry, WalkDir};
 
 use crate::debian::{Distro, MultiarchName, RepositoryPackage};
-use crate::{BuildpackResult, DebianPackagesBuildpack, DebianPackagesBuildpackError};
+use crate::{
+    is_buildpack_debug_logging_enabled, BuildpackResult, DebianPackagesBuildpack,
+    DebianPackagesBuildpackError,
+};
 
 pub(crate) async fn install_packages(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
@@ -140,15 +143,20 @@ pub(crate) async fn install_packages(
 
     rewrite_package_configs(&install_layer.path()).await?;
 
-    log = print_layer_contents(&install_layer.path(), log);
+    let mut install_log = log.bullet("Installation complete");
+    if is_buildpack_debug_logging_enabled() {
+        install_log = print_layer_contents(&install_layer.path(), install_log);
+    }
+    log = install_log.done();
 
     Ok(log)
 }
 
-fn print_layer_contents(install_path: &Path, log: Print<Bullet<Stdout>>) -> Print<Bullet<Stdout>> {
-    let mut directory_log = log
-        .bullet("Installation complete")
-        .start_stream("Layer file listing");
+fn print_layer_contents(
+    install_path: &Path,
+    log: Print<SubBullet<Stdout>>,
+) -> Print<SubBullet<Stdout>> {
+    let mut directory_log = log.start_stream("Layer file listing");
     WalkDir::new(install_path)
         .into_iter()
         .flatten()
@@ -166,7 +174,7 @@ fn print_layer_contents(install_path: &Path, log: Print<Bullet<Stdout>>) -> Prin
             let _ = writeln!(&mut directory_log, "{}", path.to_string_lossy());
         });
     let _ = writeln!(&mut directory_log);
-    directory_log.done().done()
+    directory_log.done()
 }
 
 async fn download_and_extract(

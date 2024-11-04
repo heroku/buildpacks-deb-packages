@@ -109,9 +109,10 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.33-1build2` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_1.2.33-1build2_amd64.deb");
                 assert_contains!(ctx.pack_stdout, "Downloading");
                 assert_contains!(ctx.pack_stdout, "Installation complete");
-                assert_contains!(ctx.pack_stdout, "Layer file listing");
-                assert_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
-                assert_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/x86_64-linux-gnu/libgwenhywfar.so");
+
+                assert_not_contains!(ctx.pack_stdout, "Layer file listing");
+                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
+                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/x86_64-linux-gnu/libgwenhywfar.so");
             }
             ("heroku/builder:24", "amd64") => {
                 assert_contains!(ctx.pack_stdout, "Distribution Info");
@@ -163,9 +164,10 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_1.2.39-5build2_amd64.deb");
                 assert_contains!(ctx.pack_stdout, "Downloading");
                 assert_contains!(ctx.pack_stdout, "Installation complete");
-                assert_contains!(ctx.pack_stdout, "Layer file listing");
-                assert_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
-                assert_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/x86_64-linux-gnu/libgwenhywfar.so");
+
+                assert_not_contains!(ctx.pack_stdout, "Layer file listing");
+                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
+                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/x86_64-linux-gnu/libgwenhywfar.so");
             }
             ("heroku/builder:24", "arm64") => {
                 assert_contains!(ctx.pack_stdout, "Distribution Info");
@@ -216,13 +218,36 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2` from http://ports.ubuntu.com/ubuntu-ports/pool/main/x/xmlsec1/xmlsec1_1.2.39-5build2_arm64.deb");
                 assert_contains!(ctx.pack_stdout, "Downloading");
                 assert_contains!(ctx.pack_stdout, "Installation complete");
-                assert_contains!(ctx.pack_stdout, "Layer file listing");
-                assert_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
-                assert_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/aarch64-linux-gnu/libgwenhywfar.so");
+
+                assert_not_contains!(ctx.pack_stdout, "Layer file listing");
+                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
+                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/aarch64-linux-gnu/libgwenhywfar.so");
             }
             _ => panic_unsupported_test_configuration(),
         }
     });
+}
+
+#[test]
+#[ignore = "integration test"]
+#[allow(clippy::too_many_lines)]
+fn test_general_usage_output_when_buildpack_log_level_is_debug() {
+    integration_test_with_config(
+        "fixtures/general_usage",
+        |config| {
+            config.env("BP_LOG_LEVEL", "DEBUG");
+        },
+        |ctx| {
+            let multiarch_name = match get_integration_test_arch().as_str() {
+                "amd64" => "x86_64-linux-gnu",
+                "arm64" => "aarch64-linux-gnu",
+                _ => panic_unsupported_test_configuration(),
+            };
+            assert_contains!(ctx.pack_stdout, "Layer file listing");
+            assert_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
+            assert_contains!(ctx.pack_stdout, &format!("/layers/heroku_deb-packages/packages/usr/lib/{multiarch_name}/libgwenhywfar.so"));
+        },
+    );
 }
 
 #[test]

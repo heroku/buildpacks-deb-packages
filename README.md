@@ -45,11 +45,13 @@ docker run --rm -it my-app
 
 ## Configuration
 
+### `project.toml`
+
 The configuration for this buildpack must be added to the project descriptor file (`project.toml`) at the root of your
 project using the `com.heroku.buildpacks.deb-packages` table. The list of packages to install must be
 specified there. See below for the [configuration schema](#schema) and an [example](#example).
 
-### Example
+#### Example
 
 ```toml
 # _.schema-version is required for the project descriptor
@@ -66,7 +68,7 @@ install = [
 ]
 ```
 
-### Schema
+#### Schema
 
 - `com.heroku.buildpacks.deb-packages` *__([table][toml-table], optional)__*
 
@@ -110,6 +112,14 @@ install = [
 >
 > If your Aptfile contains a package name that uses wildcards (e.g.; `mysql-*`) this must be replaced with the full list
 > of matching package names.
+
+### Environment Variables
+
+The following environment variables can be passed to the buildpack:
+
+| Name           | Value               | Default | Description                                                                                        |
+|----------------|---------------------|---------|----------------------------------------------------------------------------------------------------|
+| `BP_LOG_LEVEL` | `INFO`,<br> `DEBUG` | `INFO`  | Configures the verbosity of buildpack output. The `DEBUG` level is a superset of the `INFO` level. |
 
 ## How it works
 

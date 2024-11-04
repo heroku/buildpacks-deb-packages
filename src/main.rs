@@ -8,7 +8,7 @@ use indoc::formatdoc;
 use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
 use libcnb::detect::{DetectContext, DetectResult, DetectResultBuilder};
 use libcnb::generic::{GenericMetadata, GenericPlatform};
-use libcnb::{buildpack_main, Buildpack};
+use libcnb::{buildpack_main, Buildpack, Env};
 use reqwest::Client;
 use reqwest_middleware::ClientBuilder;
 use reqwest_retry::policies::ExponentialBackoff;
@@ -156,4 +156,10 @@ impl From<DebianPackagesBuildpackError> for libcnb::Error<DebianPackagesBuildpac
     fn from(value: DebianPackagesBuildpackError) -> Self {
         Self::BuildpackError(value)
     }
+}
+
+pub(crate) fn is_buildpack_debug_logging_enabled() -> bool {
+    Env::from_current()
+        .get("BP_LOG_LEVEL")
+        .is_some_and(|value| value.to_ascii_lowercase() == "debug")
 }
