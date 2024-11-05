@@ -4,6 +4,7 @@ use crate::{BuildpackResult, DebianPackagesBuildpackError};
 use apt_parser::Control;
 use bullet_stream::state::Bullet;
 use bullet_stream::{style, Print};
+use edit_distance::edit_distance;
 use indexmap::IndexSet;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
@@ -210,9 +211,11 @@ fn get_provider_for_virtual_package<'a>(
             })
             .ok_or(DeterminePackagesToInstallError::PackageNotFound(
                 package.to_string(),
+                find_suggested_packages(package, package_index),
             )),
         [] => Err(DeterminePackagesToInstallError::PackageNotFound(
             package.to_string(),
+            find_suggested_packages(package, package_index),
         )),
         _ => Err(
             DeterminePackagesToInstallError::VirtualPackageMustBeSpecified(
@@ -263,11 +266,35 @@ fn should_visit_dependency(
     )
 }
 
+fn find_suggested_packages(package: &str, package_index: &PackageIndex) -> Vec<String> {
+    let mut suggested_packages = package_index
+        .get_package_names()
+        .iter()
+        .filter_map(|name| {
+            let distance = edit_distance(package, name);
+            // only take suggestions between 1 and 3 edit distances away
+            if (1..=3).contains(&distance) {
+                Some((distance, (*name).to_string()))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    suggested_packages.sort_by_key(|(distance, _)| *distance);
+
+    suggested_packages
+        .into_iter()
+        .take(5)
+        .map(|(_, name)| name)
+        .collect()
+}
+
 #[derive(Debug)]
 pub(crate) enum DeterminePackagesToInstallError {
     ReadSystemPackages(PathBuf, std::io::Error),
     ParseSystemPackage(PathBuf, String, apt_parser::errors::APTError),
-    PackageNotFound(String),
+    PackageNotFound(String, Vec<String>),
     VirtualPackageMustBeSpecified(String, HashSet<String>),
 }
 
@@ -552,19 +579,157 @@ mod test {
     fn install_virtual_package_when_there_are_no_providers() {
         let virtual_package = "virtual-package";
 
+        let package_with_edit_distance_1 = create_repository_package()
+            .name(&format!("{virtual_package}1"))
+            .call();
+        let package_with_virtual_package_edit_distance_2_and_3 = create_repository_package()
+            .name("another-virtual-package-provider")
+            .provides(vec![
+                &format!("{virtual_package}12"),
+                &format!("{virtual_package}123"),
+            ])
+            .call();
+        let package_with_edit_distance_4 = create_repository_package()
+            .name(&format!("{virtual_package}1234"))
+            .call();
+
         let error = test_install_state()
-            .with_package_index(vec![])
-            .install("virtual-package")
+            .with_package_index(vec![
+                &package_with_edit_distance_1,
+                &package_with_virtual_package_edit_distance_2_and_3,
+                &package_with_edit_distance_4,
+            ])
+            .install(virtual_package)
             .call()
             .unwrap_err();
 
         if let libcnb::Error::BuildpackError(
             DebianPackagesBuildpackError::DeterminePackagesToInstall(
-                DeterminePackagesToInstallError::PackageNotFound(name),
+                DeterminePackagesToInstallError::PackageNotFound(name, suggestions),
             ),
         ) = error
         {
             assert_eq!(name, virtual_package.to_string());
+            assert_eq!(
+                suggestions,
+                vec![
+                    format!("{virtual_package}1"),
+                    format!("{virtual_package}12"),
+                    format!("{virtual_package}123"),
+                ]
+            );
+        } else {
+            panic!("not the expected error: {error:?}")
+        }
+    }
+
+    #[test]
+    fn install_package_that_does_not_exist_returns_suggestions_between_edit_distance_1_and_3() {
+        let non_existent_package = "non-existent-package";
+
+        let package_with_edit_distance_1 = create_repository_package()
+            .name(&format!("{non_existent_package}1"))
+            .call();
+        let package_with_virtual_package_edit_distance_2_and_3 = create_repository_package()
+            .name("another-virtual-package-provider")
+            .provides(vec![
+                &format!("{non_existent_package}12"),
+                &format!("{non_existent_package}123"),
+            ])
+            .call();
+        let package_with_edit_distance_4 = create_repository_package()
+            .name(&format!("{non_existent_package}1234"))
+            .call();
+
+        let error = test_install_state()
+            .with_package_index(vec![
+                &package_with_edit_distance_1,
+                &package_with_virtual_package_edit_distance_2_and_3,
+                &package_with_edit_distance_4,
+            ])
+            .install(non_existent_package)
+            .call()
+            .unwrap_err();
+
+        if let libcnb::Error::BuildpackError(
+            DebianPackagesBuildpackError::DeterminePackagesToInstall(
+                DeterminePackagesToInstallError::PackageNotFound(name, suggestions),
+            ),
+        ) = error
+        {
+            assert_eq!(name, non_existent_package.to_string());
+            assert_eq!(
+                suggestions,
+                vec![
+                    format!("{non_existent_package}1"),
+                    format!("{non_existent_package}12"),
+                    format!("{non_existent_package}123"),
+                ]
+            );
+        } else {
+            panic!("not the expected error: {error:?}")
+        }
+    }
+
+    #[test]
+    fn install_package_that_does_not_exist_returns_max_5_suggestions_between_edit_distance_1_and_3()
+    {
+        let non_existent_package = "non-existent-package";
+
+        let package_with_edit_distance_1 = create_repository_package()
+            .name(&format!("{non_existent_package}1"))
+            .call();
+        let another_package_with_edit_distance_1 = create_repository_package()
+            .name(&format!("{non_existent_package}a"))
+            .call();
+        let package_with_virtual_package_edit_distance_2_and_3 = create_repository_package()
+            .name("another-virtual-package-provider")
+            .provides(vec![
+                &format!("{non_existent_package}12"),
+                &format!("{non_existent_package}123"),
+            ])
+            .call();
+        let another_package_with_virtual_package_edit_distance_2_and_3 =
+            create_repository_package()
+                .name("another-virtual-package-provider")
+                .provides(vec![
+                    &format!("{non_existent_package}ab"),
+                    &format!("{non_existent_package}abc"),
+                ])
+                .call();
+        let package_with_edit_distance_4 = create_repository_package()
+            .name(&format!("{non_existent_package}1234"))
+            .call();
+
+        let error = test_install_state()
+            .with_package_index(vec![
+                &package_with_edit_distance_1,
+                &package_with_virtual_package_edit_distance_2_and_3,
+                &package_with_edit_distance_4,
+                &another_package_with_edit_distance_1,
+                &another_package_with_virtual_package_edit_distance_2_and_3,
+            ])
+            .install(non_existent_package)
+            .call()
+            .unwrap_err();
+
+        if let libcnb::Error::BuildpackError(
+            DebianPackagesBuildpackError::DeterminePackagesToInstall(
+                DeterminePackagesToInstallError::PackageNotFound(name, suggestions),
+            ),
+        ) = error
+        {
+            assert_eq!(name, non_existent_package.to_string());
+            assert_eq!(
+                suggestions,
+                vec![
+                    format!("{non_existent_package}1"),
+                    format!("{non_existent_package}a"),
+                    format!("{non_existent_package}12"),
+                    format!("{non_existent_package}ab"),
+                    format!("{non_existent_package}123"),
+                ]
+            );
         } else {
             panic!("not the expected error: {error:?}")
         }

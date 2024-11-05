@@ -1,14 +1,13 @@
-use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
-
 use crate::debian::RepositoryPackage;
+use indexmap::{IndexMap, IndexSet};
+use std::str::FromStr;
 
 #[derive(Debug, Default)]
 pub(crate) struct PackageIndex {
-    name_to_repository_packages: HashMap<String, Vec<RepositoryPackage>>,
+    name_to_repository_packages: IndexMap<String, Vec<RepositoryPackage>>,
     // NOTE: virtual packages are declared in the `Provides` field of a package
     //       https://www.debian.org/doc/debian-policy/ch-relationships.html#virtual-packages-provides
-    virtual_package_to_implementing_packages: HashMap<String, Vec<RepositoryPackage>>,
+    virtual_package_to_implementing_packages: IndexMap<String, Vec<RepositoryPackage>>,
     pub(crate) packages_indexed: usize,
 }
 
@@ -53,7 +52,7 @@ impl PackageIndex {
         self.packages_indexed += 1;
     }
 
-    pub(crate) fn get_providers(&self, package: &str) -> HashSet<&str> {
+    pub(crate) fn get_providers(&self, package: &str) -> IndexSet<&str> {
         self.virtual_package_to_implementing_packages
             .get(package)
             .map(|provides| {
@@ -63,6 +62,21 @@ impl PackageIndex {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    pub(crate) fn get_package_names(&self) -> IndexSet<&str> {
+        let mut package_names = self
+            .name_to_repository_packages
+            .keys()
+            .map(String::as_str)
+            .collect::<IndexSet<_>>();
+        let virtual_package_names = self
+            .virtual_package_to_implementing_packages
+            .keys()
+            .map(String::as_str)
+            .collect::<IndexSet<_>>();
+        package_names.extend(virtual_package_names.iter());
+        package_names
     }
 }
 
@@ -148,7 +162,7 @@ mod test {
         package_index.add_package(libvips_provider_2.clone());
         assert_eq!(
             package_index.get_providers("libvips"),
-            HashSet::from([
+            IndexSet::from([
                 libvips_provider_1.name.as_str(),
                 libvips_provider_2.name.as_str()
             ])

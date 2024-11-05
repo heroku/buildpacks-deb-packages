@@ -523,9 +523,18 @@ fn on_determine_packages_to_install_error(error: DeterminePackagesToInstallError
                 .call()
         }
 
-        DeterminePackagesToInstallError::PackageNotFound(package_name) => {
+        DeterminePackagesToInstallError::PackageNotFound(package_name, suggested_packages) => {
             let package_name = style::value(package_name);
             let package_search_url = get_package_search_url();
+            let suggestions = if suggested_packages.is_empty() {
+                "- No similarly named packages found".to_string()
+            } else {
+                suggested_packages
+                    .into_iter()
+                    .map(|name| format!("- {}", style::value(name)))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            };
             create_error()
                 .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
                 .header("Package not found")
@@ -533,6 +542,9 @@ fn on_determine_packages_to_install_error(error: DeterminePackagesToInstallError
                     We can't find {package_name} in the Package Index. If this package is listed in the \
                     packages to install for this buildpack then the name is most likely misspelled. Otherwise, \
                     it can be an issue with the upstream Debian package repository.
+
+                    Did you mean?
+                    {suggestions}
 
                     Suggestions:
                     - Verify the package name is correct and exists for the target distribution at \
@@ -1908,7 +1920,7 @@ mod tests {
                 Debian repositories used by the distribution. If this happens we direct the user to
                 the package search site for Ubuntu to verify the package name.
             ",
-            DeterminePackagesToInstallError::PackageNotFound("some-package".to_string()),
+            DeterminePackagesToInstallError::PackageNotFound("some-package".to_string(), vec!["some-package1".to_string(), "some-package2".to_string()]),
             indoc! {"
                 ! Package not found
                 !
@@ -1916,6 +1928,42 @@ mod tests {
                 this package is listed in the packages to install for this buildpack then the name is most \
                 likely misspelled. Otherwise, it can be an issue with the \
                 upstream Debian package repository.
+                !
+                ! Did you mean?
+                ! - `some-package1`
+                ! - `some-package2`
+                !
+                ! Suggestions:
+                ! - Verify the package name is correct and exists for the target distribution at \
+                https://packages.ubuntu.com/
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn determine_packages_to_install_error_package_not_found_with_no_suggestions() {
+        test_error_output(
+            "
+                Context
+                -------
+                We're installing a list of packages given by the user in the buildpack configuration.
+                It's possible to provide a valid name of a package that doesn't actually exist in the
+                Debian repositories used by the distribution. If this happens we direct the user to
+                the package search site for Ubuntu to verify the package name.
+            ",
+            DeterminePackagesToInstallError::PackageNotFound("some-package".to_string(), vec![]),
+            indoc! {"
+                ! Package not found
+                !
+                ! We can't find `some-package` in the Package Index. If \
+                this package is listed in the packages to install for this buildpack then the name is most \
+                likely misspelled. Otherwise, it can be an issue with the \
+                upstream Debian package repository.
+                !
+                ! Did you mean?
+                ! - No similarly named packages found
                 !
                 ! Suggestions:
                 ! - Verify the package name is correct and exists for the target distribution at \
