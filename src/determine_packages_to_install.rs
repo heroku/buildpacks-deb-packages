@@ -100,6 +100,7 @@ pub(crate) fn determine_packages_to_install(
 //       The dependency solving done here is mostly for convenience. Any transitive packages added
 //       will be reported to the user and, if they aren't correct, the user may disable this dependency
 //       resolution on a per-package basis and specify a more appropriate set of packages.
+#[allow(clippy::too_many_arguments)]
 fn visit(
     package: &str,
     skip_dependencies: bool,

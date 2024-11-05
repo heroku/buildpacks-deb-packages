@@ -166,7 +166,7 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.10.2-2.1build4` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_5.10.2-2.1build4_amd64.deb");
                 assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.10.2-2.1build4` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.10.2-2.1build4_all.deb");
                 assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_1.2.39-5build2_amd64.deb");
-                assert_contains!(ctx.pack_stdout, "`curl@8.5.0-2ubuntu10.4` from http://archive.ubuntu.com/ubuntu/pool/main/c/curl/curl_8.5.0-2ubuntu10.4_amd64.deb");
+                assert_contains!(ctx.pack_stdout, "`curl@8.5.0-2ubuntu10.4` from http://security.ubuntu.com/ubuntu/pool/main/c/curl/curl_8.5.0-2ubuntu10.4_amd64.deb");
                 assert_contains!(ctx.pack_stdout, "Downloading");
                 assert_contains!(ctx.pack_stdout, "Installation complete");
 

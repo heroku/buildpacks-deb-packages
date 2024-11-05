@@ -159,6 +159,9 @@ building the list of packages involves:
 For each package requested for install declared in the [buildpack configuration](#configuration):
 
 - Lookup the [Binary Package][debian-binary-package] in the [Package Index](#step-1-build-the-package-index).
+- Check if the requested package is already installed on the system
+    - If it is already installed and the requested package is configured with `force = false`
+        - Skip the package
 - If the requested package is configured with `skip_dependencies = false`:
     - Add the latest version of the requested package.
     - Read the dependencies listed in the [Depends][binary-dependency-fields]
