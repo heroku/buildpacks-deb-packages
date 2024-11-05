@@ -64,7 +64,7 @@ install = [
     # string version of a dependency to install
     "package-name",
     # inline-table version of a dependency to install
-    { name = "package-name", skip_dependencies = true }
+    { name = "package-name", skip_dependencies = true, force = true }
 ]
 ```
 
@@ -92,6 +92,10 @@ install = [
             - `skip_dependencies` *__([boolean][toml-boolean], optional, default = false)__*
 
               If set to `true`, no attempt will be made to install any dependencies of the given package.
+
+            - `force` *__([boolean][toml-boolean], optional, default = false)__*
+
+              If set to `true`, the package will be installed even if it's already installed on the system.
 
 > [!TIP]
 > Users of the [heroku-community/apt][classic-apt-buildpack] can migrate their Aptfile to the above configuration by

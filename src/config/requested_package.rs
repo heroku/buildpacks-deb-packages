@@ -8,6 +8,7 @@ use crate::debian::{PackageName, ParsePackageNameError};
 pub(crate) struct RequestedPackage {
     pub(crate) name: PackageName,
     pub(crate) skip_dependencies: bool,
+    pub(crate) force: bool,
 }
 
 impl FromStr for RequestedPackage {
@@ -18,6 +19,7 @@ impl FromStr for RequestedPackage {
             name: PackageName::from_str(package_name)
                 .map_err(ParseRequestedPackageError::InvalidPackageName)?,
             skip_dependencies: false,
+            force: false,
         })
     }
 }
@@ -59,6 +61,11 @@ impl TryFrom<&InlineTable> for RequestedPackage {
 
             skip_dependencies: table
                 .get("skip_dependencies")
+                .and_then(Value::as_bool)
+                .unwrap_or_default(),
+
+            force: table
+                .get("force")
                 .and_then(Value::as_bool)
                 .unwrap_or_default(),
         })

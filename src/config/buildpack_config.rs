@@ -121,7 +121,7 @@ schema-version = "0.2"
 install = [
     "package1",
     { name = "package2" },
-    { name = "package3", skip_dependencies = true, build_only = true },
+    { name = "package3", skip_dependencies = true, force = true },
 ]
         "#
         .trim();
@@ -132,15 +132,18 @@ install = [
                 install: IndexSet::from([
                     RequestedPackage {
                         name: PackageName::from_str("package1").unwrap(),
-                        skip_dependencies: false
+                        skip_dependencies: false,
+                        force: false,
                     },
                     RequestedPackage {
                         name: PackageName::from_str("package2").unwrap(),
-                        skip_dependencies: false
+                        skip_dependencies: false,
+                        force: false,
                     },
                     RequestedPackage {
                         name: PackageName::from_str("package3").unwrap(),
-                        skip_dependencies: true
+                        skip_dependencies: true,
+                        force: true,
                     }
                 ])
             }

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support the `force` option when declaring a package to install so the user can control if, when the package is already
+  on
+  the system, it should be skipped or forcibly installed.
+
 ### Changed
 
 - Updated the buildpack display name and keywords to be more consistent with our other

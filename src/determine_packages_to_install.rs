@@ -53,6 +53,7 @@ pub(crate) fn determine_packages_to_install(
         visit(
             requested_package.name.as_str(),
             requested_package.skip_dependencies,
+            requested_package.force,
             &system_packages,
             package_index,
             &mut packages_marked_for_install,
@@ -102,6 +103,7 @@ pub(crate) fn determine_packages_to_install(
 fn visit(
     package: &str,
     skip_dependencies: bool,
+    force_if_installed_on_system: bool,
     system_packages: &IndexSet<SystemPackage>,
     package_index: &PackageIndex,
     packages_marked_for_install: &mut IndexSet<PackageMarkedForInstall>,
@@ -109,11 +111,17 @@ fn visit(
     package_notifications: &mut IndexSet<PackageNotification>,
 ) -> BuildpackResult<()> {
     if let Some(system_package) = find_system_package_by_name(package, system_packages) {
-        package_notifications.insert(PackageNotification::AlreadyInstalledOnSystem {
-            system_package_name: system_package.package_name.clone(),
-            system_package_version: system_package.package_version.clone(),
-        });
-        return Ok(());
+        // When a package is already installed on the system we skip installing it. However, there are
+        // cases where a package might be installed in the build image but not the run image. There's
+        // no easy method to check for that condition at build-time so we allow the user to "force" the
+        // installation of this package via configuration.
+        if !force_if_installed_on_system {
+            package_notifications.insert(PackageNotification::AlreadyInstalledOnSystem {
+                system_package_name: system_package.package_name.clone(),
+                system_package_version: system_package.package_version.clone(),
+            });
+            return Ok(());
+        }
     }
 
     if let Some(package_marked_for_install) =
@@ -135,6 +143,7 @@ fn visit(
         package_notifications.insert(PackageNotification::Added {
             repository_package: repository_package.clone(),
             dependency_path: visit_stack.iter().cloned().collect(),
+            forced_install: force_if_installed_on_system,
         });
 
         visit_stack.insert(repository_package.name.to_string());
@@ -146,6 +155,7 @@ fn visit(
                     visit(
                         dependency,
                         skip_dependencies,
+                        force_if_installed_on_system,
                         system_packages,
                         package_index,
                         packages_marked_for_install,
@@ -166,6 +176,7 @@ fn visit(
         visit(
             virtual_package_provider.name.as_str(),
             skip_dependencies,
+            force_if_installed_on_system,
             system_packages,
             package_index,
             packages_marked_for_install,
@@ -272,6 +283,7 @@ enum PackageNotification {
     Added {
         repository_package: RepositoryPackage,
         dependency_path: Vec<String>,
+        forced_install: bool,
     },
     AlreadyInstalledOnSystem {
         system_package_name: String,
@@ -293,17 +305,22 @@ impl Display for PackageNotification {
             PackageNotification::Added {
                 repository_package,
                 dependency_path,
+                forced_install,
             } => {
                 if dependency_path.is_empty() {
-                    write!(
-                        f,
+                    let added = format!(
                         "Adding {name_with_version}",
                         name_with_version = style::value(format!(
                             "{name}@{version}",
                             name = repository_package.name,
                             version = repository_package.version
                         ))
-                    )
+                    );
+                    if *forced_install {
+                        write!(f, "{added} (forced)")
+                    } else {
+                        write!(f, "{added}")
+                    }
                 } else {
                     write!(
                         f,
@@ -485,6 +502,7 @@ mod test {
                 PackageNotification::Added {
                     repository_package: virtual_package_provider,
                     dependency_path: vec![virtual_package.to_string()],
+                    forced_install: false,
                 },
             ])
         );
@@ -588,6 +606,7 @@ mod test {
             IndexSet::from([PackageNotification::Added {
                 repository_package: package_v1,
                 dependency_path: vec![],
+                forced_install: false,
             }])
         );
     }
@@ -644,14 +663,17 @@ mod test {
                 PackageNotification::Added {
                     repository_package: package_a.clone(),
                     dependency_path: vec![],
+                    forced_install: false,
                 },
                 PackageNotification::Added {
                     repository_package: package_b.clone(),
                     dependency_path: vec![package_a.name.to_string()],
+                    forced_install: false,
                 },
                 PackageNotification::Added {
                     repository_package: package_c.clone(),
                     dependency_path: vec![package_a.name.to_string(), package_b.name.to_string()],
+                    forced_install: false,
                 },
                 PackageNotification::Added {
                     repository_package: package_d,
@@ -660,6 +682,7 @@ mod test {
                         package_b.name.to_string(),
                         package_c.name.to_string()
                     ],
+                    forced_install: false,
                 }
             ])
         );
@@ -703,6 +726,7 @@ mod test {
             IndexSet::from([PackageNotification::Added {
                 repository_package: package_a,
                 dependency_path: vec![],
+                forced_install: false,
             }])
         );
     }
@@ -733,7 +757,8 @@ mod test {
             package_notifications,
             IndexSet::from([PackageNotification::Added {
                 repository_package: package_a,
-                dependency_path: vec![]
+                dependency_path: vec![],
+                forced_install: false,
             }])
         );
     }
@@ -790,18 +815,22 @@ mod test {
                 PackageNotification::Added {
                     repository_package: package_a.clone(),
                     dependency_path: vec![],
+                    forced_install: false,
                 },
                 PackageNotification::Added {
                     repository_package: package_b.clone(),
                     dependency_path: vec![package_a.name.to_string()],
+                    forced_install: false,
                 },
                 PackageNotification::Added {
                     repository_package: package_c.clone(),
                     dependency_path: vec![package_a.name.to_string(), package_b.name.to_string()],
+                    forced_install: false,
                 },
                 PackageNotification::Added {
                     repository_package: package_d,
                     dependency_path: vec![package_a.name.to_string(), package_b.name.to_string()],
+                    forced_install: false,
                 },
             ])
         );
@@ -883,6 +912,37 @@ mod test {
         );
     }
 
+    #[test]
+    fn force_install_a_package_already_on_the_system() {
+        let package_a = create_repository_package().name("package-a").call();
+
+        let system_package_a = create_system_package().package_name(&package_a.name).call();
+
+        let (new_packages_marked_for_install, package_notifications) = test_install_state()
+            .with_package_index(vec![&package_a])
+            .with_system_packages(IndexSet::from([system_package_a]))
+            .install(&package_a.name)
+            .force(true)
+            .call()
+            .unwrap();
+
+        assert_eq!(
+            new_packages_marked_for_install,
+            IndexSet::from([create_package_marked_for_install()
+                .repository_package(&package_a)
+                .call()])
+        );
+
+        assert_eq!(
+            package_notifications,
+            IndexSet::from([PackageNotification::Added {
+                repository_package: package_a,
+                dependency_path: vec![],
+                forced_install: true,
+            }])
+        );
+    }
+
     #[builder]
     fn test_install_state(
         install: &str,
@@ -890,6 +950,7 @@ mod test {
         with_installed: Option<IndexSet<PackageMarkedForInstall>>,
         with_system_packages: Option<IndexSet<SystemPackage>>,
         skip_dependencies: Option<bool>,
+        force: Option<bool>,
     ) -> BuildpackResult<(
         IndexSet<PackageMarkedForInstall>,
         IndexSet<PackageNotification>,
@@ -897,6 +958,8 @@ mod test {
         let package_to_install = install;
 
         let skip_dependencies = skip_dependencies.unwrap_or(false);
+
+        let force = force.unwrap_or(false);
 
         let mut package_index = PackageIndex::default();
         for value in with_package_index {
@@ -916,6 +979,7 @@ mod test {
         visit(
             package_to_install,
             skip_dependencies,
+            force,
             &system_packages,
             &package_index,
             &mut packages_marked_for_install,

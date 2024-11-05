@@ -13,4 +13,6 @@ install = [
   "wget",
   # libvips is a virtual package which is only provided by libvips42 so no need to halt and ask the user which implementing package to install
   "libvips",
+  # curl is already on the system so we're going to force it to be installed
+  { name = "curl", force = true }
 ]
