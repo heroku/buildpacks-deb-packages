@@ -10,8 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support the `force` option when declaring a package to install so the user can control if, when the package is already
-  on
-  the system, it should be skipped or forcibly installed.
+  on the system, it should be skipped or forcibly installed. ([#66](https://github.com/heroku/buildpacks-deb-packages/pull/66))
 
 ### Changed
 
