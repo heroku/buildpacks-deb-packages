@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for `BP_LOG_LEVEL` environment variable to control verbosity of buildpack output.
+  ([#60](https://github.com/heroku/buildpacks-deb-packages/pull/60))
+
 ### Changed
 
 - Updated the buildpack display name and keywords to be more consistent with our other
