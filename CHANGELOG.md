@@ -26,5 +26,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release.
 
 [unreleased]: https://github.com/heroku/buildpacks-deb-packages/compare/v0.0.1...HEAD
-
 [0.0.1]: https://github.com/heroku/buildpacks-deb-packages/releases/tag/v0.0.1
