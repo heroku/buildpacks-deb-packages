@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 2024-11-06
+
 ### Added
 
 - Support the `force` option when declaring a package to install so the user can control if, when the package is already
@@ -27,5 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release.
 
-[unreleased]: https://github.com/heroku/buildpacks-deb-packages/compare/v0.0.1...HEAD
+[unreleased]: https://github.com/heroku/buildpacks-deb-packages/compare/v0.0.2...HEAD
+[0.0.2]: https://github.com/heroku/buildpacks-deb-packages/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/heroku/buildpacks-deb-packages/releases/tag/v0.0.1
