@@ -20,8 +20,8 @@ libcnb = { version = "=0.25.0", features = ["trace"] }
 indoc = "2"
 rayon = "1"
 reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
-reqwest-middleware = "0.3"
-reqwest-retry = "0.6"
+reqwest-middleware = "0.4"
+reqwest-retry = "0.7"
 serde = { version = "1", features = ["derive"] }
 sequoia-openpgp = { version = "1", default-features = false, features = ["crypto-rust", "allow-experimental-crypto", "allow-variable-time-crypto"] }
 sha2 = "0.10"
