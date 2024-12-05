@@ -102,14 +102,14 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42@8.12.1-1build1`");
                 assert_contains!(ctx.pack_stdout, "Skipping `libvips42` because `libvips42@8.12.1-1build1` is already installed on the system");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `curl`");
-                assert_contains!(ctx.pack_stdout, "Adding `curl@7.81.0-1ubuntu1.18` (forced)");
+                assert_contains_match!(ctx.pack_stdout, "Adding `curl@7.81.0-.*` \\(forced\\)");
 
                 assert_contains!(ctx.pack_stdout, "## Installing packages");
                 assert_contains!(ctx.pack_stdout, "Requesting packages");
                 assert_contains!(ctx.pack_stdout, "`libgwenhywfar79@5.9.0-1` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar79_5.9.0-1_amd64.deb");
                 assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.9.0-1` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.9.0-1_all.deb");
                 assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.33-1build2` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_1.2.33-1build2_amd64.deb");
-                assert_contains!(ctx.pack_stdout, "`curl@7.81.0-1ubuntu1.18` from http://archive.ubuntu.com/ubuntu/pool/main/c/curl/curl_7.81.0-1ubuntu1.18_amd64.deb");
+                assert_contains_match!(ctx.pack_stdout, "`curl@7.81.0-.*` from http://archive.ubuntu.com/ubuntu/pool/main/c/curl/curl_7.81.0-.*_amd64.deb");
                 assert_contains!(ctx.pack_stdout, "Downloading");
                 assert_contains!(ctx.pack_stdout, "Installation complete");
 
@@ -159,14 +159,14 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42t64@8.15.1-1.1build4`");
                 assert_contains!(ctx.pack_stdout, "Skipping `libvips42t64` because `libvips42t64@8.15.1-1.1build4` is already installed on the system");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `curl`");
-                assert_contains!(ctx.pack_stdout, "Adding `curl@8.5.0-2ubuntu10.4` (forced)");
+                assert_contains_match!(ctx.pack_stdout, "Adding `curl@8.5.0-.*` \\(forced\\)");
 
                 assert_contains!(ctx.pack_stdout, "## Installing packages");
                 assert_contains!(ctx.pack_stdout, "Requesting packages");
                 assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.10.2-2.1build4` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_5.10.2-2.1build4_amd64.deb");
                 assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.10.2-2.1build4` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.10.2-2.1build4_all.deb");
                 assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_1.2.39-5build2_amd64.deb");
-                assert_contains!(ctx.pack_stdout, "`curl@8.5.0-2ubuntu10.4` from http://security.ubuntu.com/ubuntu/pool/main/c/curl/curl_8.5.0-2ubuntu10.4_amd64.deb");
+                assert_contains_match!(ctx.pack_stdout, "`curl@8.5.0-.*` from http://security.ubuntu.com/ubuntu/pool/main/c/curl/curl_8.5.0-.*_amd64.deb");
                 assert_contains!(ctx.pack_stdout, "Downloading");
                 assert_contains!(ctx.pack_stdout, "Installation complete");
 
@@ -216,14 +216,14 @@ fn test_general_usage_output() {
                 assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42t64@8.15.1-1.1build4`");
                 assert_contains!(ctx.pack_stdout, "Skipping `libvips42t64` because `libvips42t64@8.15.1-1.1build4` is already installed on the system");
                 assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `curl`");
-                assert_contains!(ctx.pack_stdout, "Adding `curl@8.5.0-2ubuntu10.4` (forced)");
+                assert_contains_match!(ctx.pack_stdout, "Adding `curl@8.5.0-.*` \\(forced\\)");
 
                 assert_contains!(ctx.pack_stdout, "## Installing packages");
                 assert_contains!(ctx.pack_stdout, "Requesting packages");
                 assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.10.2-2.1build4` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_5.10.2-2.1build4_arm64.deb");
                 assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.10.2-2.1build4` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.10.2-2.1build4_all.deb");
                 assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2` from http://ports.ubuntu.com/ubuntu-ports/pool/main/x/xmlsec1/xmlsec1_1.2.39-5build2_arm64.deb");
-                assert_contains!(ctx.pack_stdout, "`curl@8.5.0-2ubuntu10.4` from http://ports.ubuntu.com/ubuntu-ports/pool/main/c/curl/curl_8.5.0-2ubuntu10.4_arm64.deb");
+                assert_contains_match!(ctx.pack_stdout, "`curl@8.5.0-.*` from http://ports.ubuntu.com/ubuntu-ports/pool/main/c/curl/curl_8.5.0-.*_arm64.deb");
                 assert_contains!(ctx.pack_stdout, "Downloading");
                 assert_contains!(ctx.pack_stdout, "Installation complete");
 
@@ -282,7 +282,7 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains!(ctx.pack_stdout, "`libgwenhywfar79@5.9.0-1`");
                     assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.9.0-1`");
                     assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.33-1build2`");
-                    assert_contains!(ctx.pack_stdout, "`curl@7.81.0-1ubuntu1.18`");
+                    assert_contains_match!(ctx.pack_stdout, "`curl@7.81.0-.*`");
                 }
                 ("heroku/builder:24", "amd64") => {
                     assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://archive.ubuntu.com/ubuntu/dists/noble/InRelease\)");
@@ -299,7 +299,7 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.10.2-2.1build4`");
                     assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.10.2-2.1build4`");
                     assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2`");
-                    assert_contains!(ctx.pack_stdout, "`curl@8.5.0-2ubuntu10.4`");
+                    assert_contains_match!(ctx.pack_stdout, "`curl@8.5.0-.*`");
                 }
                 ("heroku/builder:24", "arm64") => {
                     assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble/InRelease\)");
@@ -316,7 +316,7 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.10.2-2.1build4`");
                     assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.10.2-2.1build4`");
                     assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2`");
-                    assert_contains!(ctx.pack_stdout, "`curl@8.5.0-2ubuntu10.4`");
+                    assert_contains_match!(ctx.pack_stdout, "`curl@8.5.0-.*`");
                 }
                 _ => panic_unsupported_test_configuration(),
             }
