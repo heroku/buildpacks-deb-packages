@@ -161,5 +161,5 @@ impl From<DebianPackagesBuildpackError> for libcnb::Error<DebianPackagesBuildpac
 pub(crate) fn is_buildpack_debug_logging_enabled() -> bool {
     Env::from_current()
         .get("BP_LOG_LEVEL")
-        .is_some_and(|value| value.to_ascii_lowercase() == "debug")
+        .is_some_and(|value| value.eq_ignore_ascii_case("debug"))
 }
