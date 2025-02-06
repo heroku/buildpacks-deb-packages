@@ -12,7 +12,7 @@ apt-parser = "1"
 ar = "0.9"
 async-compression = { version = "0.4", default-features = false, features = ["tokio", "gzip", "zstd", "xz"] }
 bon = "3"
-bullet_stream = "0.3"
+bullet_stream = "0.6"
 debversion = "0.4"
 edit-distance = "2"
 futures = { version = "0.3", default-features = false, features = ["io-compat"] }
