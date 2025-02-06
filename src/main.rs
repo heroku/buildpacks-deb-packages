@@ -122,14 +122,27 @@ impl Buildpack for DebianPackagesBuildpack {
         let (package_index, log) =
             runtime.block_on(create_package_index(&shared_context, &client, &distro, log))?;
 
-        let (packages_to_install, log) =
+        let (packages_to_install, skipped_packages, log) =
             determine_packages_to_install(&package_index, config.install, log)?;
+        
+        // show more info on the packages to install
+        println!("packages_to_install: {:?}", packages_to_install);
+        println!("skipped_packages: {:?}", skipped_packages);
+
+        for package in &packages_to_install {
+            if let Some(provides) = &package.provides {
+                println!("Package {} provides: {}", package.name, provides);
+            } else {
+                println!("Package {} does not provide any additional packages", package.name);
+            }
+        }        
 
         let log = runtime.block_on(install_packages(
             &shared_context,
             &client,
             &distro,
             packages_to_install,
+            skipped_packages, 
             log,
         ))?;
 

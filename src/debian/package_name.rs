@@ -1,9 +1,9 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 // https://www.debian.org/doc/debian-policy/ch-controlfields.html#source
-pub(crate) struct PackageName(String);
+pub(crate) struct PackageName(pub String);
 
 impl PackageName {
     pub(crate) fn as_str(&self) -> &str {

@@ -16,7 +16,7 @@ pub(crate) fn determine_packages_to_install(
     package_index: &PackageIndex,
     requested_packages: IndexSet<RequestedPackage>,
     mut log: Print<Bullet<Stdout>>,
-) -> BuildpackResult<(Vec<RepositoryPackage>, Print<Bullet<Stdout>>)> {
+) -> BuildpackResult<(Vec<RepositoryPackage>, Vec<RequestedPackage>, Print<Bullet<Stdout>>)> {
     log = log.h2("Determining packages to install");
 
     let sub_bullet = log.bullet("Collecting system install information");
@@ -42,6 +42,7 @@ pub(crate) fn determine_packages_to_install(
     log = sub_bullet.done();
 
     let mut packages_marked_for_install = IndexSet::new();
+    let mut skipped_packages = Vec::new();
 
     for requested_package in requested_packages {
         let mut notification_log = log.bullet(format!(
@@ -51,7 +52,7 @@ pub(crate) fn determine_packages_to_install(
         let mut visit_stack = IndexSet::new();
         let mut package_notifications = IndexSet::new();
 
-        visit(
+        if !visit(
             requested_package.name.as_str(),
             requested_package.skip_dependencies,
             requested_package.force,
@@ -60,7 +61,9 @@ pub(crate) fn determine_packages_to_install(
             &mut packages_marked_for_install,
             &mut visit_stack,
             &mut package_notifications,
-        )?;
+        )? {
+            skipped_packages.push(requested_package.clone());
+        };
 
         if package_notifications.is_empty() {
             notification_log = notification_log.sub_bullet("Nothing to add");
@@ -78,7 +81,7 @@ pub(crate) fn determine_packages_to_install(
         .map(|package_marked_for_install| package_marked_for_install.repository_package)
         .collect();
 
-    Ok((packages_to_install, log))
+    Ok((packages_to_install, skipped_packages, log))
 }
 
 // NOTE: Since this buildpack is not meant to be a replacement for a fully-featured dependency
@@ -111,7 +114,7 @@ fn visit(
     packages_marked_for_install: &mut IndexSet<PackageMarkedForInstall>,
     visit_stack: &mut IndexSet<String>,
     package_notifications: &mut IndexSet<PackageNotification>,
-) -> BuildpackResult<()> {
+) -> BuildpackResult<bool> {
     if let Some(system_package) = find_system_package_by_name(package, system_packages) {
         // When a package is already installed on the system we skip installing it. However, there are
         // cases where a package might be installed in the build image but not the run image. There's
@@ -122,7 +125,7 @@ fn visit(
                 system_package_name: system_package.package_name.clone(),
                 system_package_version: system_package.package_version.clone(),
             });
-            return Ok(());
+            return Ok(false);
         }
     }
 
@@ -133,7 +136,7 @@ fn visit(
             installed_package: package_marked_for_install.repository_package.clone(),
             installed_by: package_marked_for_install.requested_by.clone(),
         });
-        return Ok(());
+        return Ok(false);
     }
 
     if let Some(repository_package) = package_index.get_highest_available_version(package) {
@@ -189,7 +192,7 @@ fn visit(
         visit_stack.shift_remove(package);
     }
 
-    Ok(())
+    Ok(true)
 }
 
 fn get_provider_for_virtual_package<'a>(

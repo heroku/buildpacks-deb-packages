@@ -1,14 +1,23 @@
 use std::str::FromStr;
+use std::hash::{Hash, Hasher};
 
 use toml_edit::{Formatted, InlineTable, Value};
 
 use crate::debian::{PackageName, ParsePackageNameError};
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct RequestedPackage {
     pub(crate) name: PackageName,
     pub(crate) skip_dependencies: bool,
     pub(crate) force: bool,
+}
+
+impl Hash for RequestedPackage {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.skip_dependencies.hash(state);
+        self.force.hash(state);
+    }
 }
 
 impl FromStr for RequestedPackage {
@@ -76,4 +85,71 @@ impl TryFrom<&InlineTable> for RequestedPackage {
 pub(crate) enum ParseRequestedPackageError {
     InvalidPackageName(ParsePackageNameError),
     UnexpectedTomlValue(Value),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use toml_edit::Array;
+
+    #[test]
+    fn test_from_str() {
+        let package = RequestedPackage::from_str("package1").unwrap();
+        assert_eq!(
+            package,
+            RequestedPackage {
+                name: PackageName::from_str("package1").unwrap(),
+                skip_dependencies: false,
+                force: false,
+            }
+        );
+    }
+
+    #[test]
+    fn test_try_from_with_env() {
+        let mut table = InlineTable::new();
+        table.insert("name", Value::from("package1"));
+        let mut env_table = InlineTable::new();
+        env_table.insert("ENV_VAR_1", Value::from("VALUE_1"));
+        table.insert("env", Value::InlineTable(env_table));
+
+        let package = RequestedPackage::try_from(&table).unwrap();
+        assert_eq!(
+            package,
+            RequestedPackage {
+                name: PackageName::from_str("package1").unwrap(),
+                skip_dependencies: false,
+                force: false,
+            }
+        );
+    }
+
+    #[test]
+    fn test_try_from_with_commands() {
+        let mut table = InlineTable::new();
+        table.insert("name", Value::from("package1"));
+        let mut commands_array = Array::new();
+        commands_array.push("echo 'Hello, world!'");
+        commands_array.push("ls -la");
+        table.insert("commands", Value::Array(commands_array));
+
+        let package = RequestedPackage::try_from(&table).unwrap();
+        assert_eq!(
+            package,
+            RequestedPackage {
+                name: PackageName::from_str("package1").unwrap(),
+                skip_dependencies: false,
+                force: false,
+            }
+        );
+    }
+
+    #[test]
+    fn test_try_from_invalid_package_name() {
+        let mut table = InlineTable::new();
+        table.insert("name", Value::from("invalid/package/name"));
+
+        let result = RequestedPackage::try_from(&table);
+        assert!(result.is_err());
+    }
 }

@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::debian::ArchitectureName;
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone)]
 #[allow(non_camel_case_types)]
@@ -28,9 +29,32 @@ impl Display for MultiarchName {
     }
 }
 
+impl FromStr for MultiarchName {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "x86_64-linux-gnu" => Ok(MultiarchName::X86_64_LINUX_GNU),
+            "aarch64-linux-gnu" => Ok(MultiarchName::AARCH_64_LINUX_GNU),
+            _ => Err(()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_multiarch_name_from_str() {
+        // Test valid strings
+        assert_eq!(MultiarchName::from_str("x86_64-linux-gnu").unwrap(), MultiarchName::X86_64_LINUX_GNU);
+        assert_eq!(MultiarchName::from_str("aarch64-linux-gnu").unwrap(), MultiarchName::AARCH_64_LINUX_GNU);
+
+        // Test invalid string
+        assert!(MultiarchName::from_str("invalid-arch").is_err());
+    }
 
     #[test]
     fn converting_architecture_name_to_multiarch_name() {

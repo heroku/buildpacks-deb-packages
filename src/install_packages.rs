@@ -31,18 +31,41 @@ use tokio_tar::Archive as TarArchive;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
 use walkdir::{DirEntry, WalkDir};
+// use tempfile::tempdir;
 
+// use crate::config::environment::Environment;
+use crate::config::RequestedPackage;
 use crate::debian::{Distro, MultiarchName, RepositoryPackage};
 use crate::{
     is_buildpack_debug_logging_enabled, BuildpackResult, DebianPackagesBuildpack,
     DebianPackagesBuildpackError,
 };
 
+// Define a mapping of packages to their required environment variables
+const PACKAGE_ENV_VARS: &[(&str, &[(&str, &str)])] = &[
+    ("git", &[("GIT_EXEC_PATH", "{install_dir}/usr/lib/git-core"), ("GIT_TEMPLATE_DIR", "{install_dir}/usr/share/git-core/templates")]),
+    ("ghostscript", &[("GS_LIB", "{install_dir}/var/lib/ghostscript")]),
+    // Add more package mappings here
+];
+
+fn package_env_vars() -> HashMap<&'static str, HashMap<&'static str, &'static str>> {
+    let mut map = HashMap::new();
+    for &(package, vars) in PACKAGE_ENV_VARS.iter() {
+        let mut var_map = HashMap::new();
+        for &(key, value) in vars.iter() {
+            var_map.insert(key, value);
+        }
+        map.insert(package, var_map);
+    }
+    map
+}
+
 pub(crate) async fn install_packages(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
     distro: &Distro,
     packages_to_install: Vec<RepositoryPackage>,
+    skipped_packages: Vec<RequestedPackage>, 
     mut log: Print<Bullet<Stdout>>,
 ) -> BuildpackResult<Print<Bullet<Stdout>>> {
     log = log.h2("Installing packages");
@@ -63,7 +86,8 @@ pub(crate) async fn install_packages(
             invalid_metadata_action: &|_| InvalidMetadataAction::DeleteLayer,
             restored_layer_action: &|old_metadata: &InstallationMetadata, _| {
                 if old_metadata == &new_metadata {
-                    RestoredLayerAction::KeepLayer
+                    // RestoredLayerAction::KeepLayer
+                    RestoredLayerAction::DeleteLayer
                 } else {
                     RestoredLayerAction::DeleteLayer
                 }
@@ -116,7 +140,7 @@ pub(crate) async fn install_packages(
 
             let mut download_and_extract_handles = JoinSet::new();
 
-            for repository_package in packages_to_install {
+            for repository_package in &packages_to_install {
                 download_and_extract_handles.spawn(download_and_extract(
                     client.clone(),
                     repository_package.clone(),
@@ -134,13 +158,31 @@ pub(crate) async fn install_packages(
         }
     }
 
-    let layer_env = configure_layer_environment(
+    // Convert package_env_vars to the correct type and replace {install_dir} with the actual path
+    let install_dir = install_layer.path().to_string_lossy().to_string();
+    let package_env_vars: HashMap<String, HashMap<String, String>> = package_env_vars()
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                k.to_string(),
+                v.into_iter()
+                    .map(|(k, v)| (k.to_string(), v.replace("{install_dir}", &install_dir)))
+                    .collect(),
+            )
+        })
+        .collect();    
+
+   // Define layer_env before using it
+   let layer_env = configure_layer_environment(
         &install_layer.path(),
         &MultiarchName::from(&distro.architecture),
+        &package_env_vars,
+        &packages_to_install,
+        &skipped_packages,
+        // &env,
     );
 
     install_layer.write_env(layer_env)?;
-
     rewrite_package_configs(&install_layer.path()).await?;
 
     let mut install_log = log.bullet("Installation complete");
@@ -261,13 +303,14 @@ async fn download(
 async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult<()> {
     // a .deb file is an ar archive
     // https://manpages.ubuntu.com/manpages/jammy/en/man5/deb.5.html
-    let mut debian_archive = File::open(&download_path)
-        .map_err(|e| InstallPackagesError::OpenPackageArchive(download_path.clone(), e))
-        .map(ArArchive::new)?;
+    let mut debian_archive = File::open(&download_path).map_err(|e| {
+        InstallPackagesError::OpenPackageArchive(download_path.clone(), e)
+    }).map(ArArchive::new)?;    
 
     while let Some(entry) = debian_archive.next_entry() {
-        let entry = entry
-            .map_err(|e| InstallPackagesError::OpenPackageArchiveEntry(download_path.clone(), e))?;
+        let entry = entry.map_err(|e| {
+            InstallPackagesError::OpenPackageArchiveEntry(download_path.clone(), e)
+        })?;        
         let entry_path = PathBuf::from(OsString::from_vec(entry.header().identifier().to_vec()));
         let entry_reader =
             AsyncBufReader::new(FuturesAsyncReadCompatExt::compat(AllowStdIo::new(entry)));
@@ -279,24 +322,24 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult
         ) {
             (Some("data.tar"), Some("gz")) => {
                 let mut tar_archive = TarArchive::new(GzipDecoder::new(entry_reader));
-                tar_archive
-                    .unpack(&output_dir)
-                    .await
-                    .map_err(|e| InstallPackagesError::UnpackTarball(download_path.clone(), e))?;
+                tar_archive.unpack(&output_dir).await.map_err(|e| {
+                    println!("Failed to unpack gzipped tar archive: {:?}", e);
+                    InstallPackagesError::UnpackTarball(download_path.clone(), e)
+                })?;
             }
             (Some("data.tar"), Some("zstd" | "zst")) => {
                 let mut tar_archive = TarArchive::new(ZstdDecoder::new(entry_reader));
-                tar_archive
-                    .unpack(&output_dir)
-                    .await
-                    .map_err(|e| InstallPackagesError::UnpackTarball(download_path.clone(), e))?;
+                tar_archive.unpack(&output_dir).await.map_err(|e| {
+                    println!("Failed to unpack zstd compressed tar archive: {:?}", e);
+                    InstallPackagesError::UnpackTarball(download_path.clone(), e)
+                })?;
             }
             (Some("data.tar"), Some("xz")) => {
                 let mut tar_archive = TarArchive::new(XzDecoder::new(entry_reader));
-                tar_archive
-                    .unpack(&output_dir)
-                    .await
-                    .map_err(|e| InstallPackagesError::UnpackTarball(download_path.clone(), e))?;
+                tar_archive.unpack(&output_dir).await.map_err(|e| {
+                    println!("Failed to unpack xz compressed tar archive: {:?}", e);
+                    InstallPackagesError::UnpackTarball(download_path.clone(), e)
+                })?;
             }
             (Some("data.tar"), Some(compression)) => {
                 Err(InstallPackagesError::UnsupportedCompression(
@@ -305,15 +348,22 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult
                 ))?;
             }
             _ => {
-                // ignore other potential file entries (e.g.; debian-binary, control.tar)
+                // ignore other potential file entries (e.g., debian-binary, control.tar)
             }
         };
     }
 
-    Ok(())
+    Ok(())        
 }
 
-fn configure_layer_environment(install_path: &Path, multiarch_name: &MultiarchName) -> LayerEnv {
+fn configure_layer_environment(
+    install_path: &Path,
+    multiarch_name: &MultiarchName,
+    package_env_vars: &HashMap<String, HashMap<String, String>>,
+    packages_to_install: &[RepositoryPackage],
+    skipped_packages: &[RequestedPackage],
+) -> LayerEnv {
+
     let mut layer_env = LayerEnv::new();
 
     let bin_paths = [
@@ -323,8 +373,7 @@ fn configure_layer_environment(install_path: &Path, multiarch_name: &MultiarchNa
     ];
     prepend_to_env_var(&mut layer_env, "PATH", &bin_paths);
 
-    // support multi-arch and legacy filesystem layouts for debian packages
-    // https://wiki.ubuntu.com/MultiarchSpec
+    // Support multi-arch and legacy filesystem layouts for debian packages
     let library_paths = [
         install_path.join(format!("usr/lib/{multiarch_name}")),
         install_path.join("usr/lib"),
@@ -363,6 +412,24 @@ fn configure_layer_environment(install_path: &Path, multiarch_name: &MultiarchNa
         install_path.join("usr/lib/pkgconfig"),
     ];
     prepend_to_env_var(&mut layer_env, "PKG_CONFIG_PATH", &pkg_config_paths);
+
+    // Load the env vars from PACKAGE_ENV_VARS if the package is in the project.toml
+    for package in packages_to_install {
+        if let Some(vars) = package_env_vars.get(package.name.as_str()) {
+            for (key, value) in vars {
+                prepend_to_env_var(&mut layer_env, key, vec![value.to_string()]);
+            }
+        }
+    }
+
+    // Iterate through skipped_packages and add their environment variables if they are in the project.toml
+    for skipped_package in skipped_packages {
+        if let Some(vars) = package_env_vars.get(skipped_package.name.as_str()) {
+            for (key, value) in vars {
+                prepend_to_env_var(&mut layer_env, key, vec![value.to_string()]);
+            }
+        }
+    }
 
     layer_env
 }
@@ -411,17 +478,14 @@ where
     T: Into<OsString>,
 {
     let separator = ":";
+    let paths_vec: Vec<_> = paths.into_iter().map(Into::into).collect();
+    let paths_str = paths_vec.join(separator.as_ref());
+
+    // Log the environment variable being added
+    println!("Adding env var: {}={:?}", name, paths_str);
+
     layer_env.insert(Scope::All, ModificationBehavior::Delimiter, name, separator);
-    layer_env.insert(
-        Scope::All,
-        ModificationBehavior::Prepend,
-        name,
-        paths
-            .into_iter()
-            .map(Into::into)
-            .collect::<Vec<_>>()
-            .join(separator.as_ref()),
-    );
+    layer_env.insert(Scope::All, ModificationBehavior::Prepend, name, paths_str);
 }
 
 async fn rewrite_package_configs(install_path: &Path) -> BuildpackResult<()> {
@@ -513,44 +577,131 @@ struct InstallationMetadata {
 
 #[cfg(test)]
 mod test {
+    use libcnb::layer_env::Scope;
     use std::ffi::OsString;
     use std::path::{Path, PathBuf};
+    use std::str::FromStr;
+    use std::fs;
+    use std::fs::File;
+    use std::io::Write; 
 
-    use libcnb::layer_env::Scope;
     use tempfile::TempDir;
 
     use crate::debian::MultiarchName;
-    use crate::install_packages::configure_layer_environment;
+    use crate::install_packages::{configure_layer_environment, package_env_vars};
+    // use crate::config::environment::Environment;
+    use crate::install_packages::HashMap;
+    use crate::config::requested_package::RequestedPackage;
+    use crate::debian::repository_package::RepositoryPackage;
+    use crate::debian::package_name::PackageName;
+    use crate::debian::RepositoryUri;
+    use crate::config::buildpack_config::BuildpackConfig;
 
     #[test]
     fn configure_layer_environment_adds_nested_directories_with_shared_libraries_to_library_path() {
+        // Load the fixture project.toml file
+        let fixture_path = Path::new("tests/fixtures/unit_tests/project.toml");
+        let toml = fs::read_to_string(fixture_path).expect("Failed to read fixture project.toml");
+
+        let config = BuildpackConfig::from_str(&toml).unwrap();
+
         let arch = MultiarchName::X86_64_LINUX_GNU;
-        let install_dir = create_installation(bon::vec![
+        let install_dir = create_installation(vec![
             format!("usr/lib/{arch}/nested-1/shared-library.so.2"),
-            "usr/lib/nested-2/shared-library.so",
+            "usr/lib/nested-2/shared-library.so".to_string(),
             format!("lib/{arch}/nested-3/shared-library.so.4"),
             format!("lib/{arch}/nested-3/deeply/shared-library.so.5"),
-            "lib/nested-4/shared-library.so.3.0.0",
-            "usr/lib/nested-but/does-not-contain-a-shared-library.txt",
-            "usr/not-a-lib-dir/shared-library.so.6"
+            "lib/nested-4/shared-library.so.3.0.0".to_string(),
+            "usr/lib/nested-but/does-not-contain-a-shared-library.txt".to_string(),
+            "usr/not-a-lib-dir/shared-library.so.6".to_string(),
         ]);
         let install_path = install_dir.path();
-        let layer_env = configure_layer_environment(install_path, &arch);
+
+        // Convert package_env_vars to the correct type and replace {install_dir} with the actual path
+        let install_dir_str = install_path.to_string_lossy().to_string();
+
+        let initial_package_env_vars = package_env_vars();
+        println!("initial_package_env_vars: {:?}", initial_package_env_vars);        
+
+        let package_env_vars: HashMap<String, HashMap<String, String>> = initial_package_env_vars
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    k.to_string(),
+                    v.into_iter()
+                        .map(|(k, v)| (k.to_string(), v.replace("{install_dir}", &install_dir_str)))
+                        .collect(),
+                )
+            })
+            .collect();        
+        println!("Package env vars: {:?}", package_env_vars);
+
+        // Create dummy packages to install and skipped packages
+        let packages_to_install = vec![RepositoryPackage {
+            repository_uri: RepositoryUri("http://security.ubuntu.com/ubuntu".to_string()),
+            name: "ghostscript".to_string(),
+            version: "10.02.1~dfsg1-0ubuntu7.4".to_string(),
+            filename: "pool/main/g/ghostscript/ghostscript_10.02.1~dfsg1-0ubuntu7.4_amd64.deb".to_string(),
+            sha256sum: "1d46e4995d9361029b8d672403b745a31c7c977a5ae314de6342e26c79fc6a3f".to_string(),
+            depends: Some("libgs10 (= 10.02.1~dfsg1-0ubuntu7.4), libc6 (>= 2.34)".to_string()),
+            pre_depends: None,
+            provides: Some("ghostscript-x (= 10.02.1~dfsg1-0ubuntu7.4), postscript-viewer".to_string()),            
+        }];
+
+        let skipped_packages = vec![
+            RequestedPackage {
+                name: PackageName("package2".to_string()),
+                skip_dependencies: false,
+                force: false,
+            },
+            RequestedPackage {
+                name: PackageName("git".to_string()),
+                skip_dependencies: false,
+                force: false,
+            },
+        ];
+
+        let layer_env = configure_layer_environment(
+            &install_path,
+            &arch,
+            &package_env_vars,
+            &packages_to_install,
+            &skipped_packages,
+        );        
+
+        // Get the actual and expected values for LD_LIBRARY_PATH
+        let actual_ld_library_path = split_into_paths(layer_env.apply_to_empty(Scope::All).get("LD_LIBRARY_PATH"));
+        let expected_ld_library_path = vec![
+            install_path.join(format!("usr/lib/{arch}/nested-1")),
+            install_path.join(format!("usr/lib/{arch}")),
+            install_path.join("usr/lib/nested-2"),
+            install_path.join("usr/lib"),
+            install_path.join(format!("lib/{arch}/nested-3/deeply")),
+            install_path.join(format!("lib/{arch}/nested-3")),
+            install_path.join(format!("lib/{arch}")), // Corrected order
+            install_path.join("lib/nested-4"),
+            install_path.join("lib"),
+        ];
+
+        // Correct assertion for LD_LIBRARY_PATH
+        assert_eq!(actual_ld_library_path, expected_ld_library_path);
+
+        // Check that the environment variables from PACKAGE_ENV_VARS are correctly applied
+        let applied_env = layer_env.apply_to_empty(Scope::All);
+
         assert_eq!(
-            split_into_paths(layer_env.apply_to_empty(Scope::All).get("LD_LIBRARY_PATH")),
-            vec![
-                install_path.join(format!("usr/lib/{arch}/nested-1")),
-                install_path.join(format!("usr/lib/{arch}")),
-                install_path.join("usr/lib/nested-2"),
-                install_path.join("usr/lib"),
-                install_path.join(format!("lib/{arch}/nested-3/deeply")),
-                install_path.join(format!("lib/{arch}/nested-3")),
-                install_path.join(format!("lib/{arch}")),
-                install_path.join("lib/nested-4"),
-                install_path.join("lib"),
-            ]
+            applied_env.get("GIT_EXEC_PATH"),
+            Some(&OsString::from(format!("{}/usr/lib/git-core", install_dir_str)))
         );
-    }
+        assert_eq!(
+            applied_env.get("GIT_TEMPLATE_DIR"),
+            Some(&OsString::from(format!("{}/usr/share/git-core/templates", install_dir_str)))
+        );
+        assert_eq!(
+            applied_env.get("GS_LIB"),
+            Some(&OsString::from(format!("{}/var/lib/ghostscript", install_dir_str)))
+        );
+    }    
 
     #[test]
     fn configure_layer_environment_adds_nested_directories_with_headers_to_include_path() {
@@ -563,7 +714,50 @@ mod test {
             "usr/not-an-include-dir/header.h"
         ]);
         let install_path = install_dir.path();
-        let layer_env = configure_layer_environment(install_path, &arch);
+
+        // Convert package_env_vars to the correct type and replace {install_dir} with the actual path
+        let install_dir_str = install_path.to_string_lossy().to_string();
+        let initial_package_env_vars = package_env_vars();
+        println!("initial_package_env_vars: {:?}", initial_package_env_vars);        
+
+        let package_env_vars: HashMap<String, HashMap<String, String>> = initial_package_env_vars
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    k.to_string(),
+                    v.into_iter()
+                        .map(|(k, v)| (k.to_string(), v.replace("{install_dir}", &install_dir_str)))
+                        .collect(),
+                )
+            })
+            .collect();
+
+        // Create dummy packages to install and skipped packages
+        let packages_to_install = vec![RepositoryPackage {
+            repository_uri: RepositoryUri("http://security.ubuntu.com/ubuntu".to_string()),
+            name: "ghostscript".to_string(),
+            version: "10.02.1~dfsg1-0ubuntu7.4".to_string(),
+            filename: "pool/main/g/ghostscript/ghostscript_10.02.1~dfsg1-0ubuntu7.4_amd64.deb".to_string(),
+            sha256sum: "1d46e4995d9361029b8d672403b745a31c7c977a5ae314de6342e26c79fc6a3f".to_string(),
+            depends: Some("libgs10 (= 10.02.1~dfsg1-0ubuntu7.4), libc6 (>= 2.34)".to_string()),
+            pre_depends: None,
+            provides: Some("ghostscript-x (= 10.02.1~dfsg1-0ubuntu7.4), postscript-viewer".to_string()),            
+        }];
+        
+        let skipped_packages = vec![RequestedPackage {
+            name: PackageName("package2".to_string()),
+            skip_dependencies: false,
+            force: false,
+        }];
+
+        let layer_env = configure_layer_environment(
+            &install_path,
+            &arch,
+            &package_env_vars,
+            &packages_to_install,
+            &skipped_packages,
+        );
+
         assert_eq!(
             split_into_paths(layer_env.apply_to_empty(Scope::All).get("INCLUDE_PATH")),
             vec![
@@ -574,7 +768,7 @@ mod test {
                 install_path.join("usr/include"),
             ]
         );
-    }
+    }    
 
     fn create_installation(files: Vec<String>) -> TempDir {
         let install_dir = tempfile::tempdir().unwrap();

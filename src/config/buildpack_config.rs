@@ -108,6 +108,9 @@ impl From<ConfigError> for libcnb::Error<DebianPackagesBuildpackError> {
 #[cfg(test)]
 mod test {
     use crate::debian::PackageName;
+    use std::collections::HashMap;
+    use indexmap::IndexSet;
+    use std::str::FromStr;
 
     use super::*;
 
@@ -147,7 +150,24 @@ install = [
                     }
                 ])
             }
-        );
+        );    
+    }
+
+    #[test]
+    fn test_deserialize_invalid_config() {
+        let toml = r#"
+[_]
+schema-version = "0.2"
+
+[com.heroku.buildpacks.deb-packages]
+install = [
+    { name = 123 },
+]
+        "#
+        .trim();
+
+        let result = BuildpackConfig::from_str(toml);
+        assert!(result.is_err());
     }
 
     #[test]

@@ -51,6 +51,13 @@ The configuration for this buildpack must be added to the project descriptor fil
 project using the `com.heroku.buildpacks.deb-packages` table. The list of packages to install must be
 specified there. See below for the [configuration schema](#schema) and an [example](#example).
 
+### Default Package Environment Variables
+The buildpack includes a set of default environment variables for each package, known as `PACKAGE_ENV_VARS`. These default environment variables are applied during the build process. However, you can override these default values by specifying environment variables in the project.toml file.
+
+## Environment Variables and Post-Install Commands for Skipped Packages
+
+Even if a package is skipped, the environment variables will still be applied. This ensures that any necessary configuration or setup steps are performed, even if the package itself is not installed.
+
 #### Example
 
 ```toml
@@ -61,10 +68,18 @@ schema-version = "0.2"
 # buildpack configuration goes here
 [com.heroku.buildpacks.deb-packages]
 install = [
-    # string version of a dependency to install
-    "package-name",
-    # inline-table version of a dependency to install
-    { name = "package-name", skip_dependencies = true, force = true }
+  # basic package with some dependencies
+  "libgwenhywfar79",
+  # child package of "libgwenhywfar79" so we should get a warning that it was already installed by the previous entry
+  "libgwenhywfar-data",
+  # package with child dependencies skipped so no "libxmlsec1" or "libxmlsec1-openssl" will be installed
+  { name = "xmlsec1", skip_dependencies = true },
+  # a package already installed on the system
+  "wget",
+  # libvips is a virtual package which is only provided by libvips42 so no need to halt and ask the user which implementing package to install
+  "libvips",
+  # curl is already on the system so we're going to force it to be installed
+  { name = "curl", force = true },
 ]
 ```
 
@@ -200,6 +215,7 @@ For each package added after [determining the packages to install](#step-2-deter
 | `CPATH`              | Same as `INCLUDE_PATH`                                                                                           | header files     |
 | `CPPPATH`            | Same as `INCLUDE_PATH`                                                                                           | header files     |
 | `PKG_CONFIG_PATH`    | `/<layer_dir>/usr/lib/<arch>/pkgconfig` <br> `/<layer_dir>/usr/lib/pkgconfig`                                    | pc files         |
+| `GIT_EXEC_PATH`    | `/<layer_dir>/app/.apt/usr/lib/git-core`                                    | git files         |
 
 ## Contributing
 
@@ -259,3 +275,20 @@ Issues and pull requests are welcome. See our [contributing guidelines](./CONTRI
 
 [toml-table]: https://toml.io/en/v1.0.0#table
 
+## Testing Locally
+
+To test the project locally, follow these steps:
+
+### Prerequisites
+
+Ensure you have the following installed:
+- Rust and Cargo: [Installation Guide](https://www.rust-lang.org/tools/install)
+- Docker (if applicable for your tests)
+- `cargo install libcnb-cargo`
+
+### Building the Project
+
+`cargo build` to build the project
+`cargo test` to run the automated tests
+`cargo test --test integration_test` to run integration tests
+`cargo libcnb package` builds an image of the buildpack that can be used with an application.  The output of this command shows usage of the generated image.

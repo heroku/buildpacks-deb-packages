@@ -620,3 +620,47 @@ fn update_project_toml(app_dir: &Path, update_fn: impl FnOnce(&mut DocumentMut))
     update_fn(&mut doc);
     std::fs::write(&project_toml, doc.to_string()).unwrap();
 }
+
+#[test]
+fn test_get_integration_test_builder() {
+    // Set environment variable
+    std::env::set_var("INTEGRATION_TEST_CNB_BUILDER", "heroku/builder:24");
+    assert_eq!(get_integration_test_builder(), "heroku/builder:24");
+
+    // Unset environment variable
+    std::env::remove_var("INTEGRATION_TEST_CNB_BUILDER");
+    assert_eq!(get_integration_test_builder(), DEFAULT_BUILDER);
+}
+
+#[test]
+fn test_get_integration_test_arch() {
+    // Set environment variable
+    std::env::set_var("INTEGRATION_TEST_CNB_ARCH", "arm64");
+    assert_eq!(get_integration_test_arch(), "arm64");
+
+    // Unset environment variable
+    std::env::remove_var("INTEGRATION_TEST_CNB_ARCH");
+    assert_eq!(get_integration_test_arch(), DEFAULT_ARCH);
+}
+
+#[test]
+fn test_panic_unsupported_test_configuration() {
+    // This test should panic
+    let result = std::panic::catch_unwind(|| {
+        panic_unsupported_test_configuration();
+    });
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_set_install_config() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let app_dir = temp_dir.path();
+    std::fs::write(app_dir.join("project.toml"), "[com.heroku.buildpacks.deb-packages]").unwrap();
+
+    set_install_config(app_dir, [requested_package_config("ffmpeg", true)]);
+
+    let contents = std::fs::read_to_string(app_dir.join("project.toml")).unwrap();
+    assert!(contents.contains("ffmpeg"));
+    assert!(contents.contains("skip_dependencies = true"));
+}

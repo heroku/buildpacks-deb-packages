@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub(crate) struct RepositoryUri(String);
+pub(crate) struct RepositoryUri(pub String);
 
 impl RepositoryUri {
     pub(crate) fn as_str(&self) -> &str {
