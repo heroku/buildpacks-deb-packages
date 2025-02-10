@@ -1,9 +1,10 @@
 use std::fmt::Debug;
 use std::io::stdout;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use bullet_stream::Print;
+use bullet_stream::{style, Print};
 use indoc::formatdoc;
 use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
 use libcnb::detect::{DetectContext, DetectResult, DetectResultBuilder};
@@ -14,7 +15,7 @@ use reqwest_middleware::ClientBuilder;
 use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
 
-use crate::config::{BuildpackConfig, ConfigError};
+use crate::config::{BuildpackConfig, ConfigError, NAMESPACED_CONFIG};
 use crate::create_package_index::{create_package_index, CreatePackageIndexError};
 use crate::debian::{Distro, UnsupportedDistroError};
 use crate::determine_packages_to_install::{
@@ -47,13 +48,20 @@ impl Buildpack for DebianPackagesBuildpack {
     type Error = DebianPackagesBuildpackError;
 
     fn detect(&self, context: DetectContext<Self>) -> libcnb::Result<DetectResult, Self::Error> {
-        if BuildpackConfig::exists(context.app_dir.join("project.toml"))? {
+        let log = Print::new(stdout()).without_header();
+        if let Some(project_toml) = get_project_toml(&context.app_dir)? {
+            if BuildpackConfig::is_present(project_toml)? {
+                DetectResultBuilder::pass().build()
+            } else {
+                log.important("Project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.").done();
+                DetectResultBuilder::fail().build()
+            }
+        } else if get_aptfile(&context.app_dir)?.is_some() {
+            // NOTE: This buildpack doesn't use an Aptfile, but we'll pass detection to display a message
+            //       to users in the build step detailing how to migrate away from the Aptfile format.
             DetectResultBuilder::pass().build()
         } else {
-            Print::new(stdout())
-                .without_header()
-                .important("No project.toml file found.")
-                .done();
+            log.important("No project.toml or Aptfile found.").done();
             DetectResultBuilder::fail().build()
         }
     }
@@ -70,22 +78,18 @@ impl Buildpack for DebianPackagesBuildpack {
             buildpack_version = context.buildpack_descriptor.buildpack.version
         ));
 
+        if let Some(_) = get_aptfile(&context.app_dir)? {
+            log = log.important(migrate_from_aptfile_help_message());
+            // If we passed detect from the Aptfile but there is no project.toml then
+            // print the warning and exit early.
+            if let None = get_project_toml(&context.app_dir)? {
+                return BuildResultBuilder::new().build();
+            }
+        }
+
         let config = BuildpackConfig::try_from(context.app_dir.join("project.toml"))?;
-
         if config.install.is_empty() {
-            log.important(
-                formatdoc! {"
-                    No configured packages to install found in project.toml file. You may need to \
-                add a list of packages to install in your project.toml like this:
-
-                [com.heroku.buildpacks.deb-packages]
-                install = [
-                    \"package-name\",
-                ]
-            " }
-                .trim(),
-            )
-            .done();
+            log.important(empty_config_help_message()).done();
             return BuildResultBuilder::new().build();
         }
 
@@ -150,6 +154,7 @@ pub(crate) enum DebianPackagesBuildpackError {
     CreatePackageIndex(CreatePackageIndexError),
     DeterminePackagesToInstall(DeterminePackagesToInstallError),
     InstallPackages(InstallPackagesError),
+    Detect(DetectError),
 }
 
 impl From<DebianPackagesBuildpackError> for libcnb::Error<DebianPackagesBuildpackError> {
@@ -158,8 +163,81 @@ impl From<DebianPackagesBuildpackError> for libcnb::Error<DebianPackagesBuildpac
     }
 }
 
+#[derive(Debug)]
+pub(crate) enum DetectError {
+    CheckExistsAptfile(PathBuf, std::io::Error),
+    CheckExistsProjectToml(PathBuf, std::io::Error),
+}
+
+impl From<DetectError> for libcnb::Error<DebianPackagesBuildpackError> {
+    fn from(value: DetectError) -> Self {
+        Self::BuildpackError(DebianPackagesBuildpackError::Detect(value))
+    }
+}
+
 pub(crate) fn is_buildpack_debug_logging_enabled() -> bool {
     Env::from_current()
         .get("BP_LOG_LEVEL")
         .is_some_and(|value| value.eq_ignore_ascii_case("debug"))
+}
+
+fn get_aptfile(app_dir: &Path) -> Result<Option<PathBuf>, DetectError> {
+    let aptfile = app_dir.join("Aptfile");
+    aptfile
+        .try_exists()
+        .map_err(|e| DetectError::CheckExistsAptfile(aptfile.clone(), e))
+        .map(|exists| if exists { Some(aptfile) } else { None })
+}
+
+fn get_project_toml(app_dir: &Path) -> Result<Option<PathBuf>, DetectError> {
+    let project_toml = app_dir.join("project.toml");
+    project_toml
+        .try_exists()
+        .map_err(|e| DetectError::CheckExistsProjectToml(project_toml.clone(), e))
+        .map(|exists| if exists { Some(project_toml) } else { None })
+}
+
+fn empty_config_help_message() -> String {
+    formatdoc! {"
+        No configured packages to install found in project.toml file. You may need to \
+        add a list of packages to install in your project.toml like this:
+
+        [{NAMESPACED_CONFIG}]
+        install = [
+            \"package-name\",
+        ]
+    " }
+    .trim()
+    .to_string()
+}
+
+fn migrate_from_aptfile_help_message() -> String {
+    let aptfile = style::value("Aptfile");
+    let apt_buildpack_name = style::value("heroku-community/apt");
+    let project_toml = style::value("project.toml");
+    let configuration_readme_url = style::url(
+        "https://github.com/heroku/buildpacks-deb-packages?tab=readme-ov-file#configuration",
+    );
+    formatdoc! { "
+        The use of an {aptfile} is deprecated!
+
+        Users of the {apt_buildpack_name} buildpack can migrate their installed packages to be compatible \
+        with this buildpack's configuration by adding a {project_toml} file with:
+
+            [_]
+            schema-version = \"0.2\"
+
+            [com.heroku.buildpacks.deb-packages]
+            install = [
+                # copy the contents of your Aptfile here, e.g.;
+                # \"package-a\",
+                # \"package-b\",
+                # \"package-c\"
+            ]
+
+        If your {aptfile} contains a package name that uses wildcards (e.g.; mysql-*) this must be replaced \
+        with the full list of matching package names. See {configuration_readme_url}
+    " }
+    .trim()
+    .to_string()
 }

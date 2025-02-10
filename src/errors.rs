@@ -1,10 +1,10 @@
-use crate::config::{ConfigError, ParseConfigError, ParseRequestedPackageError};
+use crate::config::{ConfigError, ParseConfigError, ParseRequestedPackageError, NAMESPACED_CONFIG};
 use crate::create_package_index::CreatePackageIndexError;
 use crate::debian::UnsupportedDistroError;
 use crate::determine_packages_to_install::DeterminePackagesToInstallError;
 use crate::errors::ErrorType::{Framework, Internal, UserFacing};
 use crate::install_packages::InstallPackagesError;
-use crate::DebianPackagesBuildpackError;
+use crate::{DebianPackagesBuildpackError, DetectError};
 use std::collections::BTreeSet;
 
 use bon::builder;
@@ -38,25 +38,13 @@ fn on_buildpack_error(error: DebianPackagesBuildpackError) -> ErrorMessage {
             on_determine_packages_to_install_error(e)
         }
         DebianPackagesBuildpackError::InstallPackages(e) => on_install_packages_error(e),
+        DebianPackagesBuildpackError::Detect(e) => on_detect_error(e),
     }
 }
 
 #[allow(clippy::too_many_lines)]
 fn on_config_error(error: ConfigError) -> ErrorMessage {
     match error {
-        ConfigError::CheckExists(config_file, e) => {
-            let config_file = file_value(config_file);
-            create_error()
-                .error_type(UserFacing(SuggestRetryBuild::No, SuggestSubmitIssue::No))
-                .header("Unable to complete buildpack detection")
-                .body(formatdoc! { "
-                    An unexpected I/O error occurred while checking {config_file} to determine if the \
-                    {BUILDPACK_NAME} is compatible for this application.
-                " })
-                .debug_info(e.to_string())
-                .call()
-        }
-
         ConfigError::ReadConfig(config_file, e) => {
             let config_file = file_value(config_file);
             create_error()
@@ -76,7 +64,7 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
         ConfigError::ParseConfig(config_file, error) => {
             let config_file = file_value(config_file);
             let toml_spec_url = style::url("https://toml.io/en/v1.0.0");
-            let root_config_key = style::value("[com.heroku.buildpacks.deb-packages]");
+            let root_config_key = style::value(format!("[{NAMESPACED_CONFIG}]"));
             let configuration_doc_url =
                 style::url("https://github.com/heroku/buildpacks-deb-packages#configuration");
             let debian_package_name_format_url = style::url(
@@ -118,7 +106,7 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
                         .call()
                 }
 
-                ParseConfigError::ParseRequestedPackage(error) => match error {
+                ParseConfigError::ParseRequestedPackage(error) => match *error {
                     ParseRequestedPackageError::InvalidPackageName(error) => {
                         let invalid_package_name = style::value(error.package_name);
 
@@ -170,6 +158,24 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
                             .debug_info(format!("Invalid type {value_type} with value {value}"))
                             .call()
                     }
+                },
+
+                ParseConfigError::MissingNamespacedConfig => {
+                    create_error()
+                        .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
+                        .header(format!("Error parsing {config_file} with invalid key"))
+                        .body(formatdoc! { "
+                            The {BUILDPACK_NAME} reads the configuration from {config_file} to complete \
+                            the build but no configuration for the key {root_config_key} is present. The \
+                            value of this key must be a TOML table.
+
+                            Suggestions:
+                            - See the buildpack documentation for the proper usage for this configuration at \
+                            {configuration_doc_url}
+                            - See the TOML documentation for more details on the TOML table type at \
+                            {toml_spec_url}
+                        " })
+                        .call()
                 },
             }
         }
@@ -746,6 +752,23 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
     }
 }
 
+fn on_detect_error(error: DetectError) -> ErrorMessage {
+    match error {
+        DetectError::CheckExistsAptfile(file, e) | DetectError::CheckExistsProjectToml(file, e) => {
+            let file = file_value(file);
+            create_error()
+                .error_type(UserFacing(SuggestRetryBuild::No, SuggestSubmitIssue::No))
+                .header("Unable to complete buildpack detection")
+                .body(formatdoc! { "
+                    An unexpected I/O error occurred while checking {file} to determine if the \
+                    {BUILDPACK_NAME} is compatible for this application.
+                " })
+                .debug_info(e.to_string())
+                .call()
+        }
+    }
+}
+
 fn on_framework_error(error: &Error<DebianPackagesBuildpackError>) -> ErrorMessage {
     create_error()
         .error_type(Framework)
@@ -889,7 +912,7 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
-    fn test_config_check_exists_errors() {
+    fn test_detect_check_exists_project_toml_error() {
         test_error_output(
             "
                 Context
@@ -899,17 +922,45 @@ mod tests {
                 I/O operations can fail for a number of reasons which we can't anticipate and
                 the best we can do here is report the error message.
             ",
-            ConfigError::CheckExists(
+            DetectError::CheckExistsProjectToml(
                 "/path/to/project.toml".into(),
                 create_io_error("test I/O error"),
             ),
             indoc! {"
                 - Debug Info:
                   - test I/O error
-
+    
                 ! Unable to complete buildpack detection
                 !
                 ! An unexpected I/O error occurred while checking `/path/to/project.toml` to \
+                determine if the Heroku .deb Packages buildpack is compatible for this application.
+            "},
+        );
+    }
+
+    #[test]
+    fn test_detect_check_exists_aptfile_error() {
+        test_error_output(
+            "
+                Context
+                -------
+                When detect is executed on this buildpack, we check to see if an Aptfile
+                exists since that's where configuration for the non-CNB variant of this 
+                buildpack would be found so we can display a migration message to the user.
+                I/O operations can fail for a number of reasons which we can't anticipate and
+                the best we can do here is report the error message.
+            ",
+            DetectError::CheckExistsAptfile(
+                "/path/to/Aptfile".into(),
+                create_io_error("test I/O error"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - test I/O error
+    
+                ! Unable to complete buildpack detection
+                !
+                ! An unexpected I/O error occurred while checking `/path/to/Aptfile` to \
                 determine if the Heroku .deb Packages buildpack is compatible for this application.
             "},
         );
@@ -1027,9 +1078,9 @@ mod tests {
             ConfigError::ParseConfig(
                 "/path/to/project.toml".into(),
                 ParseConfigError::ParseRequestedPackage(
-                    ParseRequestedPackageError::InvalidPackageName(ParsePackageNameError {
+                    Box::from(ParseRequestedPackageError::InvalidPackageName(ParsePackageNameError {
                         package_name: "invalid!package!name".to_string(),
-                    }),
+                    })),
                 ),
             ),
             indoc! {"
@@ -1066,9 +1117,9 @@ mod tests {
             ConfigError::ParseConfig(
                 "/path/to/project.toml".into(),
                 ParseConfigError::ParseRequestedPackage(
-                    ParseRequestedPackageError::UnexpectedTomlValue(
+                    Box::from(ParseRequestedPackageError::UnexpectedTomlValue(
                         toml_edit::value(37).into_value().unwrap(),
-                    ),
+                    )),
                 ),
             ),
             indoc! {"
@@ -1090,6 +1141,35 @@ mod tests {
                 https://github.com/heroku/buildpacks-deb-packages#configuration
                 ! - See the TOML documentation for more details on the TOML string and inline \
                 table types at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_missing_namespaced_config() {
+        test_error_output("
+                Context
+                -------
+                We read the buildpack configuration from project.toml which must be a valid TOML file.
+                If the file is valid but the there is no configuration supplied, we report this to the 
+                user and request they check the buildpack documentation for proper usage.
+            ",
+            ConfigError::ParseConfig(
+              "/path/to/project.toml".into(),
+              ParseConfigError::MissingNamespacedConfig
+            ),
+indoc! {"
+                ! Error parsing `/path/to/project.toml` with invalid key
+                !
+                ! The Heroku .deb Packages buildpack reads the configuration from `/path/to/project.toml` \
+                to complete the build but no configuration for the key `[com.heroku.buildpacks.deb-packages]` \
+                is present. The value of this key must be a TOML table.
+                !
+                ! Suggestions:
+                ! - See the buildpack documentation for the proper usage for this configuration at https://github.com/heroku/buildpacks-deb-packages#configuration
+                ! - See the TOML documentation for more details on the TOML table type at https://toml.io/en/v1.0.0
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
             "},
