@@ -1150,30 +1150,29 @@ mod tests {
     #[test]
     fn config_parse_config_error_for_missing_namespaced_config() {
         test_error_output("
-                Context
-                -------
-                We read the buildpack configuration from project.toml which must be a valid TOML file.
-                If the file is valid but the there is no configuration supplied, we report this to the 
-                user and request they check the buildpack documentation for proper usage.
-            ",
-            ConfigError::ParseConfig(
-              "/path/to/project.toml".into(),
-              ParseConfigError::MissingNamespacedConfig
-            ),
-indoc! {"
-                ! Error parsing `/path/to/project.toml` with invalid key
-                !
-                ! The Heroku .deb Packages buildpack reads the configuration from `/path/to/project.toml` \
-                to complete the build but no configuration for the key `[com.heroku.buildpacks.deb-packages]` \
-                is present. The value of this key must be a TOML table.
-                !
-                ! Suggestions:
-                ! - See the buildpack documentation for the proper usage for this configuration at https://github.com/heroku/buildpacks-deb-packages#configuration
-                ! - See the TOML documentation for more details on the TOML table type at https://toml.io/en/v1.0.0
-                !
-                ! Use the debug information above to troubleshoot and retry your build.
-            "},
-        );
+            Context
+            -------
+            We read the buildpack configuration from project.toml which must be a valid TOML file.
+            If the file is valid but the there is no configuration supplied, we report this to the 
+            user and request they check the buildpack documentation for proper usage.
+        ",
+        ConfigError::ParseConfig(
+            "/path/to/project.toml".into(),
+            ParseConfigError::MissingNamespacedConfig
+        ), 
+        indoc! {"
+            ! Error parsing `/path/to/project.toml` with invalid key
+            !
+            ! The Heroku .deb Packages buildpack reads the configuration from `/path/to/project.toml` \
+            to complete the build but no configuration for the key `[com.heroku.buildpacks.deb-packages]` \
+            is present. The value of this key must be a TOML table.
+            !
+            ! Suggestions:
+            ! - See the buildpack documentation for the proper usage for this configuration at https://github.com/heroku/buildpacks-deb-packages#configuration
+            ! - See the TOML documentation for more details on the TOML table type at https://toml.io/en/v1.0.0
+            !
+            ! Use the debug information above to troubleshoot and retry your build.
+        "});
     }
 
     #[test]
