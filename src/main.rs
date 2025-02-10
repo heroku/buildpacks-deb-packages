@@ -78,11 +78,11 @@ impl Buildpack for DebianPackagesBuildpack {
             buildpack_version = context.buildpack_descriptor.buildpack.version
         ));
 
-        if let Some(_) = get_aptfile(&context.app_dir)? {
+        if get_aptfile(&context.app_dir)?.is_some() {
             log = log.important(migrate_from_aptfile_help_message());
             // If we passed detect from the Aptfile but there is no project.toml then
             // print the warning and exit early.
-            if let None = get_project_toml(&context.app_dir)? {
+            if get_project_toml(&context.app_dir)?.is_none() {
                 return BuildResultBuilder::new().build();
             }
         }
