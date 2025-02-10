@@ -929,7 +929,7 @@ mod tests {
             indoc! {"
                 - Debug Info:
                   - test I/O error
-    
+
                 ! Unable to complete buildpack detection
                 !
                 ! An unexpected I/O error occurred while checking `/path/to/project.toml` to \
@@ -945,7 +945,7 @@ mod tests {
                 Context
                 -------
                 When detect is executed on this buildpack, we check to see if an Aptfile
-                exists since that's where configuration for the non-CNB variant of this 
+                exists since that's where configuration for the non-CNB variant of this
                 buildpack would be found so we can display a migration message to the user.
                 I/O operations can fail for a number of reasons which we can't anticipate and
                 the best we can do here is report the error message.
@@ -957,7 +957,7 @@ mod tests {
             indoc! {"
                 - Debug Info:
                   - test I/O error
-    
+
                 ! Unable to complete buildpack detection
                 !
                 ! An unexpected I/O error occurred while checking `/path/to/Aptfile` to \
@@ -1149,30 +1149,32 @@ mod tests {
 
     #[test]
     fn config_parse_config_error_for_missing_namespaced_config() {
-        test_error_output("
-            Context
-            -------
-            We read the buildpack configuration from project.toml which must be a valid TOML file.
-            If the file is valid but the there is no configuration supplied, we report this to the 
-            user and request they check the buildpack documentation for proper usage.
-        ",
-        ConfigError::ParseConfig(
-            "/path/to/project.toml".into(),
-            ParseConfigError::MissingNamespacedConfig
-        ), 
-        indoc! {"
-            ! Error parsing `/path/to/project.toml` with invalid key
-            !
-            ! The Heroku .deb Packages buildpack reads the configuration from `/path/to/project.toml` \
-            to complete the build but no configuration for the key `[com.heroku.buildpacks.deb-packages]` \
-            is present. The value of this key must be a TOML table.
-            !
-            ! Suggestions:
-            ! - See the buildpack documentation for the proper usage for this configuration at https://github.com/heroku/buildpacks-deb-packages#configuration
-            ! - See the TOML documentation for more details on the TOML table type at https://toml.io/en/v1.0.0
-            !
-            ! Use the debug information above to troubleshoot and retry your build.
-        "});
+        test_error_output(
+            "
+                Context
+                -------
+                We read the buildpack configuration from project.toml which must be a valid TOML file.
+                If the file is valid but the there is no configuration supplied, we report this to the
+                user and request they check the buildpack documentation for proper usage.
+            ",
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::MissingNamespacedConfig,
+            ),
+            indoc! {"
+                ! Error parsing `/path/to/project.toml` with invalid key
+                !
+                ! The Heroku .deb Packages buildpack reads the configuration from `/path/to/project.toml` \
+                to complete the build but no configuration for the key `[com.heroku.buildpacks.deb-packages]` \
+                is present. The value of this key must be a TOML table.
+                !
+                ! Suggestions:
+                ! - See the buildpack documentation for the proper usage for this configuration at https://github.com/heroku/buildpacks-deb-packages#configuration
+                ! - See the TOML documentation for more details on the TOML table type at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+        "},
+        );
     }
 
     #[test]
