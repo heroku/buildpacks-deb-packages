@@ -131,7 +131,10 @@ The following environment variables can be passed to the buildpack:
 
 This buildpack will pass detection if:
 
-- A `project.toml` file is found at the root of the application source directory
+- A `project.toml` file is found at the root of the application source directory containing configuration under the
+  `[com.heroku.buildpacks.deb-packages]` namespace.
+- An `Aptfile` is found. This will not be used by this buildpack but details for how to migrate away from
+  `Aptfile` configuration will be provided in the build phase if this file is present.
 
 ### Build
 

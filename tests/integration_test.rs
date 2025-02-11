@@ -32,14 +32,28 @@ fn test_failed_detection_when_no_project_file_exists() {
             config.expected_pack_result(PackResult::Failure);
         },
         |ctx| {
-            assert_contains!(ctx.pack_stdout, "No project.toml file found.");
+            assert_contains!(ctx.pack_stdout, "No project.toml or Aptfile found.");
         },
     );
 }
 
 #[test]
 #[ignore = "integration test"]
-fn test_failed_detection_when_project_file_with_empty_config_exists() {
+fn test_failed_detection_when_project_file_has_no_config() {
+    integration_test_with_config(
+        "fixtures/project_file_with_no_config",
+        |config| {
+            config.expected_pack_result(PackResult::Failure);
+        },
+        |ctx| {
+            assert_contains!(ctx.pack_stdout, "Project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.");
+        },
+    );
+}
+
+#[test]
+#[ignore = "integration test"]
+fn test_passes_detection_when_project_file_with_empty_config_exists_and_prints_help_during_build() {
     integration_test("fixtures/project_file_with_empty_config", |ctx| {
         assert_contains!(ctx.pack_stdout, "No configured packages to install found in project.toml file.");
     });
@@ -47,10 +61,19 @@ fn test_failed_detection_when_project_file_with_empty_config_exists() {
 
 #[test]
 #[ignore = "integration test"]
-fn test_failed_detection_when_project_file_has_no_config() {
-    integration_test("fixtures/project_file_with_no_config", |ctx| {
-        assert_contains!(ctx.pack_stdout, "No configured packages to install found in project.toml file.");
-    });
+fn test_aptfile_passes_detection_and_prints_help_during_build() {
+    integration_test_with_config(
+        "fixtures/no_project_file",
+        |config| {
+            config.expected_pack_result(PackResult::Success);
+            config.app_dir_preprocessor(|dir| {
+                std::fs::write(dir.join("Aptfile"), "").unwrap();
+            });
+        },
+        |ctx| {
+            assert_contains!(ctx.pack_stdout, "The use of an `Aptfile` is deprecated!");
+        },
+    );
 }
 
 #[test]
