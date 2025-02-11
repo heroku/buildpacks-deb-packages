@@ -162,7 +162,7 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
 
                 ParseConfigError::MissingNamespacedConfig => {
                     create_error()
-                        .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
+                        .error_type(UserFacing(SuggestRetryBuild::No, SuggestSubmitIssue::No))
                         .header(format!("Error parsing {config_file} with invalid key"))
                         .body(formatdoc! { "
                             The {BUILDPACK_NAME} reads the configuration from {config_file} to complete \
@@ -757,7 +757,7 @@ fn on_detect_error(error: DetectError) -> ErrorMessage {
         DetectError::CheckExistsAptfile(file, e) | DetectError::CheckExistsProjectToml(file, e) => {
             let file = file_value(file);
             create_error()
-                .error_type(UserFacing(SuggestRetryBuild::No, SuggestSubmitIssue::No))
+                .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
                 .header("Unable to complete buildpack detection")
                 .body(formatdoc! { "
                     An unexpected I/O error occurred while checking {file} to determine if the \
@@ -934,6 +934,8 @@ mod tests {
                 !
                 ! An unexpected I/O error occurred while checking `/path/to/project.toml` to \
                 determine if the Heroku .deb Packages buildpack is compatible for this application.
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
             "},
         );
     }
@@ -962,6 +964,8 @@ mod tests {
                 !
                 ! An unexpected I/O error occurred while checking `/path/to/Aptfile` to \
                 determine if the Heroku .deb Packages buildpack is compatible for this application.
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
             "},
         );
     }
@@ -1171,8 +1175,6 @@ mod tests {
                 ! Suggestions:
                 ! - See the buildpack documentation for the proper usage for this configuration at https://github.com/heroku/buildpacks-deb-packages#configuration
                 ! - See the TOML documentation for more details on the TOML table type at https://toml.io/en/v1.0.0
-                !
-                ! Use the debug information above to troubleshoot and retry your build.
         "},
         );
     }
