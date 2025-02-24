@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Detect now passes if an `Aptfile` exists and will print a migration message during the build phase.
+
+### Changed
+
+- Detect now passes if `project.toml` is present and contains namespaced configuration.
+
 ## [0.0.3] - 2024-12-05
 
 ### Changed
