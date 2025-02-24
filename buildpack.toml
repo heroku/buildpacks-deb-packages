@@ -2,7 +2,7 @@ api = "0.10"
 
 [buildpack]
 id = "heroku/deb-packages"
-version = "0.0.3"
+version = "0.1.0"
 name = "Heroku .deb Packages"
 description = "Heroku's buildpack for installing .deb system packages."
 homepage = "https://github.com/heroku/buildpacks-deb-packages"
