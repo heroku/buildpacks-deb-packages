@@ -307,7 +307,7 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult
             _ => {
                 // ignore other potential file entries (e.g.; debian-binary, control.tar)
             }
-        };
+        }
     }
 
     Ok(())

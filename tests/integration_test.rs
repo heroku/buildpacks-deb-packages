@@ -408,22 +408,20 @@ fn test_package_config_rewrite() {
                 set_install_config(&app_dir, [requested_package_config("libopusfile-dev", true)]);
             });
         },
-        |ctx| {
-            match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
-                ("heroku/builder:22", "amd64") => {
-                    assert_contains!(read_package_config(&ctx, "usr/lib/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
-                    assert_contains!(read_package_config(&ctx, "usr/lib/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
-                }
-                ("heroku/builder:24", "amd64") => {
-                    assert_contains!(read_package_config(&ctx, "usr/lib/x86_64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
-                    assert_contains!(read_package_config(&ctx, "usr/lib/x86_64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
-                }
-                ("heroku/builder:24", "arm64") => {
-                    assert_contains!(read_package_config(&ctx, "usr/lib/aarch64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
-                    assert_contains!(read_package_config(&ctx, "usr/lib/aarch64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
-                }
-                _ => panic_unsupported_test_configuration(),
-            };
+        |ctx| match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
+            ("heroku/builder:22", "amd64") => {
+                assert_contains!(read_package_config(&ctx, "usr/lib/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
+                assert_contains!(read_package_config(&ctx, "usr/lib/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
+            }
+            ("heroku/builder:24", "amd64") => {
+                assert_contains!(read_package_config(&ctx, "usr/lib/x86_64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
+                assert_contains!(read_package_config(&ctx, "usr/lib/x86_64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
+            }
+            ("heroku/builder:24", "arm64") => {
+                assert_contains!(read_package_config(&ctx, "usr/lib/aarch64-linux-gnu/pkgconfig/opusfile.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
+                assert_contains!(read_package_config(&ctx, "usr/lib/aarch64-linux-gnu/pkgconfig/opusurl.pc"), "prefix=/layers/heroku_deb-packages/packages/usr");
+            }
+            _ => panic_unsupported_test_configuration(),
         },
     );
 }
