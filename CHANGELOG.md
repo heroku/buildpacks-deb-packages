@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Updated libcnb to 0.27.0, which includes opentelemetry 0.28 and the new custom OTLP File Exporter. ([#95](https://github.com/heroku/buildpacks-deb-packages/pull/95))
+
 ## [0.1.0] - 2025-02-24
 
 ### Added
