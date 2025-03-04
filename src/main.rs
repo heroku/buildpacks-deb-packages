@@ -53,7 +53,7 @@ impl Buildpack for DebianPackagesBuildpack {
             if BuildpackConfig::is_present(project_toml)? {
                 DetectResultBuilder::pass().build()
             } else {
-                log.important("Project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.").done();
+                log.important("project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.").done();
                 DetectResultBuilder::fail().build()
             }
         } else if get_aptfile(&context.app_dir)?.is_some() {

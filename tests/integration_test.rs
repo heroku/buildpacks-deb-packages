@@ -46,7 +46,7 @@ fn test_failed_detection_when_project_file_has_no_config() {
             config.expected_pack_result(PackResult::Failure);
         },
         |ctx| {
-            assert_contains!(ctx.pack_stdout, "Project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.");
+            assert_contains!(ctx.pack_stdout, "project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.");
         },
     );
 }
