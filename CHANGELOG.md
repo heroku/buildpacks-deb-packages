@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed capitalisation of `project.toml` in the detection failure log output. ([#97](https://github.com/heroku/buildpacks-deb-packages/pull/97))
+
 ## [0.1.1] - 2025-03-03
 
 ### Changed
