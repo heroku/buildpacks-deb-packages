@@ -24,7 +24,7 @@ reqwest = { version = "0.12", default-features = false, features = ["stream", "r
 reqwest-middleware = "0.4"
 reqwest-retry = "0.7"
 serde = { version = "1", features = ["derive"] }
-sequoia-openpgp = { version = "1", default-features = false, features = ["crypto-rust", "allow-experimental-crypto", "allow-variable-time-crypto"] }
+sequoia-openpgp = { version = "2", default-features = false, features = ["crypto-rust", "allow-experimental-crypto", "allow-variable-time-crypto"] }
 sha2 = "0.10"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "time"] }
 tokio-tar = "0.3"
