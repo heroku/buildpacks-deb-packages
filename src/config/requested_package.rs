@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
-use toml_edit::{Formatted, InlineTable, Value};
-
 use crate::debian::{PackageName, ParsePackageNameError};
+use toml_edit::{Formatted, InlineTable, Value};
+use valuable::Valuable;
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Valuable)]
 pub(crate) struct RequestedPackage {
     pub(crate) name: PackageName,
     pub(crate) skip_dependencies: bool,

@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+use valuable::Valuable;
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Valuable)]
 pub(crate) struct RepositoryUri(String);
 
 impl RepositoryUri {

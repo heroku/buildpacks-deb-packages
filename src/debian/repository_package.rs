@@ -3,8 +3,9 @@ use bullet_stream::style;
 use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
+use valuable::Valuable;
 
-#[derive(Debug, Eq, PartialEq, Clone, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash, Valuable)]
 pub(crate) struct RepositoryPackage {
     pub(crate) repository_uri: RepositoryUri,
     pub(crate) name: String,

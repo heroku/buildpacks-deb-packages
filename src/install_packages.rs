@@ -30,6 +30,7 @@ use tokio::task::{JoinError, JoinSet};
 use tokio_tar::Archive as TarArchive;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
+use tracing::{info, instrument};
 use walkdir::{DirEntry, WalkDir};
 
 use crate::debian::{Distro, MultiarchName, RepositoryPackage};
@@ -38,6 +39,7 @@ use crate::{
     DebianPackagesBuildpackError,
 };
 
+#[instrument(skip_all)]
 pub(crate) async fn install_packages(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
@@ -73,6 +75,7 @@ pub(crate) async fn install_packages(
 
     match install_layer.state {
         LayerState::Restored { .. } => {
+            info!(deb_packages.install_layer_cached = true);
             log = packages_to_install
                 .iter()
                 .fold(
@@ -88,6 +91,7 @@ pub(crate) async fn install_packages(
                 .done();
         }
         LayerState::Empty { cause } => {
+            info!(deb_packages.install_layer_cached = false);
             let install_log = packages_to_install.iter().fold(
                 log.bullet(match cause {
                     EmptyLayerCause::NewlyCreated => "Requesting packages",
@@ -186,6 +190,7 @@ async fn download_and_extract(
     extract(download_path, install_dir).await
 }
 
+#[instrument(skip(client))]
 async fn download(
     client: ClientWithMiddleware,
     repository_package: &RepositoryPackage,
@@ -258,6 +263,7 @@ async fn download(
     Ok(download_path)
 }
 
+#[instrument(skip_all)]
 async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult<()> {
     // a .deb file is an ar archive
     // https://manpages.ubuntu.com/manpages/jammy/en/man5/deb.5.html
@@ -313,6 +319,7 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult
     Ok(())
 }
 
+#[instrument(skip_all)]
 fn configure_layer_environment(install_path: &Path, multiarch_name: &MultiarchName) -> LayerEnv {
     let mut layer_env = LayerEnv::new();
 
