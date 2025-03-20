@@ -14,6 +14,9 @@ use reqwest::Client;
 use reqwest_middleware::ClientBuilder;
 use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
+use reqwest_tracing::{SpanBackendWithUrl, TracingMiddleware};
+use tracing::info;
+use valuable::Valuable;
 
 use crate::config::{BuildpackConfig, ConfigError, NAMESPACED_CONFIG};
 use crate::create_package_index::{create_package_index, CreatePackageIndexError};
@@ -54,11 +57,13 @@ impl Buildpack for DebianPackagesBuildpack {
                 DetectResultBuilder::pass().build()
             } else {
                 log.important("project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.").done();
+                info!(deb_packages.project_toml_with_no_config = true);
                 DetectResultBuilder::fail().build()
             }
         } else if get_aptfile(&context.app_dir)?.is_some() {
             // NOTE: This buildpack doesn't use an Aptfile, but we'll pass detection to display a message
             //       to users in the build step detailing how to migrate away from the Aptfile format.
+            info!(deb_packages.aptfile = true);
             DetectResultBuilder::pass().build()
         } else {
             log.important("No project.toml or Aptfile found.").done();
@@ -83,17 +88,20 @@ impl Buildpack for DebianPackagesBuildpack {
             // If we passed detect from the Aptfile but there is no project.toml then
             // print the warning and exit early.
             if get_project_toml(&context.app_dir)?.is_none() {
+                info!(deb_packages.early_exit.migrate_aptfile = true);
                 return BuildResultBuilder::new().build();
             }
         }
 
         let config = BuildpackConfig::try_from(context.app_dir.join("project.toml"))?;
         if config.install.is_empty() {
+            info!(deb_packages.early_exit.nothing_to_install = true);
             log.important(empty_config_help_message()).done();
             return BuildResultBuilder::new().build();
         }
 
         let distro = Distro::try_from(&context.target)?;
+        info!(deb_packages.distro = distro.as_value());
 
         let shared_context = Arc::new(context);
 
@@ -107,6 +115,7 @@ impl Buildpack for DebianPackagesBuildpack {
         .with(RetryTransientMiddleware::new_with_policy(
             ExponentialBackoff::builder().build_with_max_retries(5),
         ))
+        .with(TracingMiddleware::<SpanBackendWithUrl>::new())
         .build();
 
         let runtime = tokio::runtime::Builder::new_multi_thread()

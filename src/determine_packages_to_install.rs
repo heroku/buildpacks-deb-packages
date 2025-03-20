@@ -11,7 +11,10 @@ use std::fmt::{Display, Formatter};
 use std::fs::read_to_string;
 use std::io::Stdout;
 use std::path::PathBuf;
+use tracing::{info, instrument};
+use valuable::Valuable;
 
+#[instrument(skip(package_index, log))]
 pub(crate) fn determine_packages_to_install(
     package_index: &PackageIndex,
     requested_packages: IndexSet<RequestedPackage>,
@@ -76,7 +79,9 @@ pub(crate) fn determine_packages_to_install(
     let packages_to_install = packages_marked_for_install
         .into_iter()
         .map(|package_marked_for_install| package_marked_for_install.repository_package)
-        .collect();
+        .collect::<Vec<_>>();
+
+    info!(deb_packages.packages_to_install = packages_to_install.as_value());
 
     Ok((packages_to_install, log))
 }

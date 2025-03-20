@@ -4,6 +4,12 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use crate::debian::{
+    ArchitectureName, Distro, PackageIndex, ParseRepositoryPackageError, RepositoryPackage,
+    RepositoryUri, Source,
+};
+use crate::pgp::CertHelper;
+use crate::{BuildpackResult, DebianPackagesBuildpack, DebianPackagesBuildpackError};
 use apt_parser::errors::APTError;
 use apt_parser::Release;
 use async_compression::tokio::bufread::GzipDecoder;
@@ -35,14 +41,9 @@ use tokio::sync::oneshot::error::RecvError;
 use tokio::task::{JoinError, JoinSet};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
+use tracing::{info, instrument};
 
-use crate::debian::{
-    ArchitectureName, Distro, PackageIndex, ParseRepositoryPackageError, RepositoryPackage,
-    RepositoryUri, Source,
-};
-use crate::pgp::CertHelper;
-use crate::{BuildpackResult, DebianPackagesBuildpack, DebianPackagesBuildpackError};
-
+#[instrument(skip_all)]
 pub(crate) async fn create_package_index(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
@@ -137,6 +138,7 @@ pub(crate) async fn create_package_index(
     Ok((package_index, log))
 }
 
+#[instrument(skip(context, client))]
 async fn update_sources(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
@@ -172,6 +174,7 @@ async fn update_sources(
     Ok(updated_sources)
 }
 
+#[instrument(skip(context, client, signed_by))]
 async fn update_source(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
@@ -258,6 +261,7 @@ async fn update_source(
     })
 }
 
+#[instrument(skip(context, client, signed_by))]
 async fn get_release(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
@@ -308,8 +312,12 @@ async fn get_release(
     let release_file_path = release_file_layer.path().join("release");
 
     let cache_state = match release_file_layer.state {
-        LayerState::Restored { .. } => UpdatedSourceCacheState::Cached,
+        LayerState::Restored { .. } => {
+            info!(deb_packages.release_file.cached = true);
+            UpdatedSourceCacheState::Cached
+        }
         LayerState::Empty { cause } => {
+            info!(deb_packages.release_file.cached = false);
             release_file_layer.write_metadata(new_metadata)?;
 
             let raw_release_url_path = release_file_layer.path().join(".url");
@@ -370,6 +378,7 @@ async fn get_release(
     })
 }
 
+#[instrument(skip(context, client, hash))]
 async fn get_package_list(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
@@ -405,8 +414,12 @@ async fn get_package_list(
     let package_index_path = package_index_layer.path().join("package_index");
 
     let cache_state = match package_index_layer.state {
-        LayerState::Restored { .. } => UpdatedSourceCacheState::Cached,
+        LayerState::Restored { .. } => {
+            info!(deb_packages.package_list.cached = true);
+            UpdatedSourceCacheState::Cached
+        }
         LayerState::Empty { cause } => {
+            info!(deb_packages.package_list.cached = false);
             package_index_layer.write_metadata(new_metadata)?;
 
             let package_index_url_path = package_index_layer.path().join(".url");
@@ -495,6 +508,7 @@ async fn get_package_list(
     })
 }
 
+#[instrument(skip_all)]
 async fn build_package_index(
     updated_sources: Vec<UpdatedPackageIndex>,
 ) -> BuildpackResult<PackageIndex> {
@@ -516,6 +530,7 @@ async fn build_package_index(
 
 // NOTE: Rayon is used here since this is a fairly CPU-intensive operation.
 //       See - https://ryhl.io/blog/async-what-is-blocking/
+#[instrument(skip_all)]
 async fn read_packages(
     updated_source: UpdatedPackageIndex,
 ) -> BuildpackResult<Vec<RepositoryPackage>> {
