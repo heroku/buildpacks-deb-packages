@@ -15,7 +15,7 @@ use reqwest_middleware::ClientBuilder;
 use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
 use reqwest_tracing::{SpanBackendWithUrl, TracingMiddleware};
-use tracing::info;
+use tracing::{error, info};
 use valuable::Valuable;
 
 use crate::config::{BuildpackConfig, ConfigError, NAMESPACED_CONFIG};
@@ -152,6 +152,7 @@ impl Buildpack for DebianPackagesBuildpack {
     }
 
     fn on_error(&self, error: libcnb::Error<Self::Error>) {
+        error!(deb_packages.on_error = ?error);
         errors::on_error(error, stdout());
     }
 }
