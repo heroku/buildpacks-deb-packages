@@ -1,12 +1,10 @@
+use crate::config::{ParseRequestedPackageError, RequestedPackage};
+use crate::DebianPackagesBuildpackError;
+use indexmap::IndexSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-
-use indexmap::IndexSet;
 use toml_edit::{DocumentMut, TableLike};
-
-use crate::config::{ParseRequestedPackageError, RequestedPackage};
-use crate::DebianPackagesBuildpackError;
 
 pub(crate) const NAMESPACED_CONFIG: &str = "com.heroku.buildpacks.deb-packages";
 

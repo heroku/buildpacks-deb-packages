@@ -1,15 +1,18 @@
 use crate::debian::RepositoryUri;
 use bullet_stream::style;
 use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
+use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Eq, PartialEq, Clone, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash, Serialize)]
 pub(crate) struct RepositoryPackage {
     pub(crate) repository_uri: RepositoryUri,
     pub(crate) name: String,
     pub(crate) version: String,
+    #[serde(skip)]
     pub(crate) filename: String,
+    #[serde(skip)]
     pub(crate) sha256sum: String,
     pub(crate) depends: Option<String>,
     pub(crate) pre_depends: Option<String>,

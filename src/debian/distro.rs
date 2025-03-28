@@ -1,11 +1,9 @@
-use std::str::FromStr;
-
-use libcnb::Target;
-use serde::{Deserialize, Serialize};
-
 use crate::debian::ArchitectureName::{AMD_64, ARM_64};
 use crate::debian::{ArchitectureName, DistroCodename, Source};
 use crate::DebianPackagesBuildpackError;
+use libcnb::Target;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub(crate) struct Distro {
