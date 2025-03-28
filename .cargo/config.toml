@@ -1,4 +1,0 @@
-[build]
-# This unstable flag is needed for `valuable` support in `tracing`
-# See https://docs.rs/tracing/latest/tracing/index.html#unstable-features
-rustflags = ["--cfg", "tracing_unstable"]

@@ -1,6 +1,7 @@
-use valuable::Valuable;
+use serde::Serialize;
+use std::fmt::Display;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Valuable)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize)]
 pub(crate) struct RepositoryUri(String);
 
 impl RepositoryUri {
@@ -12,6 +13,12 @@ impl RepositoryUri {
 impl From<&str> for RepositoryUri {
     fn from(value: &str) -> Self {
         Self(value.to_string())
+    }
+}
+
+impl Display for RepositoryUri {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

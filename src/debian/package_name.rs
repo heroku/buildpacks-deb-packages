@@ -1,8 +1,8 @@
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
-use valuable::Valuable;
 
-#[derive(Debug, Eq, PartialEq, Hash, Valuable)]
+#[derive(Debug, Eq, PartialEq, Hash, Serialize)]
 // https://www.debian.org/doc/debian-policy/ch-controlfields.html#source
 pub(crate) struct PackageName(String);
 

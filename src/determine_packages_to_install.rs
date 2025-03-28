@@ -1,20 +1,21 @@
 use crate::config::RequestedPackage;
 use crate::debian::{PackageIndex, RepositoryPackage};
+use crate::o11y::*;
 use crate::{BuildpackResult, DebianPackagesBuildpackError};
 use apt_parser::Control;
 use bullet_stream::state::Bullet;
 use bullet_stream::{style, Print};
 use edit_distance::edit_distance;
 use indexmap::IndexSet;
+use serde::Serialize;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::fs::read_to_string;
 use std::io::Stdout;
 use std::path::PathBuf;
 use tracing::{info, instrument};
-use valuable::Valuable;
 
-#[instrument(skip(package_index, log))]
+#[instrument(skip_all)]
 pub(crate) fn determine_packages_to_install(
     package_index: &PackageIndex,
     requested_packages: IndexSet<RequestedPackage>,
@@ -81,7 +82,15 @@ pub(crate) fn determine_packages_to_install(
         .map(|package_marked_for_install| package_marked_for_install.repository_package)
         .collect::<Vec<_>>();
 
-    info!(deb_packages.packages_to_install = packages_to_install.as_value());
+    info!(
+        { PACKAGES_TO_INSTALL } = as_json_value(
+            &packages_to_install
+                .iter()
+                .map(|p| format!("{}@{}", p.name, p.version))
+                .collect::<Vec<_>>()
+        ),
+        "packages to install"
+    );
 
     Ok((packages_to_install, log))
 }
@@ -418,7 +427,7 @@ struct PackageMarkedForInstall {
     requested_by: String,
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 struct SystemPackage {
     package_name: String,
     package_version: String,

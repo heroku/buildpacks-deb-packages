@@ -1,9 +1,11 @@
-use std::fmt::Debug;
-use std::io::stdout;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::time::Duration;
-
+use crate::config::{BuildpackConfig, ConfigError, NAMESPACED_CONFIG};
+use crate::create_package_index::{create_package_index, CreatePackageIndexError};
+use crate::debian::{Distro, UnsupportedDistroError};
+use crate::determine_packages_to_install::{
+    determine_packages_to_install, DeterminePackagesToInstallError,
+};
+use crate::install_packages::{install_packages, InstallPackagesError};
+use crate::o11y::*;
 use bullet_stream::{style, Print};
 use indoc::formatdoc;
 use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
@@ -15,16 +17,12 @@ use reqwest_middleware::ClientBuilder;
 use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
 use reqwest_tracing::{SpanBackendWithUrl, TracingMiddleware};
+use std::fmt::Debug;
+use std::io::stdout;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Duration;
 use tracing::{error, info};
-use valuable::Valuable;
-
-use crate::config::{BuildpackConfig, ConfigError, NAMESPACED_CONFIG};
-use crate::create_package_index::{create_package_index, CreatePackageIndexError};
-use crate::debian::{Distro, UnsupportedDistroError};
-use crate::determine_packages_to_install::{
-    determine_packages_to_install, DeterminePackagesToInstallError,
-};
-use crate::install_packages::{install_packages, InstallPackagesError};
 
 #[cfg(test)]
 use libcnb_test as _;
@@ -37,6 +35,7 @@ mod debian;
 mod determine_packages_to_install;
 mod errors;
 mod install_packages;
+mod o11y;
 mod pgp;
 
 buildpack_main!(DebianPackagesBuildpack);
@@ -53,17 +52,18 @@ impl Buildpack for DebianPackagesBuildpack {
     fn detect(&self, context: DetectContext<Self>) -> libcnb::Result<DetectResult, Self::Error> {
         let log = Print::new(stdout()).without_header();
         if let Some(project_toml) = get_project_toml(&context.app_dir)? {
+            info!({ PROJECT_TOML_DETECTED } = true);
             if BuildpackConfig::is_present(project_toml)? {
                 DetectResultBuilder::pass().build()
             } else {
                 log.important("project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.").done();
-                info!(deb_packages.project_toml_with_no_config = true);
+                info!({ PROJECT_TOML_NO_CONFIG } = true);
                 DetectResultBuilder::fail().build()
             }
         } else if get_aptfile(&context.app_dir)?.is_some() {
             // NOTE: This buildpack doesn't use an Aptfile, but we'll pass detection to display a message
             //       to users in the build step detailing how to migrate away from the Aptfile format.
-            info!(deb_packages.aptfile = true);
+            info!({ APTFILE_DETECTED } = true);
             DetectResultBuilder::pass().build()
         } else {
             log.important("No project.toml or Aptfile found.").done();
@@ -72,6 +72,30 @@ impl Buildpack for DebianPackagesBuildpack {
     }
 
     fn build(&self, context: BuildContext<Self>) -> libcnb::Result<BuildResult, Self::Error> {
+        // This buildpack does a lot of async work, so the context needs to be sharable
+        // across async boundaries.
+        let context = Arc::new(context);
+
+        let client = ClientBuilder::new(
+            Client::builder()
+                .use_rustls_tls()
+                .connect_timeout(Duration::from_secs(10))
+                .read_timeout(Duration::from_secs(10))
+                .build()
+                .expect("Should be able to construct the HTTP Client"),
+        )
+        .with(RetryTransientMiddleware::new_with_policy(
+            ExponentialBackoff::builder().build_with_max_retries(5),
+        ))
+        .with(TracingMiddleware::<SpanBackendWithUrl>::new())
+        .build();
+
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_io()
+            .enable_time()
+            .build()
+            .expect("Should be able to construct the Async Runtime");
+
         let mut log = Print::new(stdout()).h1(format!(
             "{buildpack_name} (v{buildpack_version})",
             buildpack_name = context
@@ -88,41 +112,32 @@ impl Buildpack for DebianPackagesBuildpack {
             // If we passed detect from the Aptfile but there is no project.toml then
             // print the warning and exit early.
             if get_project_toml(&context.app_dir)?.is_none() {
-                info!(deb_packages.early_exit.migrate_aptfile = true);
+                info!({ EARLY_EXIT_REASON } = "migrate_aptfile");
                 return BuildResultBuilder::new().build();
             }
         }
 
         let config = BuildpackConfig::try_from(context.app_dir.join("project.toml"))?;
+
         if config.install.is_empty() {
-            info!(deb_packages.early_exit.nothing_to_install = true);
+            info!({ EARLY_EXIT_REASON } = "nothing_to_install");
             log.important(empty_config_help_message()).done();
             return BuildResultBuilder::new().build();
         }
 
         let distro = Distro::try_from(&context.target)?;
-        info!(deb_packages.distro = distro.as_value());
 
-        let shared_context = Arc::new(context);
+        let source_list = distro.get_source_list();
 
-        let client = ClientBuilder::new(
-            Client::builder()
-                .use_rustls_tls()
-                .timeout(Duration::from_secs(60 * 5))
-                .build()
-                .expect("Should be able to construct the HTTP Client"),
-        )
-        .with(RetryTransientMiddleware::new_with_policy(
-            ExponentialBackoff::builder().build_with_max_retries(5),
-        ))
-        .with(TracingMiddleware::<SpanBackendWithUrl>::new())
-        .build();
-
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_io()
-            .enable_time()
-            .build()
-            .expect("Should be able to construct the Async Runtime");
+        info!(
+            { DISTRO_NAME } = %distro.name,
+            { DISTRO_VERSION } =  %distro.version,
+            { DISTRO_CODENAME } = %distro.codename,
+            { DISTRO_ARCH } = %distro.architecture,
+            { SOURCE_LIST } = as_json_value(&source_list),
+            { CONFIG_INSTALL } = as_json_value(&config.install.iter().collect::<Vec<_>>()),
+            "configuration"
+        );
 
         log = log
             .bullet("Distribution Info")
@@ -133,13 +148,13 @@ impl Buildpack for DebianPackagesBuildpack {
             .done();
 
         let (package_index, log) =
-            runtime.block_on(create_package_index(&shared_context, &client, &distro, log))?;
+            runtime.block_on(create_package_index(&context, &client, &source_list, log))?;
 
         let (packages_to_install, log) =
             determine_packages_to_install(&package_index, config.install, log)?;
 
         let log = runtime.block_on(install_packages(
-            &shared_context,
+            &context,
             &client,
             &distro,
             packages_to_install,
@@ -152,7 +167,7 @@ impl Buildpack for DebianPackagesBuildpack {
     }
 
     fn on_error(&self, error: libcnb::Error<Self::Error>) {
-        error!(deb_packages.on_error = ?error);
+        error!({ ERROR } = ?error);
         errors::on_error(error, stdout());
     }
 }

@@ -1,12 +1,9 @@
-use std::collections::HashMap;
-use std::env::temp_dir;
-use std::ffi::OsString;
-use std::fs::File;
-use std::io::{ErrorKind, Stdout, Write};
-use std::os::unix::ffi::OsStringExt;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
+use crate::debian::{Distro, MultiarchName, RepositoryPackage};
+use crate::o11y::*;
+use crate::{
+    is_buildpack_debug_logging_enabled, BuildpackResult, DebianPackagesBuildpack,
+    DebianPackagesBuildpackError,
+};
 use ar::Archive as ArArchive;
 use async_compression::tokio::bufread::{GzipDecoder, XzDecoder, ZstdDecoder};
 use bullet_stream::state::{Bullet, SubBullet};
@@ -24,20 +21,22 @@ use reqwest_middleware::ClientWithMiddleware;
 use reqwest_middleware::Error::Reqwest;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+use std::env::temp_dir;
+use std::ffi::OsString;
+use std::fs::File;
+use std::io::{ErrorKind, Stdout, Write};
+use std::os::unix::ffi::OsStringExt;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::fs::{read_to_string as async_read_to_string, write as async_write, File as AsyncFile};
 use tokio::io::{copy as async_copy, BufReader as AsyncBufReader, BufWriter as AsyncBufWriter};
 use tokio::task::{JoinError, JoinSet};
 use tokio_tar::Archive as TarArchive;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
-use tracing::{info, instrument};
+use tracing::{info, instrument, Instrument};
 use walkdir::{DirEntry, WalkDir};
-
-use crate::debian::{Distro, MultiarchName, RepositoryPackage};
-use crate::{
-    is_buildpack_debug_logging_enabled, BuildpackResult, DebianPackagesBuildpack,
-    DebianPackagesBuildpackError,
-};
 
 #[instrument(skip_all)]
 pub(crate) async fn install_packages(
@@ -121,11 +120,14 @@ pub(crate) async fn install_packages(
             let mut download_and_extract_handles = JoinSet::new();
 
             for repository_package in packages_to_install {
-                download_and_extract_handles.spawn(download_and_extract(
-                    client.clone(),
-                    repository_package.clone(),
-                    install_layer.path(),
-                ));
+                download_and_extract_handles.spawn(
+                    download_and_extract(
+                        client.clone(),
+                        repository_package.clone(),
+                        install_layer.path(),
+                    )
+                    .in_current_span(),
+                );
             }
 
             while let Some(download_and_extract_handle) =
@@ -181,6 +183,7 @@ fn print_layer_contents(
     directory_log.done()
 }
 
+#[instrument(skip_all)]
 async fn download_and_extract(
     client: ClientWithMiddleware,
     repository_package: RepositoryPackage,
@@ -190,11 +193,16 @@ async fn download_and_extract(
     extract(download_path, install_dir).await
 }
 
-#[instrument(skip(client))]
+#[instrument(skip_all)]
 async fn download(
     client: ClientWithMiddleware,
     repository_package: &RepositoryPackage,
 ) -> BuildpackResult<PathBuf> {
+    info!(
+        { DOWNLOAD_PACKAGE_NAME } = %repository_package.name,
+        { DOWNLOAD_PACKAGE_VERSION } = %repository_package.version,
+        "downloading package"
+    );
     let download_url = build_download_url(repository_package);
 
     let download_file_name = PathBuf::from(repository_package.filename.as_str())
@@ -284,6 +292,7 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult
             entry_path.extension().and_then(|v| v.to_str()),
         ) {
             (Some("data.tar"), Some("gz")) => {
+                info!({ EXTRACT_PACKAGE_DECODER } = "gzip", "extract package");
                 let mut tar_archive = TarArchive::new(GzipDecoder::new(entry_reader));
                 tar_archive
                     .unpack(&output_dir)
@@ -291,6 +300,7 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult
                     .map_err(|e| InstallPackagesError::UnpackTarball(download_path.clone(), e))?;
             }
             (Some("data.tar"), Some("zstd" | "zst")) => {
+                info!({ EXTRACT_PACKAGE_DECODER } = "zstd", "extract package");
                 let mut tar_archive = TarArchive::new(ZstdDecoder::new(entry_reader));
                 tar_archive
                     .unpack(&output_dir)
@@ -298,6 +308,7 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult
                     .map_err(|e| InstallPackagesError::UnpackTarball(download_path.clone(), e))?;
             }
             (Some("data.tar"), Some("xz")) => {
+                info!({ EXTRACT_PACKAGE_DECODER } = "xz", "extract package");
                 let mut tar_archive = TarArchive::new(XzDecoder::new(entry_reader));
                 tar_archive
                     .unpack(&output_dir)
@@ -305,6 +316,7 @@ async fn extract(download_path: PathBuf, output_dir: PathBuf) -> BuildpackResult
                     .map_err(|e| InstallPackagesError::UnpackTarball(download_path.clone(), e))?;
             }
             (Some("data.tar"), Some(compression)) => {
+                info!({ EXTRACT_PACKAGE_DECODER } = compression, "extract package");
                 Err(InstallPackagesError::UnsupportedCompression(
                     download_path.clone(),
                     compression.to_string(),
@@ -370,6 +382,14 @@ fn configure_layer_environment(install_path: &Path, multiarch_name: &MultiarchNa
         install_path.join("usr/lib/pkgconfig"),
     ];
     prepend_to_env_var(&mut layer_env, "PKG_CONFIG_PATH", &pkg_config_paths);
+
+    info!(
+        { ENV_PATH } = as_json_value(&bin_paths),
+        { LIBRARY_PATH } = as_json_value(&library_paths.iter().collect::<Vec<_>>()),
+        { INCLUDE_PATH } = as_json_value(&include_paths.iter().collect::<Vec<_>>()),
+        { PKG_CONFIG_PATH } = as_json_value(&pkg_config_paths.iter().collect::<Vec<_>>()),
+        "layer environment"
+    );
 
     layer_env
 }

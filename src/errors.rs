@@ -5,12 +5,11 @@ use crate::determine_packages_to_install::DeterminePackagesToInstallError;
 use crate::errors::ErrorType::{Framework, Internal, UserFacing};
 use crate::install_packages::InstallPackagesError;
 use crate::{DebianPackagesBuildpackError, DetectError};
-use std::collections::BTreeSet;
-
 use bon::builder;
 use bullet_stream::{style, Print};
 use indoc::{formatdoc, indoc};
 use libcnb::Error;
+use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::Path;
 
