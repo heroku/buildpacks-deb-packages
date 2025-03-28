@@ -7,7 +7,7 @@ const NAMESPACE: &str = "cnb.deb_packages";
 /// Useful for understanding if users are using project.toml for configuration vs. a legacy Aptfile they'll need to migrate to project.toml
 pub(crate) const PROJECT_TOML_DETECTED: &str = formatcp!("{NAMESPACE}.project_toml.detected");
 
-/// Indicates that a project.toml was found but contained no relevant configuration for the deb_packages buildpack
+/// Indicates that a project.toml was found but contained no relevant configuration for the buildpack
 /// Helps identify potential configuration issues
 pub(crate) const PROJECT_TOML_NO_CONFIG: &str = formatcp!("{NAMESPACE}.project.toml.no_config");
 
@@ -105,11 +105,11 @@ pub(crate) const EXTRACT_PACKAGE_DECODER: &str = formatcp!("{NAMESPACE}.extract_
 
 const ENV: &str = formatcp!("{NAMESPACE}.env");
 
-/// The PATH environment variable value exported by the buildpack
+/// The `PATH` environment variable value exported by the buildpack
 /// Critical for understanding executable search paths
 pub(crate) const ENV_PATH: &str = formatcp!("{ENV}.path");
 
-/// The LD_LIBRARY_PATH environment variable value exported by the buildpack
+/// The `LD_LIBRARY_PATH` environment variable value exported by the buildpack
 /// Important for library loading and runtime behavior
 pub(crate) const LIBRARY_PATH: &str = formatcp!("{ENV}.library_path");
 
@@ -117,7 +117,7 @@ pub(crate) const LIBRARY_PATH: &str = formatcp!("{ENV}.library_path");
 /// Helps track header file locations for compilation
 pub(crate) const INCLUDE_PATH: &str = formatcp!("{ENV}.include_path");
 
-/// The PKG_CONFIG_PATH environment variable value exported by the buildpack
+/// The `PKG_CONFIG_PATH` environment variable value exported by the buildpack
 /// Important for package configuration and build system integration
 pub(crate) const PKG_CONFIG_PATH: &str = formatcp!("{ENV}.pkg_config_path");
 

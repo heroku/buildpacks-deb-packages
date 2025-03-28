@@ -65,7 +65,7 @@ pub(crate) async fn create_package_index(
         });
 
     let timer = log.start_timer("Updating");
-    let updated_sources = update_sources(context, client, &source_list).await?;
+    let updated_sources = update_sources(context, client, source_list).await?;
     let log = timer.done();
 
     let log = updated_sources
@@ -373,6 +373,7 @@ async fn get_release(
 }
 
 #[instrument(skip_all)]
+#[allow(clippy::too_many_arguments)]
 async fn get_package_list(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
