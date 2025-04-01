@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Tracing for buildpack diagnostics and usage. ([#104](https://github.com/heroku/buildpacks-deb-packages/pull/104))
+
 ## [0.1.2] - 2025-03-05
 
 ### Fixed

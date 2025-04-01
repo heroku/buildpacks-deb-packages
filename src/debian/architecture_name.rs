@@ -1,7 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
-
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Eq)]
 #[allow(non_camel_case_types)]

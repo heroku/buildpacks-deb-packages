@@ -13,27 +13,31 @@ ar = "0.9"
 async-compression = { version = "0.4", default-features = false, features = ["tokio", "gzip", "zstd", "xz"] }
 bon = "3"
 bullet_stream = "0.7"
+const_format = "0.2"
 debversion = "0.4"
 edit-distance = "2"
 futures = { version = "0.3", default-features = false, features = ["io-compat"] }
 indexmap = "2"
-libcnb = { version = "=0.28.0", features = ["trace"] }
 indoc = "2"
+libcnb = { version = "=0.28.1", features = ["trace"] }
 rayon = "1"
 reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
 reqwest-middleware = "0.4"
 reqwest-retry = "0.7"
+reqwest-tracing = "0.5"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 sequoia-openpgp = { version = "2", default-features = false, features = ["crypto-rust", "allow-experimental-crypto", "allow-variable-time-crypto"] }
 sha2 = "0.10"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "time"] }
 tokio-tar = "0.3"
 tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
 toml_edit = "0.22"
+tracing = "0.1"
 walkdir = "2"
 
 [dev-dependencies]
-libcnb-test = "=0.28.0"
+libcnb-test = "=0.28.1"
 regex = "1"
 strip-ansi-escapes = "0.2"
 tempfile = "3"

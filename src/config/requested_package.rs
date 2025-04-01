@@ -1,10 +1,9 @@
+use crate::debian::{PackageName, ParsePackageNameError};
+use serde::Serialize;
 use std::str::FromStr;
-
 use toml_edit::{Formatted, InlineTable, Value};
 
-use crate::debian::{PackageName, ParsePackageNameError};
-
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Serialize)]
 pub(crate) struct RequestedPackage {
     pub(crate) name: PackageName,
     pub(crate) skip_dependencies: bool,

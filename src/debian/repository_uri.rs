@@ -1,15 +1,24 @@
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub(crate) struct RepositoryUri(String);
+use serde::Serialize;
+use std::fmt::Display;
 
-impl RepositoryUri {
-    pub(crate) fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize)]
+pub(crate) struct RepositoryUri(String);
 
 impl From<&str> for RepositoryUri {
     fn from(value: &str) -> Self {
         Self(value.to_string())
+    }
+}
+
+impl Display for RepositoryUri {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl AsRef<str> for RepositoryUri {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
     }
 }
 
@@ -18,9 +27,9 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_as_str() {
+    fn test_as_ref() {
         let repository = RepositoryUri("http://archive.ubuntu.com/ubuntu".to_string());
-        assert_eq!(repository.as_str(), "http://archive.ubuntu.com/ubuntu");
+        assert_eq!(repository.as_ref(), "http://archive.ubuntu.com/ubuntu");
     }
 
     #[test]

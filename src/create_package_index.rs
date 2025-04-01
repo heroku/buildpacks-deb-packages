@@ -1,9 +1,10 @@
-use std::fmt::{Display, Formatter};
-use std::io::Stdout;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::Arc;
-
+use crate::debian::{
+    ArchitectureName, PackageIndex, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
+    Source,
+};
+use crate::o11y::*;
+use crate::pgp::CertHelper;
+use crate::{BuildpackResult, DebianPackagesBuildpack, DebianPackagesBuildpackError};
 use apt_parser::errors::APTError;
 use apt_parser::Release;
 use async_compression::tokio::bufread::GzipDecoder;
@@ -26,6 +27,11 @@ use sequoia_openpgp::policy::StandardPolicy;
 use sequoia_openpgp::Cert;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::fmt::{Display, Formatter};
+use std::io::Stdout;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::sync::Arc;
 use tokio::fs::{read_to_string as async_read_to_string, write as async_write, File as AsyncFile};
 use tokio::io::{
     copy as async_copy, AsyncWriteExt, BufReader as AsyncBufReader, BufWriter as AsyncBufWriter,
@@ -35,23 +41,16 @@ use tokio::sync::oneshot::error::RecvError;
 use tokio::task::{JoinError, JoinSet};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
+use tracing::{info, instrument, Instrument};
 
-use crate::debian::{
-    ArchitectureName, Distro, PackageIndex, ParseRepositoryPackageError, RepositoryPackage,
-    RepositoryUri, Source,
-};
-use crate::pgp::CertHelper;
-use crate::{BuildpackResult, DebianPackagesBuildpack, DebianPackagesBuildpackError};
-
+#[instrument(skip_all)]
 pub(crate) async fn create_package_index(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
-    distro: &Distro,
+    source_list: &[Source],
     log: Print<Bullet<Stdout>>,
 ) -> BuildpackResult<(PackageIndex, Print<Bullet<Stdout>>)> {
     let log = log.h2("Creating package index");
-
-    let source_list = distro.get_source_list();
 
     let log = source_list
         .iter()
@@ -59,14 +58,14 @@ pub(crate) async fn create_package_index(
             source.suites.iter().fold(log, |log, suite| {
                 log.sub_bullet(format!(
                     "{repository_uri} {suite} [{components}]",
-                    repository_uri = style::url(source.uri.as_str()),
+                    repository_uri = style::url(&source.uri),
                     components = source.components.join(", "),
                 ))
             })
         });
 
     let timer = log.start_timer("Updating");
-    let updated_sources = update_sources(context, client, &distro.get_source_list()).await?;
+    let updated_sources = update_sources(context, client, source_list).await?;
     let log = timer.done();
 
     let log = updated_sources
@@ -127,6 +126,10 @@ pub(crate) async fn create_package_index(
     .await?;
     let log = timer.done();
 
+    info!(
+        { PACKAGE_INDEX_SIZE } = package_index.packages_indexed,
+        "package index"
+    );
     let log = log
         .sub_bullet(format!(
             "Indexed {} packages",
@@ -137,6 +140,7 @@ pub(crate) async fn create_package_index(
     Ok((package_index, log))
 }
 
+#[instrument(skip_all)]
 async fn update_sources(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
@@ -150,15 +154,18 @@ async fn update_sources(
 
     for source in sources {
         for suite in &source.suites {
-            update_source_handles.spawn(update_source(
-                context.clone(),
-                client.clone(),
-                source.uri.clone(),
-                suite.to_string(),
-                source.components.clone(),
-                source.arch.clone(),
-                source.signed_by.to_string(),
-            ));
+            update_source_handles.spawn(
+                update_source(
+                    context.clone(),
+                    client.clone(),
+                    source.uri.clone(),
+                    suite.to_string(),
+                    source.components.clone(),
+                    source.arch.clone(),
+                    source.signed_by.to_string(),
+                )
+                .in_current_span(),
+            );
         }
     }
 
@@ -172,6 +179,7 @@ async fn update_sources(
     Ok(updated_sources)
 }
 
+#[instrument(skip_all)]
 async fn update_source(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
@@ -224,26 +232,19 @@ async fn update_source(
                 package_index,
             ))?;
 
-        let package_release_url = if release.acquire_by_hash.unwrap_or_default() {
-            format!(
-                "{}/dists/{suite}/{component}/binary-{arch}/by-hash/SHA256/{}",
-                repository_uri.as_str(),
-                package_index_release_hash.hash
+        get_package_list_handles.spawn(
+            get_package_list(
+                context.clone(),
+                client.clone(),
+                repository_uri.clone(),
+                release.acquire_by_hash.unwrap_or_default(),
+                suite.clone(),
+                component.clone(),
+                arch.clone(),
+                package_index_release_hash.hash.to_string(),
             )
-        } else {
-            format!(
-                "{}/dists/{suite}/{component}/binary-{arch}/Packages.gz",
-                repository_uri.as_str()
-            )
-        };
-
-        get_package_list_handles.spawn(get_package_list(
-            context.clone(),
-            client.clone(),
-            repository_uri.clone(),
-            package_release_url,
-            package_index_release_hash.hash.to_string(),
-        ));
+            .in_current_span(),
+        );
     }
 
     let mut updated_package_indexes = vec![];
@@ -258,6 +259,7 @@ async fn update_source(
     })
 }
 
+#[instrument(skip_all)]
 async fn get_release(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
@@ -265,7 +267,9 @@ async fn get_release(
     suite: String,
     signed_by: String,
 ) -> BuildpackResult<UpdatedReleaseFile> {
-    let release_file_url = format!("{}/dists/{suite}/InRelease", uri.as_str());
+    info!({ RELEASE_URI } = %remove_url_credentials(&uri), { RELEASE_SUITE } = %suite, "release info");
+
+    let release_file_url = format!("{}/dists/{suite}/InRelease", &uri);
 
     let response = client
         .get(&release_file_url)
@@ -316,8 +320,6 @@ async fn get_release(
             async_write(&raw_release_url_path, &release_file_url)
                 .await
                 .map_err(|e| CreatePackageIndexError::WriteReleaseLayer(raw_release_url_path, e))?;
-
-            // println!("  [GET] {url}", url = &release_url);
 
             let unverified_response_body = response
                 .text()
@@ -370,13 +372,39 @@ async fn get_release(
     })
 }
 
+#[instrument(skip_all)]
+#[allow(clippy::too_many_arguments)]
 async fn get_package_list(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
     repository_uri: RepositoryUri,
-    package_index_url: String,
+    acquire_by_hash: bool,
+    suite: String,
+    component: String,
+    arch: ArchitectureName,
     hash: String,
 ) -> BuildpackResult<UpdatedPackageIndex> {
+    info!(
+        { PACKAGE_LIST_URI } = %remove_url_credentials(&repository_uri),
+        { PACKAGE_LIST_SUITE } = %suite,
+        { PACKAGE_LIST_COMPONENT } = %component,
+        { PACKAGE_LIST_ARCH } = %arch,
+        { PACKAGE_LIST_ACQUIRE_BY_HASH } = %acquire_by_hash,
+        "package list info"
+    );
+
+    let package_index_url = if acquire_by_hash {
+        format!(
+            "{}/dists/{suite}/{component}/binary-{arch}/by-hash/SHA256/{}",
+            &repository_uri, hash
+        )
+    } else {
+        format!(
+            "{}/dists/{suite}/{component}/binary-{arch}/Packages.gz",
+            &repository_uri
+        )
+    };
+
     // it would be nice to use the url as the layer name but urls don't make for good file names
     // so instead we'll convert the url to a sha256 hex value
     let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&package_index_url)))
@@ -495,12 +523,13 @@ async fn get_package_list(
     })
 }
 
+#[instrument(skip_all)]
 async fn build_package_index(
     updated_sources: Vec<UpdatedPackageIndex>,
 ) -> BuildpackResult<PackageIndex> {
     let mut get_packages_handles = JoinSet::new();
     for update_source in updated_sources {
-        get_packages_handles.spawn(read_packages(update_source));
+        get_packages_handles.spawn(read_packages(update_source).in_current_span());
     }
 
     let mut package_index = PackageIndex::default();
@@ -516,6 +545,7 @@ async fn build_package_index(
 
 // NOTE: Rayon is used here since this is a fairly CPU-intensive operation.
 //       See - https://ryhl.io/blog/async-what-is-blocking/
+#[instrument(skip_all)]
 async fn read_packages(
     updated_source: UpdatedPackageIndex,
 ) -> BuildpackResult<Vec<RepositoryPackage>> {
@@ -545,6 +575,10 @@ async fn read_packages(
     });
     let (packages, errors) = recv.await.map_err(CreatePackageIndexError::CpuTaskFailed)?;
     if errors.is_empty() {
+        info!(
+            { PACKAGE_LIST_SIZE } = packages.len(),
+            "parsed package list"
+        );
         Ok(packages)
     } else {
         Err(
