@@ -130,11 +130,11 @@ where
 
 pub(crate) fn remove_url_credentials(url: impl AsRef<str>) -> String {
     let url = url.as_ref();
-    if let Ok(mut url) = reqwest::Url::parse(&url) {
+    if let Ok(mut url) = reqwest::Url::parse(url) {
         if !url.username().is_empty() || url.password().is_some() {
             // ignore errors when setting username/password
             url.set_username("")
-                .and_then(|_| url.set_password(None))
+                .and_then(|()| url.set_password(None))
                 .ok();
             url.to_string()
         } else {
