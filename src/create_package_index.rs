@@ -58,7 +58,7 @@ pub(crate) async fn create_package_index(
             source.suites.iter().fold(log, |log, suite| {
                 log.sub_bullet(format!(
                     "{repository_uri} {suite} [{components}]",
-                    repository_uri = style::url(source.uri.as_str()),
+                    repository_uri = style::url(&source.uri),
                     components = source.components.join(", "),
                 ))
             })
@@ -267,9 +267,9 @@ async fn get_release(
     suite: String,
     signed_by: String,
 ) -> BuildpackResult<UpdatedReleaseFile> {
-    info!({ RELEASE_URI } = %uri, { RELEASE_SUITE } = %suite, "release info");
+    info!({ RELEASE_URI } = %remove_url_credentials(&uri), { RELEASE_SUITE } = %suite, "release info");
 
-    let release_file_url = format!("{}/dists/{suite}/InRelease", uri.as_str());
+    let release_file_url = format!("{}/dists/{suite}/InRelease", &uri);
 
     let response = client
         .get(&release_file_url)
@@ -385,7 +385,7 @@ async fn get_package_list(
     hash: String,
 ) -> BuildpackResult<UpdatedPackageIndex> {
     info!(
-        { PACKAGE_LIST_URI } = %repository_uri,
+        { PACKAGE_LIST_URI } = %remove_url_credentials(&repository_uri),
         { PACKAGE_LIST_SUITE } = %suite,
         { PACKAGE_LIST_COMPONENT } = %component,
         { PACKAGE_LIST_ARCH } = %arch,
@@ -396,13 +396,12 @@ async fn get_package_list(
     let package_index_url = if acquire_by_hash {
         format!(
             "{}/dists/{suite}/{component}/binary-{arch}/by-hash/SHA256/{}",
-            repository_uri.as_str(),
-            hash
+            &repository_uri, hash
         )
     } else {
         format!(
             "{}/dists/{suite}/{component}/binary-{arch}/Packages.gz",
-            repository_uri.as_str()
+            &repository_uri
         )
     };
 

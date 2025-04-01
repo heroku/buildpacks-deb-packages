@@ -353,7 +353,7 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
         }
 
         CreatePackageIndexError::MissingSha256ReleaseHashes(release_uri) => {
-            let release_uri = style::url(release_uri.as_str());
+            let release_uri = style::url(&release_uri);
             create_error()
                 .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::Yes))
                 .header("Missing SHA256 Release hash")
@@ -366,7 +366,7 @@ fn on_create_package_index_error(error: CreatePackageIndexError) -> ErrorMessage
         }
 
         CreatePackageIndexError::MissingPackageIndexReleaseHash(release_uri, package_index) => {
-            let release_uri = style::url(release_uri.as_str());
+            let release_uri = style::url(&release_uri);
             let package_index = style::value(package_index);
             create_error()
                 .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::Yes))

@@ -74,7 +74,6 @@ pub(crate) async fn install_packages(
 
     match install_layer.state {
         LayerState::Restored { .. } => {
-            info!(deb_packages.install_layer_cached = true);
             log = packages_to_install
                 .iter()
                 .fold(
@@ -90,7 +89,6 @@ pub(crate) async fn install_packages(
                 .done();
         }
         LayerState::Empty { cause } => {
-            info!(deb_packages.install_layer_cached = false);
             let install_log = packages_to_install.iter().fold(
                 log.bullet(match cause {
                     EmptyLayerCause::NewlyCreated => "Requesting packages",
@@ -502,8 +500,7 @@ async fn rewrite_package_config(package_config: &Path, install_path: &Path) -> B
 fn build_download_url(repository_package: &RepositoryPackage) -> String {
     format!(
         "{}/{}",
-        repository_package.repository_uri.as_str(),
-        repository_package.filename.as_str()
+        &repository_package.repository_uri, &repository_package.filename
     )
 }
 

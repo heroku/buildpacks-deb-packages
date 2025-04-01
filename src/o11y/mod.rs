@@ -85,10 +85,6 @@ pub(crate) const PACKAGE_LIST_SIZE: &str = formatcp!("{PACKAGE_LIST}.size");
 // Useful for getting a sense of the size of the package index
 pub(crate) const PACKAGE_INDEX_SIZE: &str = formatcp!("{NAMESPACE}.package_index.size");
 
-// List of packages that will be installed after resolving dependencies from the package index
-// Helps track which packages are being installed after resolving dependencies from the package index
-pub(crate) const PACKAGES_TO_INSTALL: &str = formatcp!("{NAMESPACE}.packages_to_install");
-
 const DOWNLOAD_PACKAGE: &str = formatcp!("{NAMESPACE}.download_package");
 
 // The name of the package being downloaded
@@ -130,4 +126,22 @@ where
     T: Serialize,
 {
     serde_json::to_string_pretty(value).unwrap_or_else(|e| format!("Failed to serialize JSON: {e}"))
+}
+
+pub(crate) fn remove_url_credentials(url: impl AsRef<str>) -> String {
+    let url = url.as_ref();
+    if let Ok(mut url) = reqwest::Url::parse(&url) {
+        if !url.username().is_empty() || url.password().is_some() {
+            // ignore errors when setting username/password
+            url.set_username("")
+                .and_then(|_| url.set_password(None))
+                .ok();
+            url.to_string()
+        } else {
+            url.to_string()
+        }
+    } else {
+        // this will be used for telemetry so we don't need to fail hard here
+        String::from("invalid url")
+    }
 }

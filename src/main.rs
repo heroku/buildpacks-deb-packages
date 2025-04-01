@@ -112,7 +112,7 @@ impl Buildpack for DebianPackagesBuildpack {
             // If we passed detect from the Aptfile but there is no project.toml then
             // print the warning and exit early.
             if get_project_toml(&context.app_dir)?.is_none() {
-                info!({ EARLY_EXIT_REASON } = "migrate_aptfile");
+                info!({ EARLY_EXIT_REASON } = "migrate_aptfile", "early exit");
                 return BuildResultBuilder::new().build();
             }
         }
@@ -120,7 +120,7 @@ impl Buildpack for DebianPackagesBuildpack {
         let config = BuildpackConfig::try_from(context.app_dir.join("project.toml"))?;
 
         if config.install.is_empty() {
-            info!({ EARLY_EXIT_REASON } = "nothing_to_install");
+            info!({ EARLY_EXIT_REASON } = "nothing_to_install", "early exit");
             log.important(empty_config_help_message()).done();
             return BuildResultBuilder::new().build();
         }
