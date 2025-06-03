@@ -25,7 +25,7 @@ use std::collections::HashMap;
 use std::env::temp_dir;
 use std::ffi::OsString;
 use std::fs::File;
-use std::io::{ErrorKind, Stdout, Write};
+use std::io::{Stdout, Write};
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -240,7 +240,7 @@ async fn download(
         FuturesAsyncReadCompatExt::compat(
             response
                 .bytes_stream()
-                .map_err(|e| std::io::Error::new(ErrorKind::Other, e))
+                .map_err(std::io::Error::other)
                 .into_async_read(),
         ),
         |bytes| hasher.update(bytes),
@@ -525,7 +525,9 @@ pub(crate) enum InstallPackagesError {
 
 impl From<InstallPackagesError> for libcnb::Error<DebianPackagesBuildpackError> {
     fn from(value: InstallPackagesError) -> Self {
-        Self::BuildpackError(DebianPackagesBuildpackError::InstallPackages(value))
+        Self::BuildpackError(DebianPackagesBuildpackError::InstallPackages(Box::new(
+            value,
+        )))
     }
 }
 

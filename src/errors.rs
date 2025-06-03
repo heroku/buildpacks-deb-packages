@@ -34,9 +34,9 @@ fn on_buildpack_error(error: DebianPackagesBuildpackError) -> ErrorMessage {
         DebianPackagesBuildpackError::UnsupportedDistro(e) => on_unsupported_distro_error(e),
         DebianPackagesBuildpackError::CreatePackageIndex(e) => on_create_package_index_error(e),
         DebianPackagesBuildpackError::DeterminePackagesToInstall(e) => {
-            on_determine_packages_to_install_error(e)
+            on_determine_packages_to_install_error(*e)
         }
-        DebianPackagesBuildpackError::InstallPackages(e) => on_install_packages_error(e),
+        DebianPackagesBuildpackError::InstallPackages(e) => on_install_packages_error(*e),
         DebianPackagesBuildpackError::Detect(e) => on_detect_error(e),
     }
 }
@@ -1342,7 +1342,7 @@ mod tests {
             CreatePackageIndexError::GetReleaseRequest(create_reqwest_middleware_error()),
             indoc! {"
                 - Debug Info:
-                  - error sending request for url (https://test/error)
+                  - error sending request
 
                 ! Failed to request Release file
                 !
@@ -1378,7 +1378,7 @@ mod tests {
             CreatePackageIndexError::ReadGetReleaseResponse(create_reqwest_error()),
             indoc! {"
                 - Debug Info:
-                  - error sending request for url (https://test/error)
+                  - error sending request
 
                 ! Failed to download Release file
                 !
@@ -1670,7 +1670,7 @@ mod tests {
             CreatePackageIndexError::GetPackagesRequest(create_reqwest_middleware_error()),
             indoc! {"
                 - Debug Info:
-                  - error sending request for url (https://test/error)
+                  - error sending request
 
                 ! Failed to request Package Index file
                 !
@@ -2177,7 +2177,7 @@ mod tests {
             ),
             indoc! {"
                 - Debug Info:
-                  - error sending request for url (https://test/error)
+                  - error sending request
 
                 ! Failed to request package
                 !
@@ -2551,7 +2551,7 @@ mod tests {
     }
 
     fn create_io_error(text: &str) -> std::io::Error {
-        std::io::Error::new(std::io::ErrorKind::Other, text)
+        std::io::Error::other(text)
     }
 
     fn async_runtime() -> tokio::runtime::Runtime {

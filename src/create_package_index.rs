@@ -461,7 +461,7 @@ async fn get_package_list(
                     FuturesAsyncReadCompatExt::compat(
                         response
                             .bytes_stream()
-                            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+                            .map_err(std::io::Error::other)
                             .into_async_read(),
                     ),
                     |bytes| hasher.update(bytes),

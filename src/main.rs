@@ -177,8 +177,8 @@ pub(crate) enum DebianPackagesBuildpackError {
     Config(ConfigError),
     UnsupportedDistro(UnsupportedDistroError),
     CreatePackageIndex(CreatePackageIndexError),
-    DeterminePackagesToInstall(DeterminePackagesToInstallError),
-    InstallPackages(InstallPackagesError),
+    DeterminePackagesToInstall(Box<DeterminePackagesToInstallError>),
+    InstallPackages(Box<InstallPackagesError>),
     Detect(DetectError),
 }
 
