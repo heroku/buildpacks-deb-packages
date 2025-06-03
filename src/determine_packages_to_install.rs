@@ -304,7 +304,7 @@ pub(crate) enum DeterminePackagesToInstallError {
 impl From<DeterminePackagesToInstallError> for libcnb::Error<DebianPackagesBuildpackError> {
     fn from(value: DeterminePackagesToInstallError) -> Self {
         Self::BuildpackError(DebianPackagesBuildpackError::DeterminePackagesToInstall(
-            value,
+            Box::new(value),
         ))
     }
 }
@@ -560,21 +560,27 @@ mod test {
             .unwrap_err();
 
         if let libcnb::Error::BuildpackError(
-            DebianPackagesBuildpackError::DeterminePackagesToInstall(
-                DeterminePackagesToInstallError::VirtualPackageMustBeSpecified(package, providers),
-            ),
+            DebianPackagesBuildpackError::DeterminePackagesToInstall(boxed_error),
         ) = error
         {
-            assert_eq!(package, virtual_package);
-            assert_eq!(
+            if let DeterminePackagesToInstallError::VirtualPackageMustBeSpecified(
+                package,
                 providers,
-                HashSet::from([
-                    virtual_package_provider1.name,
-                    virtual_package_provider2.name
-                ])
-            );
+            ) = *boxed_error
+            {
+                assert_eq!(package, virtual_package);
+                assert_eq!(
+                    providers,
+                    HashSet::from([
+                        virtual_package_provider1.name,
+                        virtual_package_provider2.name
+                    ])
+                );
+            } else {
+                panic!("not the expected error: {boxed_error:?}");
+            }
         } else {
-            panic!("not the expected error: {error:?}")
+            panic!("not the expected error: {error:?}");
         }
     }
 
@@ -607,20 +613,24 @@ mod test {
             .unwrap_err();
 
         if let libcnb::Error::BuildpackError(
-            DebianPackagesBuildpackError::DeterminePackagesToInstall(
-                DeterminePackagesToInstallError::PackageNotFound(name, suggestions),
-            ),
+            DebianPackagesBuildpackError::DeterminePackagesToInstall(boxed_error),
         ) = error
         {
-            assert_eq!(name, virtual_package.to_string());
-            assert_eq!(
-                suggestions,
-                vec![
-                    format!("{virtual_package}1"),
-                    format!("{virtual_package}12"),
-                    format!("{virtual_package}123"),
-                ]
-            );
+            if let DeterminePackagesToInstallError::PackageNotFound(name, suggestions) =
+                *boxed_error
+            {
+                assert_eq!(name, virtual_package.to_string());
+                assert_eq!(
+                    suggestions,
+                    vec![
+                        format!("{virtual_package}1"),
+                        format!("{virtual_package}12"),
+                        format!("{virtual_package}123"),
+                    ]
+                );
+            } else {
+                panic!("not the expected error: {boxed_error:?}");
+            }
         } else {
             panic!("not the expected error: {error:?}")
         }
@@ -655,20 +665,24 @@ mod test {
             .unwrap_err();
 
         if let libcnb::Error::BuildpackError(
-            DebianPackagesBuildpackError::DeterminePackagesToInstall(
-                DeterminePackagesToInstallError::PackageNotFound(name, suggestions),
-            ),
+            DebianPackagesBuildpackError::DeterminePackagesToInstall(boxed_error),
         ) = error
         {
-            assert_eq!(name, non_existent_package.to_string());
-            assert_eq!(
-                suggestions,
-                vec![
-                    format!("{non_existent_package}1"),
-                    format!("{non_existent_package}12"),
-                    format!("{non_existent_package}123"),
-                ]
-            );
+            if let DeterminePackagesToInstallError::PackageNotFound(name, suggestions) =
+                *boxed_error
+            {
+                assert_eq!(name, non_existent_package.to_string());
+                assert_eq!(
+                    suggestions,
+                    vec![
+                        format!("{non_existent_package}1"),
+                        format!("{non_existent_package}12"),
+                        format!("{non_existent_package}123"),
+                    ]
+                );
+            } else {
+                panic!("not the expected error: {boxed_error:?}");
+            }
         } else {
             panic!("not the expected error: {error:?}")
         }
@@ -717,22 +731,26 @@ mod test {
             .unwrap_err();
 
         if let libcnb::Error::BuildpackError(
-            DebianPackagesBuildpackError::DeterminePackagesToInstall(
-                DeterminePackagesToInstallError::PackageNotFound(name, suggestions),
-            ),
+            DebianPackagesBuildpackError::DeterminePackagesToInstall(boxed_error),
         ) = error
         {
-            assert_eq!(name, non_existent_package.to_string());
-            assert_eq!(
-                suggestions,
-                vec![
-                    format!("{non_existent_package}1"),
-                    format!("{non_existent_package}a"),
-                    format!("{non_existent_package}12"),
-                    format!("{non_existent_package}ab"),
-                    format!("{non_existent_package}123"),
-                ]
-            );
+            if let DeterminePackagesToInstallError::PackageNotFound(name, suggestions) =
+                *boxed_error
+            {
+                assert_eq!(name, non_existent_package.to_string());
+                assert_eq!(
+                    suggestions,
+                    vec![
+                        format!("{non_existent_package}1"),
+                        format!("{non_existent_package}a"),
+                        format!("{non_existent_package}12"),
+                        format!("{non_existent_package}ab"),
+                        format!("{non_existent_package}123"),
+                    ]
+                );
+            } else {
+                panic!("not the expected error: {boxed_error:?}");
+            }
         } else {
             panic!("not the expected error: {error:?}")
         }
