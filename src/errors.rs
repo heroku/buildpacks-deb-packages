@@ -1342,7 +1342,7 @@ mod tests {
             CreatePackageIndexError::GetReleaseRequest(create_reqwest_middleware_error()),
             indoc! {"
                 - Debug Info:
-                  - error sending request for url (https://test/error)
+                  - error sending request
 
                 ! Failed to request Release file
                 !
@@ -1378,7 +1378,7 @@ mod tests {
             CreatePackageIndexError::ReadGetReleaseResponse(create_reqwest_error()),
             indoc! {"
                 - Debug Info:
-                  - error sending request for url (https://test/error)
+                  - error sending request
 
                 ! Failed to download Release file
                 !
@@ -1670,7 +1670,7 @@ mod tests {
             CreatePackageIndexError::GetPackagesRequest(create_reqwest_middleware_error()),
             indoc! {"
                 - Debug Info:
-                  - error sending request for url (https://test/error)
+                  - error sending request
 
                 ! Failed to request Package Index file
                 !
@@ -2177,7 +2177,7 @@ mod tests {
             ),
             indoc! {"
                 - Debug Info:
-                  - error sending request for url (https://test/error)
+                  - error sending request
 
                 ! Failed to request package
                 !
