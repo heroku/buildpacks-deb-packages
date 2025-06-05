@@ -6,6 +6,7 @@ use crate::{
 };
 use ar::Archive as ArArchive;
 use async_compression::tokio::bufread::{GzipDecoder, XzDecoder, ZstdDecoder};
+use bullet_stream::global::print;
 use bullet_stream::state::{Bullet, SubBullet};
 use bullet_stream::{style, Print};
 use futures::io::AllowStdIo;
@@ -46,7 +47,7 @@ pub(crate) async fn install_packages(
     packages_to_install: Vec<RepositoryPackage>,
     mut log: Print<Bullet<Stdout>>,
 ) -> BuildpackResult<Print<Bullet<Stdout>>> {
-    log = log.h2("Installing packages");
+    print::header("Installing packages");
 
     let new_metadata = InstallationMetadata {
         package_checksums: packages_to_install
