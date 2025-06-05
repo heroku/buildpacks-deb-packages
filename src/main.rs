@@ -6,6 +6,7 @@ use crate::determine_packages_to_install::{
 };
 use crate::install_packages::{install_packages, InstallPackagesError};
 use crate::o11y::*;
+use bullet_stream::global::print;
 use bullet_stream::{style, Print};
 use indoc::formatdoc;
 use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
@@ -50,13 +51,12 @@ impl Buildpack for DebianPackagesBuildpack {
     type Error = DebianPackagesBuildpackError;
 
     fn detect(&self, context: DetectContext<Self>) -> libcnb::Result<DetectResult, Self::Error> {
-        let log = Print::new(stdout()).without_header();
         if let Some(project_toml) = get_project_toml(&context.app_dir)? {
             info!({ PROJECT_TOML_DETECTED } = true);
             if BuildpackConfig::is_present(project_toml)? {
                 DetectResultBuilder::pass().build()
             } else {
-                log.important("project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.").done();
+                print::plain("project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.");
                 info!({ PROJECT_TOML_NO_CONFIG } = true);
                 DetectResultBuilder::fail().build()
             }
@@ -66,7 +66,7 @@ impl Buildpack for DebianPackagesBuildpack {
             info!({ APTFILE_DETECTED } = true);
             DetectResultBuilder::pass().build()
         } else {
-            log.important("No project.toml or Aptfile found.").done();
+            print::plain("No project.toml or Aptfile found.");
             DetectResultBuilder::fail().build()
         }
     }
