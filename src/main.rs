@@ -22,7 +22,7 @@ use std::fmt::Debug;
 use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tracing::{error, info};
 
 #[cfg(test)]
@@ -96,6 +96,7 @@ impl Buildpack for DebianPackagesBuildpack {
             .build()
             .expect("Should be able to construct the Async Runtime");
 
+        let started = Instant::now();
         let mut log = Print::new(stdout()).h1(format!(
             "{buildpack_name} (v{buildpack_version})",
             buildpack_name = context
@@ -153,7 +154,7 @@ impl Buildpack for DebianPackagesBuildpack {
         let (packages_to_install, log) =
             determine_packages_to_install(&package_index, config.install, log)?;
 
-        let log = runtime.block_on(install_packages(
+        runtime.block_on(install_packages(
             &context,
             &client,
             &distro,
@@ -161,7 +162,7 @@ impl Buildpack for DebianPackagesBuildpack {
             log,
         ))?;
 
-        log.done();
+        print::all_done(&Some(started));
 
         BuildResultBuilder::new().build()
     }
