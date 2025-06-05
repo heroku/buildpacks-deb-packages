@@ -7,7 +7,7 @@ use crate::{
 use ar::Archive as ArArchive;
 use async_compression::tokio::bufread::{GzipDecoder, XzDecoder, ZstdDecoder};
 use bullet_stream::global::print;
-use bullet_stream::state::{Bullet, SubBullet};
+use bullet_stream::state::Bullet;
 use bullet_stream::{style, Print};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
@@ -175,7 +175,7 @@ fn print_layer_contents(install_path: &Path) {
                 let _ = writeln!(&mut directory_log, "{}", path.to_string_lossy());
             });
         let _ = writeln!(&mut directory_log);
-    })
+    });
 }
 
 #[instrument(skip_all)]
