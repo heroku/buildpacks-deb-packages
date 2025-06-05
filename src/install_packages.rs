@@ -148,11 +148,10 @@ pub(crate) async fn install_packages(
 
     rewrite_package_configs(&install_layer.path()).await?;
 
-    let mut install_log = log.bullet("Installation complete");
+    let install_log = log.bullet("Installation complete");
     if is_buildpack_debug_logging_enabled() {
-        install_log = print_layer_contents(&install_layer.path(), install_log);
+        let _ = print_layer_contents(&install_layer.path(), install_log).done();
     }
-    log = install_log.done();
 
     Ok(())
 }
