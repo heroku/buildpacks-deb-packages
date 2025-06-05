@@ -46,7 +46,7 @@ pub(crate) async fn install_packages(
     distro: &Distro,
     packages_to_install: Vec<RepositoryPackage>,
     mut log: Print<Bullet<Stdout>>,
-) -> BuildpackResult<Print<Bullet<Stdout>>> {
+) -> BuildpackResult<()> {
     print::header("Installing packages");
 
     let new_metadata = InstallationMetadata {
@@ -154,7 +154,7 @@ pub(crate) async fn install_packages(
     }
     log = install_log.done();
 
-    Ok(log)
+    Ok(())
 }
 
 fn print_layer_contents(
