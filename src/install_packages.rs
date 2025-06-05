@@ -148,37 +148,34 @@ pub(crate) async fn install_packages(
 
     rewrite_package_configs(&install_layer.path()).await?;
 
-    let install_log = log.bullet("Installation complete");
+    print::bullet("Installation complete");
     if is_buildpack_debug_logging_enabled() {
-        let _ = print_layer_contents(&install_layer.path(), install_log).done();
+        print_layer_contents(&install_layer.path());
     }
 
     Ok(())
 }
 
-fn print_layer_contents(
-    install_path: &Path,
-    log: Print<SubBullet<Stdout>>,
-) -> Print<SubBullet<Stdout>> {
-    let mut directory_log = log.start_stream("Layer file listing");
-    WalkDir::new(install_path)
-        .into_iter()
-        .flatten()
-        .filter(|entry| {
-            // filter out the env layer that's created for CNB environment files
-            if let Some(parent) = entry.path().parent() {
-                if parent == install_path.join("env") {
-                    return false;
+fn print_layer_contents(install_path: &Path) {
+    print::sub_stream_with("Layer file listing", |mut directory_log, _| {
+        WalkDir::new(install_path)
+            .into_iter()
+            .flatten()
+            .filter(|entry| {
+                // filter out the env layer that's created for CNB environment files
+                if let Some(parent) = entry.path().parent() {
+                    if parent == install_path.join("env") {
+                        return false;
+                    }
                 }
-            }
-            entry.file_type().is_file()
-        })
-        .map(|entry| entry.path().to_path_buf())
-        .for_each(|path| {
-            let _ = writeln!(&mut directory_log, "{}", path.to_string_lossy());
-        });
-    let _ = writeln!(&mut directory_log);
-    directory_log.done()
+                entry.file_type().is_file()
+            })
+            .map(|entry| entry.path().to_path_buf())
+            .for_each(|path| {
+                let _ = writeln!(&mut directory_log, "{}", path.to_string_lossy());
+            });
+        let _ = writeln!(&mut directory_log);
+    })
 }
 
 #[instrument(skip_all)]
