@@ -6,6 +6,7 @@ use crate::errors::ErrorType::{Framework, Internal, UserFacing};
 use crate::install_packages::InstallPackagesError;
 use crate::{DebianPackagesBuildpackError, DetectError};
 use bon::builder;
+use bullet_stream::global::print;
 use bullet_stream::{style, Print};
 use indoc::{formatdoc, indoc};
 use libcnb::Error;
@@ -850,14 +851,11 @@ fn print_error<W>(error_message: ErrorMessage, writer: W)
 where
     W: Write + Send + Sync + 'static,
 {
-    let mut log = Print::new(writer).without_header();
     if let Some(debug_info) = error_message.debug_info {
-        log = log
-            .bullet(style::important("Debug Info:"))
-            .sub_bullet(debug_info)
-            .done();
+        print::bullet(style::important("Debug Info:"));
+        print::sub_bullet(debug_info);
     }
-    log.error(error_message.message);
+    print::error(error_message.message);
 }
 
 fn file_value(value: impl AsRef<Path>) -> String {
