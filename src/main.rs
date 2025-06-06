@@ -140,13 +140,11 @@ impl Buildpack for DebianPackagesBuildpack {
             "configuration"
         );
 
-        log = log
-            .bullet("Distribution Info")
-            .sub_bullet(format!("Name: {}", &distro.name))
-            .sub_bullet(format!("Version: {}", &distro.version))
-            .sub_bullet(format!("Codename: {}", &distro.codename))
-            .sub_bullet(format!("Architecture: {}", &distro.architecture))
-            .done();
+        print::bullet("Distribution Info");
+        print::sub_bullet(format!("Name: {}", &distro.name));
+        print::sub_bullet(format!("Version: {}", &distro.version));
+        print::sub_bullet(format!("Codename: {}", &distro.codename));
+        print::sub_bullet(format!("Architecture: {}", &distro.architecture));
 
         let package_index =
             runtime.block_on(create_package_index(&context, &client, &source_list))?;
