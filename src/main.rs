@@ -6,8 +6,7 @@ use crate::determine_packages_to_install::{
 };
 use crate::install_packages::{install_packages, InstallPackagesError};
 use crate::o11y::*;
-use bullet_stream::global::print;
-use bullet_stream::{style, Print};
+use bullet_stream::{global::print, style};
 use indoc::formatdoc;
 use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
 use libcnb::detect::{DetectContext, DetectResult, DetectResultBuilder};
@@ -22,7 +21,7 @@ use std::fmt::Debug;
 use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tracing::{error, info};
 
 #[cfg(test)]
