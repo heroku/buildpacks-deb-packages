@@ -53,17 +53,16 @@ pub(crate) async fn create_package_index(
 ) -> BuildpackResult<PackageIndex> {
     let log = log.h2("Creating package index");
 
-    let log = source_list
-        .iter()
-        .fold(log.bullet("Package sources"), |log, source| {
-            source.suites.iter().fold(log, |log, suite| {
-                log.sub_bullet(format!(
-                    "{repository_uri} {suite} [{components}]",
-                    repository_uri = style::url(&source.uri),
-                    components = source.components.join(", "),
-                ))
-            })
-        });
+    for source in source_list {
+        print::bullet("Package sources");
+        for suite in &source.suites {
+            print::sub_bullet(format!(
+                "{repository_uri} {suite} [{components}]",
+                repository_uri = style::url(&source.uri),
+                components = source.components.join(", "),
+            ));
+        }
+    }
 
     let timer = print::sub_start_timer("Updating");
     let updated_sources = update_sources(context, client, source_list).await?;
