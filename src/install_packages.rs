@@ -113,7 +113,7 @@ pub(crate) async fn install_packages(
                 },
             );
 
-            let timer = install_log.start_timer("Downloading");
+            let timer = print::sub_start_timer("Downloading");
             install_layer.write_metadata(new_metadata)?;
 
             let mut download_and_extract_handles = JoinSet::new();
@@ -135,7 +135,7 @@ pub(crate) async fn install_packages(
                 download_and_extract_handle.map_err(InstallPackagesError::TaskFailed)??;
             }
 
-            log = timer.done().done();
+            timer.done();
         }
     }
 
