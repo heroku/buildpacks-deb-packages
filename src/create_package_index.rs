@@ -8,9 +8,7 @@ use crate::{BuildpackResult, DebianPackagesBuildpack, DebianPackagesBuildpackErr
 use apt_parser::errors::APTError;
 use apt_parser::Release;
 use async_compression::tokio::bufread::GzipDecoder;
-use bullet_stream::global::print;
-use bullet_stream::state::Bullet;
-use bullet_stream::{style, Print};
+use bullet_stream::{global::print, style};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
 use libcnb::build::BuildContext;
@@ -29,7 +27,6 @@ use sequoia_openpgp::Cert;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter};
-use std::io::Stdout;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -49,9 +46,8 @@ pub(crate) async fn create_package_index(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
     source_list: &[Source],
-    log: Print<Bullet<Stdout>>,
 ) -> BuildpackResult<PackageIndex> {
-    let log = log.h2("Creating package index");
+    print::header("Creating package index");
 
     for source in source_list {
         print::bullet("Package sources");

@@ -149,7 +149,7 @@ impl Buildpack for DebianPackagesBuildpack {
             .done();
 
         let package_index =
-            runtime.block_on(create_package_index(&context, &client, &source_list, log))?;
+            runtime.block_on(create_package_index(&context, &client, &source_list))?;
 
         let packages_to_install = determine_packages_to_install(&package_index, config.install)?;
 
