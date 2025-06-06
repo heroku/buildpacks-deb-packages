@@ -109,7 +109,7 @@ impl Buildpack for DebianPackagesBuildpack {
         ));
 
         if get_aptfile(&context.app_dir)?.is_some() {
-            log = log.important(migrate_from_aptfile_help_message());
+            print::plain(style::important(migrate_from_aptfile_help_message()));
             // If we passed detect from the Aptfile but there is no project.toml then
             // print the warning and exit early.
             if get_project_toml(&context.app_dir)?.is_none() {
