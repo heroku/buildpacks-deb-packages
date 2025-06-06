@@ -20,13 +20,10 @@ pub(crate) fn on_error<W>(error: Error<DebianPackagesBuildpackError>, writer: W)
 where
     W: Write + Sync + Send + 'static,
 {
-    print_error(
-        match error {
-            Error::BuildpackError(e) => on_buildpack_error(e),
-            e => on_framework_error(&e),
-        },
-        writer,
-    );
+    print_error(match error {
+        Error::BuildpackError(e) => on_buildpack_error(e),
+        e => on_framework_error(&e),
+    });
 }
 
 fn on_buildpack_error(error: DebianPackagesBuildpackError) -> ErrorMessage {
@@ -847,10 +844,7 @@ fn create_error(
     }
 }
 
-fn print_error<W>(error_message: ErrorMessage, writer: W)
-where
-    W: Write + Send + Sync + 'static,
-{
+fn print_error(error_message: ErrorMessage) {
     if let Some(debug_info) = error_message.debug_info {
         print::bullet(style::important("Debug Info:"));
         print::sub_bullet(debug_info);
