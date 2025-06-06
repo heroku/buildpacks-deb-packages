@@ -39,7 +39,6 @@ walkdir = "2"
 [dev-dependencies]
 libcnb-test = "=0.29.0"
 regex = "1"
-strip-ansi-escapes = "0.2"
 tempfile = "3"
 
 [lints.rust]
