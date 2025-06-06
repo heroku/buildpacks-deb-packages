@@ -159,7 +159,6 @@ impl Buildpack for DebianPackagesBuildpack {
             &client,
             &distro,
             packages_to_install,
-            log,
         ))?;
 
         print::all_done(&Some(started));

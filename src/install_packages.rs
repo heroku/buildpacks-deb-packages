@@ -6,9 +6,7 @@ use crate::{
 };
 use ar::Archive as ArArchive;
 use async_compression::tokio::bufread::{GzipDecoder, XzDecoder, ZstdDecoder};
-use bullet_stream::global::print;
-use bullet_stream::state::Bullet;
-use bullet_stream::{style, Print};
+use bullet_stream::{global::print, style};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
 use indexmap::IndexSet;
@@ -26,7 +24,7 @@ use std::collections::HashMap;
 use std::env::temp_dir;
 use std::ffi::OsString;
 use std::fs::File;
-use std::io::{Stdout, Write};
+use std::io::Write;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -45,7 +43,6 @@ pub(crate) async fn install_packages(
     client: &ClientWithMiddleware,
     distro: &Distro,
     packages_to_install: Vec<RepositoryPackage>,
-    mut log: Print<Bullet<Stdout>>,
 ) -> BuildpackResult<()> {
     print::header("Installing packages");
 
