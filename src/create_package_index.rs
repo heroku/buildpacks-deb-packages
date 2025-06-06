@@ -69,52 +69,41 @@ pub(crate) async fn create_package_index(
     let updated_sources = update_sources(context, client, source_list).await?;
     let log = timer.done();
 
-    let log = updated_sources
-        .iter()
-        .fold(log, |log, updated_source| {
-            let update_source_log =
-                log.sub_bullet(match &updated_source.release_file.cache_state {
-                    UpdatedSourceCacheState::Cached => format!(
-                        "Restored release file from cache {url}",
-                        url = style::details(style::url(
-                            &updated_source.release_file.release_file_url
-                        ))
-                    ),
-                    UpdatedSourceCacheState::New => format!(
-                        "Downloaded release file {url}",
-                        url = style::url(&updated_source.release_file.release_file_url)
-                    ),
-                    UpdatedSourceCacheState::Invalidated(reason) => format!(
-                        "Redownloaded release file {url} {reason}",
-                        url = style::url(&updated_source.release_file.release_file_url),
-                        reason = style::details(reason)
-                    ),
-                });
+    for updated_source in &updated_sources {
+        print::sub_bullet(match &updated_source.release_file.cache_state {
+            UpdatedSourceCacheState::Cached => format!(
+                "Restored release file from cache {url}",
+                url = style::details(style::url(&updated_source.release_file.release_file_url))
+            ),
+            UpdatedSourceCacheState::New => format!(
+                "Downloaded release file {url}",
+                url = style::url(&updated_source.release_file.release_file_url)
+            ),
+            UpdatedSourceCacheState::Invalidated(reason) => format!(
+                "Redownloaded release file {url} {reason}",
+                url = style::url(&updated_source.release_file.release_file_url),
+                reason = style::details(reason)
+            ),
+        });
 
-            updated_source.package_indexes.iter().fold(
-                update_source_log,
-                |update_source_log, updated_package_index| {
-                    update_source_log.sub_bullet(match &updated_package_index.cache_state {
-                        UpdatedSourceCacheState::Cached => format!(
-                            "Restored package index from cache {url}",
-                            url = style::details(style::url(
-                                &updated_package_index.package_index_url
-                            ))
-                        ),
-                        UpdatedSourceCacheState::New => format!(
-                            "Downloaded package index {url}",
-                            url = style::url(&updated_package_index.package_index_url)
-                        ),
-                        UpdatedSourceCacheState::Invalidated(reason) => format!(
-                            "Redownloaded package index {url} {reason}",
-                            url = style::url(&updated_package_index.package_index_url),
-                            reason = style::details(reason)
-                        ),
-                    })
-                },
-            )
-        })
-        .done();
+        for updated_package_index in &updated_source.package_indexes {
+            print::sub_bullet(match &updated_package_index.cache_state {
+                UpdatedSourceCacheState::Cached => format!(
+                    "Restored package index from cache {url}",
+                    url = style::details(style::url(&updated_package_index.package_index_url))
+                ),
+                UpdatedSourceCacheState::New => format!(
+                    "Downloaded package index {url}",
+                    url = style::url(&updated_package_index.package_index_url)
+                ),
+                UpdatedSourceCacheState::Invalidated(reason) => format!(
+                    "Redownloaded package index {url} {reason}",
+                    url = style::url(&updated_package_index.package_index_url),
+                    reason = style::details(reason)
+                ),
+            });
+        }
+    }
 
     print::bullet("Building package index");
     let timer = print::sub_start_timer("Processing package files");
