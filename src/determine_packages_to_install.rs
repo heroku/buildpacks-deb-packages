@@ -2,16 +2,13 @@ use crate::config::RequestedPackage;
 use crate::debian::{PackageIndex, RepositoryPackage};
 use crate::{BuildpackResult, DebianPackagesBuildpackError};
 use apt_parser::Control;
-use bullet_stream::global::print;
-use bullet_stream::state::Bullet;
-use bullet_stream::{style, Print};
+use bullet_stream::{global::print, style};
 use edit_distance::edit_distance;
 use indexmap::IndexSet;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::fs::read_to_string;
-use std::io::Stdout;
 use std::path::PathBuf;
 use tracing::instrument;
 
@@ -19,11 +16,9 @@ use tracing::instrument;
 pub(crate) fn determine_packages_to_install(
     package_index: &PackageIndex,
     requested_packages: IndexSet<RequestedPackage>,
-    mut log: Print<Bullet<Stdout>>,
 ) -> BuildpackResult<Vec<RepositoryPackage>> {
-    log = log.h2("Determining packages to install");
-
-    let sub_bullet = log.bullet("Collecting system install information");
+    print::header("Determining packages to install");
+    print::sub_bullet("Collecting system install information");
     let system_packages_path = PathBuf::from("/var/lib/dpkg/status");
     let system_packages = read_to_string(&system_packages_path)
         .map_err(|e| {
@@ -43,7 +38,6 @@ pub(crate) fn determine_packages_to_install(
                 .map(SystemPackage::from)
         })
         .collect::<Result<IndexSet<_>, _>>()?;
-    log = sub_bullet.done();
 
     let mut packages_marked_for_install = IndexSet::new();
 
