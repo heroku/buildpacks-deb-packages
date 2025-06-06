@@ -6,20 +6,15 @@ use crate::errors::ErrorType::{Framework, Internal, UserFacing};
 use crate::install_packages::InstallPackagesError;
 use crate::{DebianPackagesBuildpackError, DetectError};
 use bon::builder;
-use bullet_stream::global::print;
-use bullet_stream::{style, Print};
+use bullet_stream::{global::print, style};
 use indoc::{formatdoc, indoc};
 use libcnb::Error;
 use std::collections::BTreeSet;
-use std::io::Write;
 use std::path::Path;
 
 const BUILDPACK_NAME: &str = "Heroku .deb Packages buildpack";
 
-pub(crate) fn on_error<W>(error: Error<DebianPackagesBuildpackError>, writer: W)
-where
-    W: Write + Sync + Send + 'static,
-{
+pub(crate) fn on_error(error: Error<DebianPackagesBuildpackError>) {
     print_error(match error {
         Error::BuildpackError(e) => on_buildpack_error(e),
         e => on_framework_error(&e),
@@ -897,8 +892,10 @@ mod tests {
     };
     use crate::DebianPackagesBuildpackError::UnsupportedDistro;
     use anyhow::anyhow;
+    use bullet_stream::strip_ansi;
     use libcnb::data::layer::LayerNameError;
     use libcnb_test::assert_contains_match;
+    use std::cell::RefCell;
     use std::collections::HashSet;
     use std::str::FromStr;
 
@@ -2516,17 +2513,35 @@ mod tests {
         });
     }
 
+    thread_local! {
+        static THREAD_LOCAL_WRITER: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+    }
+    struct TestLogger;
+    impl TestLogger {
+        fn take() -> Vec<u8> {
+            THREAD_LOCAL_WRITER.take()
+        }
+    }
+
+    impl std::io::Write for TestLogger {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            THREAD_LOCAL_WRITER.with_borrow_mut(|writer| writer.write(buf))
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            THREAD_LOCAL_WRITER.with_borrow_mut(std::io::Write::flush)
+        }
+    }
+
     fn test_error_output_with_custom_assertion(
         // this is present to enforce adding contextual information for the error to be used in reviews
         _context: &str,
         error: impl Into<Error<DebianPackagesBuildpackError>>,
         assert_fn: impl FnOnce(String),
     ) {
-        let file = tempfile::NamedTempFile::new().unwrap();
-        let reader = file.reopen().unwrap();
-        let writer = strip_ansi_escapes::Writer::new(file);
-        on_error(error.into(), writer);
-        let actual_text = std::io::read_to_string(reader).unwrap();
+        bullet_stream::global::set_writer(TestLogger);
+        on_error(error.into());
+        let actual_text = strip_ansi(String::from_utf8_lossy(&TestLogger::take()));
         assert_fn(actual_text);
     }
 

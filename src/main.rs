@@ -18,7 +18,6 @@ use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
 use reqwest_tracing::{SpanBackendWithUrl, TracingMiddleware};
 use std::fmt::Debug;
-use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -164,7 +163,7 @@ impl Buildpack for DebianPackagesBuildpack {
 
     fn on_error(&self, error: libcnb::Error<Self::Error>) {
         error!({ ERROR } = ?error);
-        errors::on_error(error, stdout());
+        errors::on_error(error);
     }
 }
 
