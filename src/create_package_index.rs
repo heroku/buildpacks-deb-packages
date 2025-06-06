@@ -116,8 +116,8 @@ pub(crate) async fn create_package_index(
         })
         .done();
 
-    let log = log.bullet("Building package index");
-    let timer = log.start_timer("Processing package files");
+    print::bullet("Building package index");
+    let timer = print::sub_start_timer("Processing package files");
     let package_index = build_package_index(
         updated_sources
             .into_iter()
@@ -125,7 +125,7 @@ pub(crate) async fn create_package_index(
             .collect(),
     )
     .await?;
-    let log = timer.done();
+    timer.done();
 
     info!(
         { PACKAGE_INDEX_SIZE } = package_index.packages_indexed,
