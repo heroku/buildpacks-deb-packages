@@ -75,43 +75,36 @@ pub(crate) async fn install_packages(
 
     match install_layer.state {
         LayerState::Restored { .. } => {
-            log = packages_to_install
-                .iter()
-                .fold(
-                    log.bullet("Restoring packages from cache"),
-                    |log, package_to_install| {
-                        log.sub_bullet(style::value(format!(
-                            "{name}@{version}",
-                            name = package_to_install.name,
-                            version = package_to_install.version
-                        )))
-                    },
-                )
-                .done();
+            print::bullet("Restoring packages from cache");
+            for package_to_install in &packages_to_install {
+                print::sub_bullet(style::value(format!(
+                    "{name}@{version}",
+                    name = package_to_install.name,
+                    version = package_to_install.version
+                )));
+            }
         }
         LayerState::Empty { cause } => {
-            let install_log = packages_to_install.iter().fold(
-                log.bullet(match cause {
-                    EmptyLayerCause::NewlyCreated => "Requesting packages",
-                    EmptyLayerCause::InvalidMetadataAction { .. } => {
-                        "Requesting packages (invalid metadata)"
-                    }
-                    EmptyLayerCause::RestoredLayerAction { .. } => {
-                        "Requesting packages (packages changed)"
-                    }
-                }),
-                |log, package_to_install| {
-                    log.sub_bullet(format!(
-                        "{name_with_version} from {url}",
-                        name_with_version = style::value(format!(
-                            "{name}@{version}",
-                            name = package_to_install.name,
-                            version = package_to_install.version
-                        )),
-                        url = style::url(build_download_url(package_to_install))
-                    ))
-                },
-            );
+            print::bullet(match cause {
+                EmptyLayerCause::NewlyCreated => "Requesting packages",
+                EmptyLayerCause::InvalidMetadataAction { .. } => {
+                    "Requesting packages (invalid metadata)"
+                }
+                EmptyLayerCause::RestoredLayerAction { .. } => {
+                    "Requesting packages (packages changed)"
+                }
+            });
+            for package_to_install in &packages_to_install {
+                print::sub_bullet(format!(
+                    "{name_with_version} from {url}",
+                    name_with_version = style::value(format!(
+                        "{name}@{version}",
+                        name = package_to_install.name,
+                        version = package_to_install.version
+                    )),
+                    url = style::url(build_download_url(package_to_install))
+                ));
+            }
 
             let timer = print::sub_start_timer("Downloading");
             install_layer.write_metadata(new_metadata)?;
