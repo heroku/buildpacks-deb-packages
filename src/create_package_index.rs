@@ -49,7 +49,7 @@ pub(crate) async fn create_package_index(
     client: &ClientWithMiddleware,
     source_list: &[Source],
     log: Print<Bullet<Stdout>>,
-) -> BuildpackResult<(PackageIndex, Print<Bullet<Stdout>>)> {
+) -> BuildpackResult<PackageIndex> {
     let log = log.h2("Creating package index");
 
     let log = source_list
@@ -137,7 +137,7 @@ pub(crate) async fn create_package_index(
         ))
         .done();
 
-    Ok((package_index, log))
+    Ok(package_index)
 }
 
 #[instrument(skip_all)]

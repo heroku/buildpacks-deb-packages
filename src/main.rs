@@ -148,7 +148,7 @@ impl Buildpack for DebianPackagesBuildpack {
             .sub_bullet(format!("Architecture: {}", &distro.architecture))
             .done();
 
-        let (package_index, log) =
+        let package_index =
             runtime.block_on(create_package_index(&context, &client, &source_list, log))?;
 
         let packages_to_install = determine_packages_to_install(&package_index, config.install)?;
