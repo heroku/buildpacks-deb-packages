@@ -65,9 +65,9 @@ pub(crate) async fn create_package_index(
             })
         });
 
-    let timer = log.start_timer("Updating");
+    let timer = print::sub_start_timer("Updating");
     let updated_sources = update_sources(context, client, source_list).await?;
-    let log = timer.done();
+    timer.done();
 
     for updated_source in &updated_sources {
         print::sub_bullet(match &updated_source.release_file.cache_state {
