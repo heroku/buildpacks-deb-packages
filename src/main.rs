@@ -96,8 +96,7 @@ impl Buildpack for DebianPackagesBuildpack {
             .build()
             .expect("Should be able to construct the Async Runtime");
 
-        let started = Instant::now();
-        let mut log = Print::new(stdout()).h1(format!(
+        let started = print::buildpack(format!(
             "{buildpack_name} (v{buildpack_version})",
             buildpack_name = context
                 .buildpack_descriptor
@@ -122,7 +121,8 @@ impl Buildpack for DebianPackagesBuildpack {
 
         if config.install.is_empty() {
             info!({ EARLY_EXIT_REASON } = "nothing_to_install", "early exit");
-            log.important(empty_config_help_message()).done();
+
+            print::plain(style::important(empty_config_help_message()));
             return BuildResultBuilder::new().build();
         }
 
