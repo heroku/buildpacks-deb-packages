@@ -8,6 +8,7 @@ use crate::{BuildpackResult, DebianPackagesBuildpack, DebianPackagesBuildpackErr
 use apt_parser::errors::APTError;
 use apt_parser::Release;
 use async_compression::tokio::bufread::GzipDecoder;
+use bullet_stream::global::print;
 use bullet_stream::state::Bullet;
 use bullet_stream::{style, Print};
 use futures::io::AllowStdIo;
@@ -130,12 +131,10 @@ pub(crate) async fn create_package_index(
         { PACKAGE_INDEX_SIZE } = package_index.packages_indexed,
         "package index"
     );
-    let log = log
-        .sub_bullet(format!(
-            "Indexed {} packages",
-            package_index.packages_indexed
-        ))
-        .done();
+    print::sub_bullet(format!(
+        "Indexed {} packages",
+        package_index.packages_indexed
+    ));
 
     Ok(package_index)
 }
