@@ -12,7 +12,7 @@ apt-parser = "1"
 ar = "0.9"
 async-compression = { version = "0.4", default-features = false, features = ["tokio", "gzip", "zstd", "xz"] }
 bon = "3"
-bullet_stream = "0.9"
+bullet_stream = { version = "0.9", git = "https://github.com/heroku-buildpacks/bullet_stream", branch = "schneems/global-test-capture" }
 const_format = "0.2"
 debversion = "0.4"
 edit-distance = "2"

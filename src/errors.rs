@@ -895,7 +895,6 @@ mod tests {
     use bullet_stream::strip_ansi;
     use libcnb::data::layer::LayerNameError;
     use libcnb_test::assert_contains_match;
-    use std::cell::RefCell;
     use std::collections::HashSet;
     use std::str::FromStr;
 
@@ -2513,35 +2512,17 @@ mod tests {
         });
     }
 
-    thread_local! {
-        static THREAD_LOCAL_WRITER: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
-    }
-    struct TestLogger;
-    impl TestLogger {
-        fn take() -> Vec<u8> {
-            THREAD_LOCAL_WRITER.take()
-        }
-    }
-
-    impl std::io::Write for TestLogger {
-        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-            THREAD_LOCAL_WRITER.with_borrow_mut(|writer| writer.write(buf))
-        }
-
-        fn flush(&mut self) -> std::io::Result<()> {
-            THREAD_LOCAL_WRITER.with_borrow_mut(std::io::Write::flush)
-        }
-    }
-
     fn test_error_output_with_custom_assertion(
         // this is present to enforce adding contextual information for the error to be used in reviews
         _context: &str,
         error: impl Into<Error<DebianPackagesBuildpackError>>,
         assert_fn: impl FnOnce(String),
     ) {
-        bullet_stream::global::set_writer(TestLogger);
-        on_error(error.into());
-        let actual_text = strip_ansi(String::from_utf8_lossy(&TestLogger::take()));
+        let output = bullet_stream::global::with_locked_writer(Vec::new(), || {
+            on_error(error.into());
+        });
+
+        let actual_text = strip_ansi(String::from_utf8_lossy(&output));
         assert_fn(actual_text);
     }
 
