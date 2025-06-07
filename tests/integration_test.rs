@@ -32,7 +32,8 @@ fn test_failed_detection_when_no_project_file_exists() {
             config.expected_pack_result(PackResult::Failure);
         },
         |ctx| {
-            assert_contains!(ctx.pack_stderr, "No project.toml or Aptfile found.");
+            let stdout_stderr = format!("{}\n{}", ctx.pack_stdout, ctx.pack_stderr);
+            assert_contains!(stdout_stderr, "No project.toml or Aptfile found.");
         },
     );
 }
@@ -46,7 +47,8 @@ fn test_failed_detection_when_project_file_has_no_config() {
             config.expected_pack_result(PackResult::Failure);
         },
         |ctx| {
-            assert_contains!(ctx.pack_stderr, "project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.");
+            let stdout_stderr = format!("{}\n{}", ctx.pack_stdout, ctx.pack_stderr);
+            assert_contains!(stdout_stderr, "project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.");
         },
     );
 }
