@@ -12,7 +12,7 @@ apt-parser = "1"
 ar = "0.9"
 async-compression = { version = "0.4", default-features = false, features = ["tokio", "gzip", "zstd", "xz"] }
 bon = "3"
-bullet_stream = "0.8"
+bullet_stream = ">=0.9, <1.0"
 const_format = "0.2"
 debversion = "0.4"
 edit-distance = "2"
@@ -39,7 +39,6 @@ walkdir = "2"
 [dev-dependencies]
 libcnb-test = "=0.29.0"
 regex = "1"
-strip-ansi-escapes = "0.2"
 tempfile = "3"
 
 [lints.rust]

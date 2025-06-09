@@ -6,26 +6,19 @@ use crate::errors::ErrorType::{Framework, Internal, UserFacing};
 use crate::install_packages::InstallPackagesError;
 use crate::{DebianPackagesBuildpackError, DetectError};
 use bon::builder;
-use bullet_stream::{style, Print};
+use bullet_stream::{global::print, style};
 use indoc::{formatdoc, indoc};
 use libcnb::Error;
 use std::collections::BTreeSet;
-use std::io::Write;
 use std::path::Path;
 
 const BUILDPACK_NAME: &str = "Heroku .deb Packages buildpack";
 
-pub(crate) fn on_error<W>(error: Error<DebianPackagesBuildpackError>, writer: W)
-where
-    W: Write + Sync + Send + 'static,
-{
-    print_error(
-        match error {
-            Error::BuildpackError(e) => on_buildpack_error(e),
-            e => on_framework_error(&e),
-        },
-        writer,
-    );
+pub(crate) fn on_error(error: Error<DebianPackagesBuildpackError>) {
+    print_error(match error {
+        Error::BuildpackError(e) => on_buildpack_error(e),
+        e => on_framework_error(&e),
+    });
 }
 
 fn on_buildpack_error(error: DebianPackagesBuildpackError) -> ErrorMessage {
@@ -846,18 +839,12 @@ fn create_error(
     }
 }
 
-fn print_error<W>(error_message: ErrorMessage, writer: W)
-where
-    W: Write + Send + Sync + 'static,
-{
-    let mut log = Print::new(writer).without_header();
+fn print_error(error_message: ErrorMessage) {
     if let Some(debug_info) = error_message.debug_info {
-        log = log
-            .bullet(style::important("Debug Info:"))
-            .sub_bullet(debug_info)
-            .done();
+        print::bullet(style::important("Debug Info:"));
+        print::sub_bullet(debug_info);
     }
-    log.error(error_message.message);
+    print::error(error_message.message);
 }
 
 fn file_value(value: impl AsRef<Path>) -> String {
@@ -905,6 +892,7 @@ mod tests {
     };
     use crate::DebianPackagesBuildpackError::UnsupportedDistro;
     use anyhow::anyhow;
+    use bullet_stream::strip_ansi;
     use libcnb::data::layer::LayerNameError;
     use libcnb_test::assert_contains_match;
     use std::collections::HashSet;
@@ -2530,11 +2518,11 @@ mod tests {
         error: impl Into<Error<DebianPackagesBuildpackError>>,
         assert_fn: impl FnOnce(String),
     ) {
-        let file = tempfile::NamedTempFile::new().unwrap();
-        let reader = file.reopen().unwrap();
-        let writer = strip_ansi_escapes::Writer::new(file);
-        on_error(error.into(), writer);
-        let actual_text = std::io::read_to_string(reader).unwrap();
+        let output = bullet_stream::global::with_locked_writer(Vec::new(), || {
+            on_error(error.into());
+        });
+
+        let actual_text = strip_ansi(String::from_utf8_lossy(&output));
         assert_fn(actual_text);
     }
 

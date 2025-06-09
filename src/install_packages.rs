@@ -6,8 +6,7 @@ use crate::{
 };
 use ar::Archive as ArArchive;
 use async_compression::tokio::bufread::{GzipDecoder, XzDecoder, ZstdDecoder};
-use bullet_stream::state::{Bullet, SubBullet};
-use bullet_stream::{style, Print};
+use bullet_stream::{global::print, style};
 use futures::io::AllowStdIo;
 use futures::TryStreamExt;
 use indexmap::IndexSet;
@@ -25,7 +24,7 @@ use std::collections::HashMap;
 use std::env::temp_dir;
 use std::ffi::OsString;
 use std::fs::File;
-use std::io::{Stdout, Write};
+use std::io::Write;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -44,9 +43,8 @@ pub(crate) async fn install_packages(
     client: &ClientWithMiddleware,
     distro: &Distro,
     packages_to_install: Vec<RepositoryPackage>,
-    mut log: Print<Bullet<Stdout>>,
-) -> BuildpackResult<Print<Bullet<Stdout>>> {
-    log = log.h2("Installing packages");
+) -> BuildpackResult<()> {
+    print::header("Installing packages");
 
     let new_metadata = InstallationMetadata {
         package_checksums: packages_to_install
@@ -74,45 +72,38 @@ pub(crate) async fn install_packages(
 
     match install_layer.state {
         LayerState::Restored { .. } => {
-            log = packages_to_install
-                .iter()
-                .fold(
-                    log.bullet("Restoring packages from cache"),
-                    |log, package_to_install| {
-                        log.sub_bullet(style::value(format!(
-                            "{name}@{version}",
-                            name = package_to_install.name,
-                            version = package_to_install.version
-                        )))
-                    },
-                )
-                .done();
+            print::bullet("Restoring packages from cache");
+            for package_to_install in &packages_to_install {
+                print::sub_bullet(style::value(format!(
+                    "{name}@{version}",
+                    name = package_to_install.name,
+                    version = package_to_install.version
+                )));
+            }
         }
         LayerState::Empty { cause } => {
-            let install_log = packages_to_install.iter().fold(
-                log.bullet(match cause {
-                    EmptyLayerCause::NewlyCreated => "Requesting packages",
-                    EmptyLayerCause::InvalidMetadataAction { .. } => {
-                        "Requesting packages (invalid metadata)"
-                    }
-                    EmptyLayerCause::RestoredLayerAction { .. } => {
-                        "Requesting packages (packages changed)"
-                    }
-                }),
-                |log, package_to_install| {
-                    log.sub_bullet(format!(
-                        "{name_with_version} from {url}",
-                        name_with_version = style::value(format!(
-                            "{name}@{version}",
-                            name = package_to_install.name,
-                            version = package_to_install.version
-                        )),
-                        url = style::url(build_download_url(package_to_install))
-                    ))
-                },
-            );
+            print::bullet(match cause {
+                EmptyLayerCause::NewlyCreated => "Requesting packages",
+                EmptyLayerCause::InvalidMetadataAction { .. } => {
+                    "Requesting packages (invalid metadata)"
+                }
+                EmptyLayerCause::RestoredLayerAction { .. } => {
+                    "Requesting packages (packages changed)"
+                }
+            });
+            for package_to_install in &packages_to_install {
+                print::sub_bullet(format!(
+                    "{name_with_version} from {url}",
+                    name_with_version = style::value(format!(
+                        "{name}@{version}",
+                        name = package_to_install.name,
+                        version = package_to_install.version
+                    )),
+                    url = style::url(build_download_url(package_to_install))
+                ));
+            }
 
-            let timer = install_log.start_timer("Downloading");
+            let timer = print::sub_start_timer("Downloading");
             install_layer.write_metadata(new_metadata)?;
 
             let mut download_and_extract_handles = JoinSet::new();
@@ -134,7 +125,7 @@ pub(crate) async fn install_packages(
                 download_and_extract_handle.map_err(InstallPackagesError::TaskFailed)??;
             }
 
-            log = timer.done().done();
+            timer.done();
         }
     }
 
@@ -147,38 +138,34 @@ pub(crate) async fn install_packages(
 
     rewrite_package_configs(&install_layer.path()).await?;
 
-    let mut install_log = log.bullet("Installation complete");
+    print::bullet("Installation complete");
     if is_buildpack_debug_logging_enabled() {
-        install_log = print_layer_contents(&install_layer.path(), install_log);
+        print_layer_contents(&install_layer.path());
     }
-    log = install_log.done();
 
-    Ok(log)
+    Ok(())
 }
 
-fn print_layer_contents(
-    install_path: &Path,
-    log: Print<SubBullet<Stdout>>,
-) -> Print<SubBullet<Stdout>> {
-    let mut directory_log = log.start_stream("Layer file listing");
-    WalkDir::new(install_path)
-        .into_iter()
-        .flatten()
-        .filter(|entry| {
-            // filter out the env layer that's created for CNB environment files
-            if let Some(parent) = entry.path().parent() {
-                if parent == install_path.join("env") {
-                    return false;
+fn print_layer_contents(install_path: &Path) {
+    print::sub_stream_with("Layer file listing", |mut directory_log, _| {
+        WalkDir::new(install_path)
+            .into_iter()
+            .flatten()
+            .filter(|entry| {
+                // filter out the env layer that's created for CNB environment files
+                if let Some(parent) = entry.path().parent() {
+                    if parent == install_path.join("env") {
+                        return false;
+                    }
                 }
-            }
-            entry.file_type().is_file()
-        })
-        .map(|entry| entry.path().to_path_buf())
-        .for_each(|path| {
-            let _ = writeln!(&mut directory_log, "{}", path.to_string_lossy());
-        });
-    let _ = writeln!(&mut directory_log);
-    directory_log.done()
+                entry.file_type().is_file()
+            })
+            .map(|entry| entry.path().to_path_buf())
+            .for_each(|path| {
+                let _ = writeln!(&mut directory_log, "{}", path.to_string_lossy());
+            });
+        let _ = writeln!(&mut directory_log);
+    });
 }
 
 #[instrument(skip_all)]

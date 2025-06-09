@@ -2,15 +2,13 @@ use crate::config::RequestedPackage;
 use crate::debian::{PackageIndex, RepositoryPackage};
 use crate::{BuildpackResult, DebianPackagesBuildpackError};
 use apt_parser::Control;
-use bullet_stream::state::Bullet;
-use bullet_stream::{style, Print};
+use bullet_stream::{global::print, style};
 use edit_distance::edit_distance;
 use indexmap::IndexSet;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::fs::read_to_string;
-use std::io::Stdout;
 use std::path::PathBuf;
 use tracing::instrument;
 
@@ -18,11 +16,9 @@ use tracing::instrument;
 pub(crate) fn determine_packages_to_install(
     package_index: &PackageIndex,
     requested_packages: IndexSet<RequestedPackage>,
-    mut log: Print<Bullet<Stdout>>,
-) -> BuildpackResult<(Vec<RepositoryPackage>, Print<Bullet<Stdout>>)> {
-    log = log.h2("Determining packages to install");
-
-    let sub_bullet = log.bullet("Collecting system install information");
+) -> BuildpackResult<Vec<RepositoryPackage>> {
+    print::header("Determining packages to install");
+    print::sub_bullet("Collecting system install information");
     let system_packages_path = PathBuf::from("/var/lib/dpkg/status");
     let system_packages = read_to_string(&system_packages_path)
         .map_err(|e| {
@@ -42,12 +38,11 @@ pub(crate) fn determine_packages_to_install(
                 .map(SystemPackage::from)
         })
         .collect::<Result<IndexSet<_>, _>>()?;
-    log = sub_bullet.done();
 
     let mut packages_marked_for_install = IndexSet::new();
 
     for requested_package in requested_packages {
-        let mut notification_log = log.bullet(format!(
+        print::bullet(format!(
             "Determining install requirements for requested package {package}",
             package = style::value(requested_package.name.as_str())
         ));
@@ -66,14 +61,12 @@ pub(crate) fn determine_packages_to_install(
         )?;
 
         if package_notifications.is_empty() {
-            notification_log = notification_log.sub_bullet("Nothing to add");
+            print::sub_bullet("Nothing to add");
         } else {
             for package_notification in package_notifications {
-                notification_log = notification_log.sub_bullet(package_notification.to_string());
+                print::sub_bullet(package_notification.to_string());
             }
         }
-
-        log = notification_log.done();
     }
 
     let packages_to_install = packages_marked_for_install
@@ -81,7 +74,7 @@ pub(crate) fn determine_packages_to_install(
         .map(|package_marked_for_install| package_marked_for_install.repository_package)
         .collect::<Vec<_>>();
 
-    Ok((packages_to_install, log))
+    Ok(packages_to_install)
 }
 
 // NOTE: Since this buildpack is not meant to be a replacement for a fully-featured dependency

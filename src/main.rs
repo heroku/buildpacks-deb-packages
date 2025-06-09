@@ -6,7 +6,7 @@ use crate::determine_packages_to_install::{
 };
 use crate::install_packages::{install_packages, InstallPackagesError};
 use crate::o11y::*;
-use bullet_stream::{style, Print};
+use bullet_stream::{global::print, style};
 use indoc::formatdoc;
 use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
 use libcnb::detect::{DetectContext, DetectResult, DetectResultBuilder};
@@ -18,7 +18,6 @@ use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
 use reqwest_tracing::{SpanBackendWithUrl, TracingMiddleware};
 use std::fmt::Debug;
-use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -50,13 +49,12 @@ impl Buildpack for DebianPackagesBuildpack {
     type Error = DebianPackagesBuildpackError;
 
     fn detect(&self, context: DetectContext<Self>) -> libcnb::Result<DetectResult, Self::Error> {
-        let log = Print::new(stdout()).without_header();
         if let Some(project_toml) = get_project_toml(&context.app_dir)? {
             info!({ PROJECT_TOML_DETECTED } = true);
             if BuildpackConfig::is_present(project_toml)? {
                 DetectResultBuilder::pass().build()
             } else {
-                log.important("project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.").done();
+                print::plain("project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.");
                 info!({ PROJECT_TOML_NO_CONFIG } = true);
                 DetectResultBuilder::fail().build()
             }
@@ -66,7 +64,7 @@ impl Buildpack for DebianPackagesBuildpack {
             info!({ APTFILE_DETECTED } = true);
             DetectResultBuilder::pass().build()
         } else {
-            log.important("No project.toml or Aptfile found.").done();
+            print::plain("No project.toml or Aptfile found.");
             DetectResultBuilder::fail().build()
         }
     }
@@ -96,7 +94,7 @@ impl Buildpack for DebianPackagesBuildpack {
             .build()
             .expect("Should be able to construct the Async Runtime");
 
-        let mut log = Print::new(stdout()).h1(format!(
+        let started = print::buildpack(format!(
             "{buildpack_name} (v{buildpack_version})",
             buildpack_name = context
                 .buildpack_descriptor
@@ -108,7 +106,7 @@ impl Buildpack for DebianPackagesBuildpack {
         ));
 
         if get_aptfile(&context.app_dir)?.is_some() {
-            log = log.important(migrate_from_aptfile_help_message());
+            print::plain(style::important(migrate_from_aptfile_help_message()));
             // If we passed detect from the Aptfile but there is no project.toml then
             // print the warning and exit early.
             if get_project_toml(&context.app_dir)?.is_none() {
@@ -121,7 +119,8 @@ impl Buildpack for DebianPackagesBuildpack {
 
         if config.install.is_empty() {
             info!({ EARLY_EXIT_REASON } = "nothing_to_install", "early exit");
-            log.important(empty_config_help_message()).done();
+
+            print::plain(style::important(empty_config_help_message()));
             return BuildResultBuilder::new().build();
         }
 
@@ -139,36 +138,32 @@ impl Buildpack for DebianPackagesBuildpack {
             "configuration"
         );
 
-        log = log
-            .bullet("Distribution Info")
-            .sub_bullet(format!("Name: {}", &distro.name))
-            .sub_bullet(format!("Version: {}", &distro.version))
-            .sub_bullet(format!("Codename: {}", &distro.codename))
-            .sub_bullet(format!("Architecture: {}", &distro.architecture))
-            .done();
+        print::bullet("Distribution Info");
+        print::sub_bullet(format!("Name: {}", &distro.name));
+        print::sub_bullet(format!("Version: {}", &distro.version));
+        print::sub_bullet(format!("Codename: {}", &distro.codename));
+        print::sub_bullet(format!("Architecture: {}", &distro.architecture));
 
-        let (package_index, log) =
-            runtime.block_on(create_package_index(&context, &client, &source_list, log))?;
+        let package_index =
+            runtime.block_on(create_package_index(&context, &client, &source_list))?;
 
-        let (packages_to_install, log) =
-            determine_packages_to_install(&package_index, config.install, log)?;
+        let packages_to_install = determine_packages_to_install(&package_index, config.install)?;
 
-        let log = runtime.block_on(install_packages(
+        runtime.block_on(install_packages(
             &context,
             &client,
             &distro,
             packages_to_install,
-            log,
         ))?;
 
-        log.done();
+        print::all_done(&Some(started));
 
         BuildResultBuilder::new().build()
     }
 
     fn on_error(&self, error: libcnb::Error<Self::Error>) {
         error!({ ERROR } = ?error);
-        errors::on_error(error, stdout());
+        errors::on_error(error);
     }
 }
 
