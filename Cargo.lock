@@ -354,8 +354,9 @@ dependencies = [
 
 [[package]]
 name = "bullet_stream"
-version = "0.9.0"
-source = "git+https://github.com/heroku-buildpacks/bullet_stream?branch=schneems%2Fglobal-test-capture#6d8f1af27ab877576679148c466ea31888380e90"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "848ad8d26dc3efb24babe9a899046c1c69a1134642ff74a00538b941cb79773e"
 dependencies = [
  "fun_run",
 ]
