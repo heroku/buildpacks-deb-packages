@@ -541,11 +541,11 @@ fn geo_buildpack_use_case() {
                 .buildpacks(vec![BuildpackReference::CurrentCrate, BuildpackReference::Other("heroku/python".to_string())]);
         },
         |ctx| {
-            let stdout_stder = format!("{}\n{}", ctx.pack_stdout, ctx.pack_stderr);
-            assert_contains!(stdout_stder, "Adding `libgdal-dev@3.4.1");
-            assert_contains!(stdout_stder, "Collecting GDAL==3.4.1 (from -r requirements.txt (line 1))");
-            assert_contains!(stdout_stder, "Successfully built GDAL");
-            assert_contains!(stdout_stder, "Successfully installed GDAL-3.4.1");
+            let stdout_stderr = format!("{}\n{}", ctx.pack_stdout, ctx.pack_stderr);
+            assert_contains!(stdout_stderr, "Adding `libgdal-dev@3.4.1");
+            assert_contains!(stdout_stderr, "Collecting GDAL==3.4.1 (from -r requirements.txt (line 1))");
+            assert_contains!(stdout_stderr, "Successfully built GDAL");
+            assert_contains!(stdout_stderr, "Successfully installed GDAL-3.4.1");
         },
     );
 }
