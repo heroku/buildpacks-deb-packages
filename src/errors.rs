@@ -168,7 +168,9 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
                             {toml_spec_url}
                         " })
                         .call()
-                },
+                }
+
+                ParseConfigError::ParseCustomSource(error) => todo!("Add proper error messages: {error:?}")
             }
         }
     }
@@ -998,11 +1000,11 @@ mod tests {
                 is not a TOML table then the configuration is incorrect and we can provide details to the
                 user on how they can fix this.
             ",
-            ConfigError::ParseConfig(
-                "/path/to/project.toml".into(),
-                ParseConfigError::WrongConfigType,
-            ),
-            indoc! {"
+                          ConfigError::ParseConfig(
+                              "/path/to/project.toml".into(),
+                              ParseConfigError::WrongConfigType,
+                          ),
+                          indoc! {"
                 ! Error parsing `/path/to/project.toml` with invalid key
                 !
                 ! The Heroku .deb Packages buildpack reads the configuration from `/path/to/project.toml` \
@@ -1028,13 +1030,13 @@ mod tests {
                 We read the buildpack configuration from project.toml which must be a valid TOML file.
                 This error will be reported if the file is not valid TOML.
             ",
-            ConfigError::ParseConfig(
-                "/path/to/project.toml".into(),
-                ParseConfigError::InvalidToml(
-                    toml_edit::DocumentMut::from_str("[com.heroku").unwrap_err(),
-                ),
-            ),
-            indoc! {"
+                          ConfigError::ParseConfig(
+                              "/path/to/project.toml".into(),
+                              ParseConfigError::InvalidToml(
+                                  toml_edit::DocumentMut::from_str("[com.heroku").unwrap_err(),
+                              ),
+                          ),
+                          indoc! {"
                 - Debug Info:
                   - TOML parse error at line 1, column 12
                       |
@@ -1066,15 +1068,15 @@ mod tests {
                 contains a package name that would be invalid according to Debian package naming policies,
                 we report this package name to the user and ask them to verify it.
             ",
-            ConfigError::ParseConfig(
-                "/path/to/project.toml".into(),
-                ParseConfigError::ParseRequestedPackage(
-                    Box::from(ParseRequestedPackageError::InvalidPackageName(ParsePackageNameError {
-                        package_name: "invalid!package!name".to_string(),
-                    })),
-                ),
-            ),
-            indoc! {"
+                          ConfigError::ParseConfig(
+                              "/path/to/project.toml".into(),
+                              ParseConfigError::ParseRequestedPackage(
+                                  Box::from(ParseRequestedPackageError::InvalidPackageName(ParsePackageNameError {
+                                      package_name: "invalid!package!name".to_string(),
+                                  })),
+                              ),
+                          ),
+                          indoc! {"
                 ! Error parsing `/path/to/project.toml` with invalid package name
                 !
                 ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` \
@@ -1105,15 +1107,15 @@ mod tests {
                 We report this to the user and request they check the buildpack documentation for proper
                 usage.
             ",
-            ConfigError::ParseConfig(
-                "/path/to/project.toml".into(),
-                ParseConfigError::ParseRequestedPackage(
-                    Box::from(ParseRequestedPackageError::UnexpectedTomlValue(
-                        toml_edit::value(37).into_value().unwrap(),
-                    )),
-                ),
-            ),
-            indoc! {"
+                          ConfigError::ParseConfig(
+                              "/path/to/project.toml".into(),
+                              ParseConfigError::ParseRequestedPackage(
+                                  Box::from(ParseRequestedPackageError::UnexpectedTomlValue(
+                                      toml_edit::value(37).into_value().unwrap(),
+                                  )),
+                              ),
+                          ),
+                          indoc! {"
                 - Debug Info:
                   - Invalid type `integer` with value `37`
 
@@ -1179,12 +1181,12 @@ mod tests {
                 be helpful for developers hacking on this buildpack. Tools like pack also validate
                 buildpacks against their target distribution metadata to prevent this exact scenario.
             ",
-            UnsupportedDistro(UnsupportedDistroError {
-                name: "Windows".to_string(),
-                version: "XP".to_string(),
-                architecture: "x86".to_string(),
-            }),
-            indoc! {"
+                          UnsupportedDistro(UnsupportedDistroError {
+                              name: "Windows".to_string(),
+                              version: "XP".to_string(),
+                              architecture: "x86".to_string(),
+                          }),
+                          indoc! {"
                 ! Unsupported distribution
                 !
                 ! The Heroku .deb Packages buildpack doesn't support the Windows XP (x86) distribution.
@@ -1216,8 +1218,8 @@ mod tests {
                 ones for a specific architecture. Our testing processes should always catch this but,
                 if not, we should direct users to file an issue.
             ",
-            CreatePackageIndexError::NoSources,
-            indoc! {"
+                          CreatePackageIndexError::NoSources,
+                          indoc! {"
                 ! No sources to update
                 !
                 ! The distribution has no sources to update packages from.
@@ -1763,7 +1765,7 @@ mod tests {
             CreatePackageIndexError::ChecksumFailed {
                 url: "http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/d41d8cd98f00b204e9800998ecf8427e".to_string(),
                 expected: "d41d8cd98f00b204e9800998ecf8427e".to_string(),
-                actual: "e62ff0123a74adfc6903d59a449cbdb0".to_string()
+                actual: "e62ff0123a74adfc6903d59a449cbdb0".to_string(),
             },
             indoc! {"
                 ! Package Index checksum verification failed
