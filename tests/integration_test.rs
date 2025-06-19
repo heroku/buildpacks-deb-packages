@@ -566,7 +566,22 @@ fn vips_usage() {
     );
 }
 
-const DEFAULT_BUILDER: &str = "heroku/builder:22";
+#[test]
+#[ignore = "integration test"]
+fn custom_repository_for_noble_distro() {
+    if get_integration_test_builder().as_str() != "heroku/builder:24" {
+        return;
+    }
+    integration_test("fixtures/custom_repository_noble", |ctx| {
+        assert_contains!(ctx.pack_stderr, "https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 [multiverse]");
+        assert_contains!(ctx.pack_stderr, "Downloaded release file https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.0/InRelease");
+        assert_contains!(ctx.pack_stderr, "Downloaded package index https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.0/multiverse/binary-amd64/Packages.gz");
+        assert_contains!(ctx.pack_stderr, "Adding `mongodb-org-tools");
+        assert_contains!(ctx.pack_stderr, "Adding `mongodb-org-shell");
+    });
+}
+
+const DEFAULT_BUILDER: &str = "heroku/builder:24";
 
 fn get_integration_test_builder() -> String {
     std::env::var("INTEGRATION_TEST_CNB_BUILDER").unwrap_or(DEFAULT_BUILDER.to_string())
