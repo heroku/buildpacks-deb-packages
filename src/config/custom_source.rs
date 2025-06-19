@@ -1,5 +1,5 @@
-use crate::debian::{ArchitectureName, RepositoryUri, Source};
-use toml_edit::Table;
+use crate::debian::{ArchitectureName, RepositoryUri, Source, UnsupportedArchitectureNameError};
+use toml_edit::{Table, Value};
 
 // Very similar in structure to a `Source` **except** it allows for multiple architectures
 // to be specified as configuration.
@@ -31,46 +31,103 @@ impl TryFrom<&Table> for CustomSource {
     type Error = ParseCustomSourceError;
 
     fn try_from(table: &Table) -> Result<Self, Self::Error> {
-        // todo: this needs more robust error handling
-
-        let uri = table.get("uri").and_then(|v| v.as_str()).unwrap().into();
+        let uri = table
+            .get("uri")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ParseCustomSourceError::MissingUri(table.clone()))?
+            .into();
 
         let mut suites: Vec<String> = vec![];
         if let Some(array) = table.get("suites").and_then(|v| v.as_array()) {
             for suite in array {
-                suites.push(suite.as_str().unwrap().into());
+                suites.push(
+                    suite
+                        .as_str()
+                        .ok_or_else(|| {
+                            ParseCustomSourceError::UnexpectedTomlValue(
+                                table.clone(),
+                                suite.clone(),
+                            )
+                        })?
+                        .into(),
+                );
             }
+        }
+
+        if suites.is_empty() {
+            return Err(ParseCustomSourceError::MissingSuites(table.clone()));
         }
 
         let mut components: Vec<String> = vec![];
         if let Some(array) = table.get("components").and_then(|v| v.as_array()) {
             for component in array {
-                components.push(component.as_str().unwrap().into());
+                components.push(
+                    component
+                        .as_str()
+                        .ok_or_else(|| {
+                            ParseCustomSourceError::UnexpectedTomlValue(
+                                table.clone(),
+                                component.clone(),
+                            )
+                        })?
+                        .into(),
+                );
             }
+        }
+
+        if components.is_empty() {
+            return Err(ParseCustomSourceError::MissingComponents(table.clone()));
         }
 
         let mut arch: Vec<ArchitectureName> = vec![];
         if let Some(array) = table.get("arch").and_then(|v| v.as_array()) {
             for arch_value in array {
-                arch.push(arch_value.as_str().unwrap().parse().unwrap());
+                arch.push(
+                    arch_value
+                        .as_str()
+                        .ok_or_else(|| {
+                            ParseCustomSourceError::UnexpectedTomlValue(
+                                table.clone(),
+                                arch_value.clone(),
+                            )
+                        })?
+                        .parse()
+                        .map_err(|e| {
+                            ParseCustomSourceError::InvalidArchitectureName(table.clone(), e)
+                        })?,
+                );
             }
         }
 
-        let gpg_key = table
+        if arch.is_empty() {
+            return Err(ParseCustomSourceError::MissingArchitectureNames(
+                table.clone(),
+            ));
+        }
+
+        let signed_by = table
             .get("signed_by")
             .and_then(|v| v.as_str())
-            .unwrap()
+            .ok_or_else(|| ParseCustomSourceError::MissingSignedBy(table.clone()))?
             .into();
 
         Ok(CustomSource {
-            uri,
-            suites,
-            components,
             arch,
-            signed_by: gpg_key,
+            components,
+            suites,
+            uri,
+            signed_by,
         })
     }
 }
 
 #[derive(Debug)]
-pub(crate) enum ParseCustomSourceError {}
+pub(crate) enum ParseCustomSourceError {
+    MissingUri(Table),
+    MissingSignedBy(Table),
+    MissingSuites(Table),
+    MissingComponents(Table),
+    MissingArchitectureNames(Table),
+    UnexpectedTomlValue(Table, Value),
+    InvalidArchitectureName(Table, UnsupportedArchitectureNameError),
+}
