@@ -159,7 +159,7 @@ suites = ["main"]
 components = ["multiverse"]
 arch = ["amd64", "arm64"]
 signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
-    
+
 NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
 sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
 nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
@@ -194,7 +194,7 @@ iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
                 ]),
                 sources: Vec::from([CustomSource {
                     uri: "http://archive.ubuntu.com/ubuntu".into(),
-                    suites: vec!["noble/mongodb-org/8.0".into()],
+                    suites: vec!["main".into()],
                     components: vec!["multiverse".into()],
                     arch: vec![AMD_64, ARM_64],
                     signed_by: indoc! { "
