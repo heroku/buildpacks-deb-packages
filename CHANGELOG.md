@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Minimum supported Rust version incremented to 1.86 to support syntax introduced in [115](https://github.com/heroku/buildpacks-deb-packages/pull/115). ([#117](https://github.com/heroku/buildpacks-deb-packages/pull/117))
+
 ## [0.1.3] - 2025-04-01
 
 ### Added
