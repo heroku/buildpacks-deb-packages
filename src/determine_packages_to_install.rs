@@ -18,7 +18,7 @@ pub(crate) fn determine_packages_to_install(
     requested_packages: IndexSet<RequestedPackage>,
 ) -> BuildpackResult<Vec<RepositoryPackage>> {
     print::header("Determining packages to install");
-    print::sub_bullet("Collecting system install information");
+    print::bullet("Collecting system install information");
     let system_packages_path = PathBuf::from("/var/lib/dpkg/status");
     let system_packages = read_to_string(&system_packages_path)
         .map_err(|e| {
