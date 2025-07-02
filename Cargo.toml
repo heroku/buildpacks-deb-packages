@@ -3,9 +3,6 @@ name = "buildpacks-deb-packages"
 edition = "2021"
 rust-version = "1.86"
 
-[build-dependencies]
-toml_edit = "0.22"
-
 [dependencies]
 anyhow = "1"
 apt-parser = "1"
