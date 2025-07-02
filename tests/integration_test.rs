@@ -575,7 +575,7 @@ fn custom_repository_for_noble_distro() {
     integration_test("fixtures/custom_repository_noble", |ctx| {
         assert_contains!(ctx.pack_stderr, "https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 [multiverse]");
         assert_contains!(ctx.pack_stderr, "Downloaded release file https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.0/InRelease");
-        assert_contains!(ctx.pack_stderr, "Downloaded package index https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.0/multiverse/binary-amd64/Packages.gz");
+        assert_contains_match!(ctx.pack_stderr, r"Downloaded package index https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.0/multiverse/binary-(amd|arm)64/Packages.gz");
         assert_contains!(ctx.pack_stderr, "Adding `mongodb-org-tools");
         assert_contains!(ctx.pack_stderr, "Adding `mongodb-org-shell");
     });
