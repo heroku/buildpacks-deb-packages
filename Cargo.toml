@@ -3,9 +3,6 @@ name = "buildpacks-deb-packages"
 edition = "2021"
 rust-version = "1.86"
 
-[build-dependencies]
-toml_edit = "0.22"
-
 [dependencies]
 anyhow = "1"
 apt-parser = "1"
@@ -32,7 +29,7 @@ sha2 = "0.10"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "time"] }
 tokio-tar = "0.3"
 tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
-toml_edit = "0.22"
+toml_edit = "=0.22.26"
 tracing = "0.1"
 walkdir = "2"
 
