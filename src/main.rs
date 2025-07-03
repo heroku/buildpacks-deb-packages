@@ -126,7 +126,17 @@ impl Buildpack for DebianPackagesBuildpack {
 
         let distro = Distro::try_from(&context.target)?;
 
-        let source_list = distro.get_source_list();
+        // official source list from distro
+        let mut source_list = distro.get_source_list();
+
+        // custom sources from configuration
+        for custom_source in config.sources {
+            for source in custom_source.to_sources() {
+                if source.arch == distro.architecture {
+                    source_list.push(source);
+                }
+            }
+        }
 
         info!(
             { DISTRO_NAME } = %distro.name,

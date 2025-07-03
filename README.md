@@ -66,6 +66,17 @@ install = [
     # inline-table version of a dependency to install
     { name = "package-name", skip_dependencies = true, force = true }
 ]
+
+# one or more custom sources can be configured with the following:
+[[com.heroku.buildpacks.deb-packages.sources]]
+uri = "<url_of_debian_repository> (e.g.; http://archive.ubuntu.com/ubuntu)"
+suites = ["<suite> (e.g.; jammy)"]
+components = ["<component> (e.g.; main)"]
+arch = ["<architecture> (e.g.; amd64 or arm64)"]
+signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+<ASCII-armored GPG key>
+-----END PGP PUBLIC KEY BLOCK-----
+"""
 ```
 
 #### Schema
@@ -96,6 +107,30 @@ install = [
             - `force` *__([boolean][toml-boolean], optional, default = false)__*
 
               If set to `true`, the package will be installed even if it's already installed on the system.
+
+    - `sources` *__([array_of_tables][toml-array-of-tables], optional)__*
+
+        - `uri` *__([string][toml-string], required)__*
+
+          The URI must specify the base of the Debian repository.
+
+        - `suites` *__([array][toml-array] of [string][toml-string] values, required)__*
+
+          One or more distribution suites from the Debian repository.
+
+        - `components` *__([array][toml-array] of [string][toml-string] values, required)__*
+
+          One or more components which specify different sections of distribution versions present in a suite.
+
+        - `arch` *__([array][toml-array] of [string][toml-string] values, required)__*
+
+          One or more supported architecture names. The supported architecture names are:
+            - amd64
+            - arm64
+
+        - `signed_by` *__([string][toml-string], required)__*
+
+          The GPG key required by the Debian repository in ASCII-armored format.
 
 > [!TIP]
 > Users of the [heroku-community/apt][classic-apt-buildpack] can migrate their Aptfile to the above configuration by
@@ -262,3 +297,4 @@ Issues and pull requests are welcome. See our [contributing guidelines](./CONTRI
 
 [toml-table]: https://toml.io/en/v1.0.0#table
 
+[toml-array-of-tables]: https://toml.io/en/v1.0.0#array-of-tables

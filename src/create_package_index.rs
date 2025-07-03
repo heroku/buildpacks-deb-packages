@@ -49,8 +49,8 @@ pub(crate) async fn create_package_index(
 ) -> BuildpackResult<PackageIndex> {
     print::header("Creating package index");
 
+    print::bullet("Package sources");
     for source in source_list {
-        print::bullet("Package sources");
         for suite in &source.suites {
             print::sub_bullet(format!(
                 "{repository_uri} {suite} [{components}]",

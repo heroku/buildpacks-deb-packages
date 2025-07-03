@@ -1,3 +1,4 @@
+use indoc::formatdoc;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -32,13 +33,19 @@ impl Display for ArchitectureName {
 }
 
 #[derive(Debug)]
-// Due to how this error rolls into the broader `Distro::try_from(Target)` implementation, the
-// architecture name stored in this struct isn't used directly which triggers a `dead_code`
-// warning. I could eliminate this by not capturing the architecture name that failed to parse
-// but that doesn't seem right. I'd rather keep this information attached to this struct even
-// if it's not used at this point in time.
-#[allow(dead_code)]
-pub(crate) struct UnsupportedArchitectureNameError(String);
+pub(crate) struct UnsupportedArchitectureNameError(pub(crate) String);
+
+impl Display for UnsupportedArchitectureNameError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let error = formatdoc! { "
+            Unsupported architecture name: \"{invalid_name}\"
+            Must be one of:
+            - \"amd64\"
+            - \"arm64\"
+        ", invalid_name = &self.0 };
+        write!(f, "{error}")
+    }
+}
 
 #[cfg(test)]
 mod tests {

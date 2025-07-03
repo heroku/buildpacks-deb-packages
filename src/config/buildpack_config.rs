@@ -1,3 +1,4 @@
+use crate::config::custom_source::{CustomSource, ParseCustomSourceError};
 use crate::config::{ParseRequestedPackageError, RequestedPackage};
 use crate::DebianPackagesBuildpackError;
 use indexmap::IndexSet;
@@ -11,6 +12,7 @@ pub(crate) const NAMESPACED_CONFIG: &str = "com.heroku.buildpacks.deb-packages";
 #[derive(Debug, Default, Eq, PartialEq)]
 pub(crate) struct BuildpackConfig {
     pub(crate) install: IndexSet<RequestedPackage>,
+    pub(crate) sources: Vec<CustomSource>,
 }
 
 impl BuildpackConfig {
@@ -49,6 +51,7 @@ impl TryFrom<&dyn TableLike> for BuildpackConfig {
 
     fn try_from(config_item: &dyn TableLike) -> Result<Self, Self::Error> {
         let mut install = IndexSet::new();
+        let mut sources = Vec::new();
 
         if let Some(install_values) = config_item.get("install").and_then(|item| item.as_array()) {
             for install_value in install_values {
@@ -59,7 +62,19 @@ impl TryFrom<&dyn TableLike> for BuildpackConfig {
             }
         }
 
-        Ok(BuildpackConfig { install })
+        if let Some(source_values) = config_item
+            .get("sources")
+            .and_then(|item| item.as_array_of_tables())
+        {
+            for source_value in source_values {
+                sources.push(
+                    CustomSource::try_from(source_value)
+                        .map_err(|e| Self::Error::ParseCustomSource(Box::new(e)))?,
+                );
+            }
+        }
+
+        Ok(BuildpackConfig { install, sources })
     }
 }
 
@@ -74,6 +89,7 @@ pub(crate) enum ParseConfigError {
     InvalidToml(toml_edit::TomlError),
     MissingNamespacedConfig,
     ParseRequestedPackage(Box<ParseRequestedPackageError>),
+    ParseCustomSource(Box<ParseCustomSourceError>),
     WrongConfigType,
 }
 
@@ -117,11 +133,14 @@ fn get_buildpack_namespaced_config(doc: &DocumentMut) -> Result<&dyn TableLike, 
 
 #[cfg(test)]
 mod test {
+    use crate::debian::ArchitectureName::{AMD_64, ARM_64};
     use crate::debian::PackageName;
+    use indoc::indoc;
 
     use super::*;
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn test_deserialize() {
         let toml = r#"
 [_]
@@ -133,6 +152,23 @@ install = [
     { name = "package2" },
     { name = "package3", skip_dependencies = true, force = true },
 ]
+
+[[com.heroku.buildpacks.deb-packages.sources]]
+uri = "http://archive.ubuntu.com/ubuntu"
+suites = ["main"]
+components = ["multiverse"]
+arch = ["amd64", "arm64"]
+signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+=J31U
+-----END PGP PUBLIC KEY BLOCK-----
+"""
         "#
         .trim();
         let config = BuildpackConfig::from_str(toml).unwrap();
@@ -155,7 +191,26 @@ install = [
                         skip_dependencies: true,
                         force: true,
                     }
-                ])
+                ]),
+                sources: Vec::from([CustomSource {
+                    uri: "http://archive.ubuntu.com/ubuntu".into(),
+                    suites: vec!["main".into()],
+                    components: vec!["multiverse".into()],
+                    arch: vec![AMD_64, ARM_64],
+                    signed_by: indoc! { "
+                        -----BEGIN PGP PUBLIC KEY BLOCK-----
+                       
+                        NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+                        sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+                        nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+                        hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+                        LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+                        iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+                        =J31U
+                        -----END PGP PUBLIC KEY BLOCK-----\n"
+                    }
+                    .into()
+                }])
             }
         );
     }

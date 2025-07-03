@@ -1,3 +1,4 @@
+use crate::config::custom_source::ParseCustomSourceError;
 use crate::config::{ConfigError, ParseConfigError, ParseRequestedPackageError, NAMESPACED_CONFIG};
 use crate::create_package_index::CreatePackageIndexError;
 use crate::debian::UnsupportedDistroError;
@@ -168,7 +169,76 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
                             {toml_spec_url}
                         " })
                         .call()
-                },
+                }
+
+                ParseConfigError::ParseCustomSource(error) => {
+                    let custom_source_array_of_tables_key = "[[com.heroku.buildpacks.deb-packages.sources]]";
+                    create_error()
+                        .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
+                        .header(format!("Error parsing {config_file} with invalid custom source"))
+                        .body(formatdoc! { r#"
+                            The {BUILDPACK_NAME} reads configuration from {config_file} to \
+                            complete the build but we found an invalid custom source in the \
+                            key {root_config_key}.
+
+                            Custom sources must be in the following format:
+
+                            {custom_source_array_of_tables_key}
+                            uri = "<url_of_debian_repository> (e.g.; http://archive.ubuntu.com/ubuntu)"
+                            suites = ["<suite> (e.g.; jammy)"]
+                            components = ["<component> (e.g.; main)"]
+                            arch = ["<architecture> (e.g.; amd64 or arm64)"]
+                            signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+                            <ASCII-armored GPG key>
+                            -----END PGP PUBLIC KEY BLOCK-----
+
+                            Suggestions:
+                            - See the buildpack documentation for the proper usage for this configuration at \
+                            {configuration_doc_url}
+                            - See the TOML documentation for more details on the TOML array of tables type \
+                            at {toml_spec_url}
+                            "# })
+                        .debug_info(match *error {
+                            ParseCustomSourceError::MissingUri(table) => formatdoc! { "
+                                Missing or invalid \"uri\" field for the following custom source:
+                                {custom_source_array_of_tables_key}
+                                {table}
+                            " },
+                            ParseCustomSourceError::MissingSignedBy(table) => formatdoc! { "
+                                Missing or invalid \"signed_by\" field for the following custom source:
+                                {custom_source_array_of_tables_key}
+                                {table}
+                            " },
+                            ParseCustomSourceError::MissingSuites(table) => formatdoc! { "
+                                Missing or invalid \"suites\" field. One or more String values must be present for the following custom source:
+                                {custom_source_array_of_tables_key}
+                                {table}
+                            " },
+                            ParseCustomSourceError::MissingComponents(table) => formatdoc! { "
+                                Missing or invalid \"components\" field. One or more String values must be present for the following custom source:
+                                {custom_source_array_of_tables_key}
+                                {table}
+                            " },
+                            ParseCustomSourceError::MissingArchitectureNames(table) => formatdoc! { "
+                                Missing or invalid \"arch\" field. One or more String values must be present for the following custom source:
+                                {custom_source_array_of_tables_key}
+                                {table}
+                            " },
+                            ParseCustomSourceError::UnexpectedTomlValue(table, value) => formatdoc! { "
+                                Unexpected toml value (\"{value}\") found for the following custom source:
+                                {custom_source_array_of_tables_key}
+                                {table}
+                            " },
+                            ParseCustomSourceError::InvalidArchitectureName(table, e) => formatdoc! { "
+                                Invalid architecture name found for the following custom source:
+                                {custom_source_array_of_tables_key}
+                                {table}
+                                ---
+                                {e}
+                            " },
+                        })
+                        .call()
+                }
             }
         }
     }
@@ -889,6 +959,7 @@ mod tests {
     use super::*;
     use crate::debian::{
         ParsePackageNameError, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
+        UnsupportedArchitectureNameError,
     };
     use crate::DebianPackagesBuildpackError::UnsupportedDistro;
     use anyhow::anyhow;
@@ -897,6 +968,7 @@ mod tests {
     use libcnb_test::assert_contains_match;
     use std::collections::HashSet;
     use std::str::FromStr;
+    use toml_edit::Table;
 
     #[test]
     fn test_detect_check_exists_project_toml_error() {
@@ -998,11 +1070,11 @@ mod tests {
                 is not a TOML table then the configuration is incorrect and we can provide details to the
                 user on how they can fix this.
             ",
-            ConfigError::ParseConfig(
-                "/path/to/project.toml".into(),
-                ParseConfigError::WrongConfigType,
-            ),
-            indoc! {"
+                          ConfigError::ParseConfig(
+                              "/path/to/project.toml".into(),
+                              ParseConfigError::WrongConfigType,
+                          ),
+                          indoc! {"
                 ! Error parsing `/path/to/project.toml` with invalid key
                 !
                 ! The Heroku .deb Packages buildpack reads the configuration from `/path/to/project.toml` \
@@ -1028,13 +1100,13 @@ mod tests {
                 We read the buildpack configuration from project.toml which must be a valid TOML file.
                 This error will be reported if the file is not valid TOML.
             ",
-            ConfigError::ParseConfig(
-                "/path/to/project.toml".into(),
-                ParseConfigError::InvalidToml(
-                    toml_edit::DocumentMut::from_str("[com.heroku").unwrap_err(),
-                ),
-            ),
-            indoc! {"
+                          ConfigError::ParseConfig(
+                              "/path/to/project.toml".into(),
+                              ParseConfigError::InvalidToml(
+                                  toml_edit::DocumentMut::from_str("[com.heroku").unwrap_err(),
+                              ),
+                          ),
+                          indoc! {"
                 - Debug Info:
                   - TOML parse error at line 1, column 12
                       |
@@ -1066,15 +1138,15 @@ mod tests {
                 contains a package name that would be invalid according to Debian package naming policies,
                 we report this package name to the user and ask them to verify it.
             ",
-            ConfigError::ParseConfig(
-                "/path/to/project.toml".into(),
-                ParseConfigError::ParseRequestedPackage(
-                    Box::from(ParseRequestedPackageError::InvalidPackageName(ParsePackageNameError {
-                        package_name: "invalid!package!name".to_string(),
-                    })),
-                ),
-            ),
-            indoc! {"
+                          ConfigError::ParseConfig(
+                              "/path/to/project.toml".into(),
+                              ParseConfigError::ParseRequestedPackage(
+                                  Box::from(ParseRequestedPackageError::InvalidPackageName(ParsePackageNameError {
+                                      package_name: "invalid!package!name".to_string(),
+                                  })),
+                              ),
+                          ),
+                          indoc! {"
                 ! Error parsing `/path/to/project.toml` with invalid package name
                 !
                 ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` \
@@ -1105,15 +1177,15 @@ mod tests {
                 We report this to the user and request they check the buildpack documentation for proper
                 usage.
             ",
-            ConfigError::ParseConfig(
-                "/path/to/project.toml".into(),
-                ParseConfigError::ParseRequestedPackage(
-                    Box::from(ParseRequestedPackageError::UnexpectedTomlValue(
-                        toml_edit::value(37).into_value().unwrap(),
-                    )),
-                ),
-            ),
-            indoc! {"
+                          ConfigError::ParseConfig(
+                              "/path/to/project.toml".into(),
+                              ParseConfigError::ParseRequestedPackage(
+                                  Box::from(ParseRequestedPackageError::UnexpectedTomlValue(
+                                      toml_edit::value(37).into_value().unwrap(),
+                                  )),
+                              ),
+                          ),
+                          indoc! {"
                 - Debug Info:
                   - Invalid type `integer` with value `37`
 
@@ -1167,6 +1239,471 @@ mod tests {
     }
 
     #[test]
+    fn config_parse_config_error_for_custom_source_with_missing_uri() {
+        let mut table = create_custom_source_table();
+        table.remove("uri");
+        test_error_output(
+            "
+                Context
+                -------
+                We read the buildpack configuration from project.toml which must be a valid TOML file.
+                If the file is valid but the value supplied using the configuration for this buildpack
+                contains a custom source that is missing the 'uri' field, it is invalid.
+                We report this to the user and request they check the buildpack documentation for proper
+                usage.
+            ",
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseCustomSource(Box::from(ParseCustomSourceError::MissingUri(table))),
+            ),
+            &formatdoc! { r#"
+                - Debug Info:
+                  - Missing or invalid "uri" field for the following custom source:
+                    [[com.heroku.buildpacks.deb-packages.sources]]
+                    suites = ["main"]
+                    components = ["multiverse"]
+                    arch = ["amd64", "arm64"]
+                    signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+                    NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+                    sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+                    nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+                    hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+                    LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+                    iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+                    =J31U
+                    -----END PGP PUBLIC KEY BLOCK-----
+                    """
+
+                ! Error parsing `/path/to/project.toml` with invalid custom source
+                !
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to \
+                ! complete the build but we found an invalid custom source in the \
+                ! key `[com.heroku.buildpacks.deb-packages]`.
+                !
+                ! Custom sources must be in the following format:
+                !
+                ! [[com.heroku.buildpacks.deb-packages.sources]]
+                ! uri = "<url_of_debian_repository> (e.g.; http://archive.ubuntu.com/ubuntu)"
+                ! suites = ["<suite> (e.g.; jammy)"]
+                ! components = ["<component> (e.g.; main)"]
+                ! arch = ["<architecture> (e.g.; amd64 or arm64)"]
+                ! signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+                ! <ASCII-armored GPG key>
+                ! -----END PGP PUBLIC KEY BLOCK-----
+                !
+                ! Suggestions:
+                ! - See the buildpack documentation for the proper usage for this configuration at \
+                ! https://github.com/heroku/buildpacks-deb-packages#configuration
+                ! - See the TOML documentation for more details on the TOML array of tables type \
+                ! at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+        "#},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_custom_source_with_missing_signed_by() {
+        let mut table = create_custom_source_table();
+        table.remove("signed_by");
+        test_error_output(
+            "
+                Context
+                -------
+                We read the buildpack configuration from project.toml which must be a valid TOML file.
+                If the file is valid but the value supplied using the configuration for this buildpack
+                contains a custom source that is missing the 'signed_by' field, it is invalid.
+                We report this to the user and request they check the buildpack documentation for proper
+                usage.
+            ",
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseCustomSource(Box::from(ParseCustomSourceError::MissingSignedBy(table))),
+            ),
+            &formatdoc! { r#"
+                - Debug Info:
+                  - Missing or invalid "signed_by" field for the following custom source:
+                    [[com.heroku.buildpacks.deb-packages.sources]]
+                    uri = "http://archive.ubuntu.com/ubuntu"
+                    suites = ["main"]
+                    components = ["multiverse"]
+                    arch = ["amd64", "arm64"]
+
+                ! Error parsing `/path/to/project.toml` with invalid custom source
+                !
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to \
+                ! complete the build but we found an invalid custom source in the \
+                ! key `[com.heroku.buildpacks.deb-packages]`.
+                !
+                ! Custom sources must be in the following format:
+                !
+                ! [[com.heroku.buildpacks.deb-packages.sources]]
+                ! uri = "<url_of_debian_repository> (e.g.; http://archive.ubuntu.com/ubuntu)"
+                ! suites = ["<suite> (e.g.; jammy)"]
+                ! components = ["<component> (e.g.; main)"]
+                ! arch = ["<architecture> (e.g.; amd64 or arm64)"]
+                ! signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+                ! <ASCII-armored GPG key>
+                ! -----END PGP PUBLIC KEY BLOCK-----
+                !
+                ! Suggestions:
+                ! - See the buildpack documentation for the proper usage for this configuration at \
+                ! https://github.com/heroku/buildpacks-deb-packages#configuration
+                ! - See the TOML documentation for more details on the TOML array of tables type \
+                ! at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+        "#},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_custom_source_with_missing_suites() {
+        let mut table = create_custom_source_table();
+        table.remove("suites");
+        test_error_output(
+            "
+                Context
+                -------
+                We read the buildpack configuration from project.toml which must be a valid TOML file.
+                If the file is valid but the value supplied using the configuration for this buildpack
+                contains a custom source that is missing the 'suites' field or the field contains
+                non-string values, it is invalid.
+                We report this to the user and request they check the buildpack documentation for proper
+                usage.
+            ",
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseCustomSource(Box::from(ParseCustomSourceError::MissingSuites(table))),
+            ),
+            &formatdoc! { r#"
+                - Debug Info:
+                  - Missing or invalid "suites" field. One or more String values must be present for the following custom source:
+                    [[com.heroku.buildpacks.deb-packages.sources]]
+                    uri = "http://archive.ubuntu.com/ubuntu"
+                    components = ["multiverse"]
+                    arch = ["amd64", "arm64"]
+                    signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+                    NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+                    sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+                    nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+                    hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+                    LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+                    iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+                    =J31U
+                    -----END PGP PUBLIC KEY BLOCK-----
+                    """
+
+                ! Error parsing `/path/to/project.toml` with invalid custom source
+                !
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to \
+                ! complete the build but we found an invalid custom source in the \
+                ! key `[com.heroku.buildpacks.deb-packages]`.
+                !
+                ! Custom sources must be in the following format:
+                !
+                ! [[com.heroku.buildpacks.deb-packages.sources]]
+                ! uri = "<url_of_debian_repository> (e.g.; http://archive.ubuntu.com/ubuntu)"
+                ! suites = ["<suite> (e.g.; jammy)"]
+                ! components = ["<component> (e.g.; main)"]
+                ! arch = ["<architecture> (e.g.; amd64 or arm64)"]
+                ! signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+                ! <ASCII-armored GPG key>
+                ! -----END PGP PUBLIC KEY BLOCK-----
+                !
+                ! Suggestions:
+                ! - See the buildpack documentation for the proper usage for this configuration at \
+                ! https://github.com/heroku/buildpacks-deb-packages#configuration
+                ! - See the TOML documentation for more details on the TOML array of tables type \
+                ! at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+        "#},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_custom_source_with_missing_components() {
+        let mut table = create_custom_source_table();
+        table.remove("components");
+        test_error_output(
+            "
+                Context
+                -------
+                We read the buildpack configuration from project.toml which must be a valid TOML file.
+                If the file is valid but the value supplied using the configuration for this buildpack
+                contains a custom source that is missing the 'components' field or the field contains
+                non-string values, it is invalid.
+                We report this to the user and request they check the buildpack documentation for proper
+                usage.
+            ",
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseCustomSource(Box::from(ParseCustomSourceError::MissingComponents(table))),
+            ),
+            &formatdoc! { r#"
+                - Debug Info:
+                  - Missing or invalid "components" field. One or more String values must be present for the following custom source:
+                    [[com.heroku.buildpacks.deb-packages.sources]]
+                    uri = "http://archive.ubuntu.com/ubuntu"
+                    suites = ["main"]
+                    arch = ["amd64", "arm64"]
+                    signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+                    NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+                    sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+                    nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+                    hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+                    LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+                    iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+                    =J31U
+                    -----END PGP PUBLIC KEY BLOCK-----
+                    """
+
+                ! Error parsing `/path/to/project.toml` with invalid custom source
+                !
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to \
+                ! complete the build but we found an invalid custom source in the \
+                ! key `[com.heroku.buildpacks.deb-packages]`.
+                !
+                ! Custom sources must be in the following format:
+                !
+                ! [[com.heroku.buildpacks.deb-packages.sources]]
+                ! uri = "<url_of_debian_repository> (e.g.; http://archive.ubuntu.com/ubuntu)"
+                ! suites = ["<suite> (e.g.; jammy)"]
+                ! components = ["<component> (e.g.; main)"]
+                ! arch = ["<architecture> (e.g.; amd64 or arm64)"]
+                ! signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+                ! <ASCII-armored GPG key>
+                ! -----END PGP PUBLIC KEY BLOCK-----
+                !
+                ! Suggestions:
+                ! - See the buildpack documentation for the proper usage for this configuration at \
+                ! https://github.com/heroku/buildpacks-deb-packages#configuration
+                ! - See the TOML documentation for more details on the TOML array of tables type \
+                ! at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+        "#},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_custom_source_with_invalid_components() {
+        let mut table = create_custom_source_table();
+        let mut components = toml_edit::Array::new();
+        components.push(123);
+        table.insert(
+            "components",
+            toml_edit::Item::Value(toml_edit::Value::from(components)),
+        );
+        test_error_output(
+            "
+                Context
+                -------
+                We read the buildpack configuration from project.toml which must be a valid TOML file.
+                If the file is valid but the value supplied using the configuration for this buildpack
+                contains a custom source that is missing the 'components' field or the field contains
+                non-string values, it is invalid.
+                We report this to the user and request they check the buildpack documentation for proper
+                usage.
+            ",
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseCustomSource(Box::from(ParseCustomSourceError::UnexpectedTomlValue(table, toml_edit::value(123).into_value().unwrap()))),
+            ),
+            &formatdoc! { r#"
+                - Debug Info:
+                  - Unexpected toml value ("123") found for the following custom source:
+                    [[com.heroku.buildpacks.deb-packages.sources]]
+                    uri = "http://archive.ubuntu.com/ubuntu"
+                    suites = ["main"]
+                    components = [123]
+                    arch = ["amd64", "arm64"]
+                    signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+                    NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+                    sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+                    nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+                    hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+                    LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+                    iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+                    =J31U
+                    -----END PGP PUBLIC KEY BLOCK-----
+                    """
+
+                ! Error parsing `/path/to/project.toml` with invalid custom source
+                !
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to \
+                ! complete the build but we found an invalid custom source in the \
+                ! key `[com.heroku.buildpacks.deb-packages]`.
+                !
+                ! Custom sources must be in the following format:
+                !
+                ! [[com.heroku.buildpacks.deb-packages.sources]]
+                ! uri = "<url_of_debian_repository> (e.g.; http://archive.ubuntu.com/ubuntu)"
+                ! suites = ["<suite> (e.g.; jammy)"]
+                ! components = ["<component> (e.g.; main)"]
+                ! arch = ["<architecture> (e.g.; amd64 or arm64)"]
+                ! signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+                ! <ASCII-armored GPG key>
+                ! -----END PGP PUBLIC KEY BLOCK-----
+                !
+                ! Suggestions:
+                ! - See the buildpack documentation for the proper usage for this configuration at \
+                ! https://github.com/heroku/buildpacks-deb-packages#configuration
+                ! - See the TOML documentation for more details on the TOML array of tables type \
+                ! at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+        "#},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_custom_source_with_missing_architecture_names() {
+        let mut table = create_custom_source_table();
+        table.remove("arch");
+        test_error_output(
+            "
+                Context
+                -------
+                We read the buildpack configuration from project.toml which must be a valid TOML file.
+                If the file is valid but the value supplied using the configuration for this buildpack
+                contains a custom source that is missing the 'arch' field or the field contains
+                non-string values or unsupported architecture names, it is invalid.
+                We report this to the user and request they check the buildpack documentation for proper
+                usage.
+            ",
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseCustomSource(Box::from(ParseCustomSourceError::MissingArchitectureNames(table))),
+            ),
+            &formatdoc! { r#"
+                - Debug Info:
+                  - Missing or invalid "arch" field. One or more String values must be present for the following custom source:
+                    [[com.heroku.buildpacks.deb-packages.sources]]
+                    uri = "http://archive.ubuntu.com/ubuntu"
+                    suites = ["main"]
+                    components = ["multiverse"]
+                    signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+                    NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+                    sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+                    nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+                    hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+                    LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+                    iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+                    =J31U
+                    -----END PGP PUBLIC KEY BLOCK-----
+                    """
+
+                ! Error parsing `/path/to/project.toml` with invalid custom source
+                !
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to \
+                ! complete the build but we found an invalid custom source in the \
+                ! key `[com.heroku.buildpacks.deb-packages]`.
+                !
+                ! Custom sources must be in the following format:
+                !
+                ! [[com.heroku.buildpacks.deb-packages.sources]]
+                ! uri = "<url_of_debian_repository> (e.g.; http://archive.ubuntu.com/ubuntu)"
+                ! suites = ["<suite> (e.g.; jammy)"]
+                ! components = ["<component> (e.g.; main)"]
+                ! arch = ["<architecture> (e.g.; amd64 or arm64)"]
+                ! signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+                ! <ASCII-armored GPG key>
+                ! -----END PGP PUBLIC KEY BLOCK-----
+                !
+                ! Suggestions:
+                ! - See the buildpack documentation for the proper usage for this configuration at \
+                ! https://github.com/heroku/buildpacks-deb-packages#configuration
+                ! - See the TOML documentation for more details on the TOML array of tables type \
+                ! at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+        "#},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_custom_source_with_invalid_architecture_name() {
+        let mut table = create_custom_source_table();
+        let mut arch = toml_edit::Array::new();
+        arch.push("i386");
+        table.insert("arch", toml_edit::Item::Value(toml_edit::Value::from(arch)));
+        test_error_output(
+            "
+                Context
+                -------
+                We read the buildpack configuration from project.toml which must be a valid TOML file.
+                If the file is valid but the value supplied using the configuration for this buildpack
+                contains a custom source that is missing the 'arch' field or the field contains
+                non-string values or unsupported architecture names, it is invalid.
+                We report this to the user and request they check the buildpack documentation for proper
+                usage.
+            ",
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseCustomSource(Box::from(ParseCustomSourceError::InvalidArchitectureName(table, UnsupportedArchitectureNameError("i386".into())))),
+            ),
+            &formatdoc! { r#"
+                - Debug Info:
+                  - Invalid architecture name found for the following custom source:
+                    [[com.heroku.buildpacks.deb-packages.sources]]
+                    uri = "http://archive.ubuntu.com/ubuntu"
+                    suites = ["main"]
+                    components = ["multiverse"]
+                    arch = ["i386"]
+                    signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+                    NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+                    sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+                    nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+                    hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+                    LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+                    iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+                    =J31U
+                    -----END PGP PUBLIC KEY BLOCK-----
+                    """
+
+                    ---
+                    Unsupported architecture name: "i386"
+                    Must be one of:
+                    - "amd64"
+                    - "arm64"
+
+                ! Error parsing `/path/to/project.toml` with invalid custom source
+                !
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to \
+                ! complete the build but we found an invalid custom source in the \
+                ! key `[com.heroku.buildpacks.deb-packages]`.
+                !
+                ! Custom sources must be in the following format:
+                !
+                ! [[com.heroku.buildpacks.deb-packages.sources]]
+                ! uri = "<url_of_debian_repository> (e.g.; http://archive.ubuntu.com/ubuntu)"
+                ! suites = ["<suite> (e.g.; jammy)"]
+                ! components = ["<component> (e.g.; main)"]
+                ! arch = ["<architecture> (e.g.; amd64 or arm64)"]
+                ! signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+                ! <ASCII-armored GPG key>
+                ! -----END PGP PUBLIC KEY BLOCK-----
+                !
+                ! Suggestions:
+                ! - See the buildpack documentation for the proper usage for this configuration at \
+                ! https://github.com/heroku/buildpacks-deb-packages#configuration
+                ! - See the TOML documentation for more details on the TOML array of tables type \
+                ! at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+        "#},
+        );
+    }
+
+    #[test]
     fn unsupported_distro_error() {
         test_error_output("
                 Context
@@ -1179,12 +1716,12 @@ mod tests {
                 be helpful for developers hacking on this buildpack. Tools like pack also validate
                 buildpacks against their target distribution metadata to prevent this exact scenario.
             ",
-            UnsupportedDistro(UnsupportedDistroError {
-                name: "Windows".to_string(),
-                version: "XP".to_string(),
-                architecture: "x86".to_string(),
-            }),
-            indoc! {"
+                          UnsupportedDistro(UnsupportedDistroError {
+                              name: "Windows".to_string(),
+                              version: "XP".to_string(),
+                              architecture: "x86".to_string(),
+                          }),
+                          indoc! {"
                 ! Unsupported distribution
                 !
                 ! The Heroku .deb Packages buildpack doesn't support the Windows XP (x86) distribution.
@@ -1216,8 +1753,8 @@ mod tests {
                 ones for a specific architecture. Our testing processes should always catch this but,
                 if not, we should direct users to file an issue.
             ",
-            CreatePackageIndexError::NoSources,
-            indoc! {"
+                          CreatePackageIndexError::NoSources,
+                          indoc! {"
                 ! No sources to update
                 !
                 ! The distribution has no sources to update packages from.
@@ -1763,7 +2300,7 @@ mod tests {
             CreatePackageIndexError::ChecksumFailed {
                 url: "http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/d41d8cd98f00b204e9800998ecf8427e".to_string(),
                 expected: "d41d8cd98f00b204e9800998ecf8427e".to_string(),
-                actual: "e62ff0123a74adfc6903d59a449cbdb0".to_string()
+                actual: "e62ff0123a74adfc6903d59a449cbdb0".to_string(),
             },
             indoc! {"
                 ! Package Index checksum verification failed
@@ -2536,6 +3073,29 @@ mod tests {
             .join("\n")
             .trim()
             .to_string()
+    }
+
+    fn create_custom_source_table() -> Table {
+        toml_edit::DocumentMut::from_str(indoc! { r#"
+            uri = "http://archive.ubuntu.com/ubuntu"
+            suites = ["main"]
+            components = ["multiverse"]
+            arch = ["amd64", "arm64"]
+            signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+            NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+            sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+            nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+            hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+            LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+            iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+            =J31U
+            -----END PGP PUBLIC KEY BLOCK-----
+            """
+        "# })
+        .unwrap()
+        .as_table()
+        .clone()
     }
 
     fn create_io_error(text: &str) -> std::io::Error {
