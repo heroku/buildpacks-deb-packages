@@ -356,7 +356,7 @@ async fn get_release(
 }
 
 #[instrument(skip_all)]
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 async fn get_package_list(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
