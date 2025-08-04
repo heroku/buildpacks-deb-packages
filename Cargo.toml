@@ -1,7 +1,7 @@
 [package]
 name = "buildpacks-deb-packages"
 edition = "2021"
-rust-version = "1.86"
+rust-version = "1.88"
 
 [dependencies]
 anyhow = "1"
@@ -9,14 +9,14 @@ apt-parser = "1"
 ar = "0.9"
 async-compression = { version = "0.4", default-features = false, features = ["tokio", "gzip", "zstd", "xz"] }
 bon = "3"
-bullet_stream = ">=0.9, <1.0"
+bullet_stream = "0.11"
 const_format = "0.2"
 debversion = "0.4"
 edit-distance = "2"
 futures = { version = "0.3", default-features = false, features = ["io-compat"] }
 indexmap = "2"
 indoc = "2"
-libcnb = { version = "=0.29.0", features = ["trace"] }
+libcnb = { version = "0.29", features = ["trace"] }
 rayon = "1"
 reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
 reqwest-middleware = "0.4"
@@ -29,12 +29,12 @@ sha2 = "0.10"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "time"] }
 tokio-tar = "0.3"
 tokio-util = { version = "0.7", default-features = false, features = ["compat", "io"] }
-toml_edit = "=0.23.2"
+toml_edit = "0.23"
 tracing = "0.1"
 walkdir = "2"
 
 [dev-dependencies]
-libcnb-test = "=0.29.0"
+libcnb-test = "0.29"
 regex = "1"
 tempfile = "3"
 
