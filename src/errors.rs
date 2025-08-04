@@ -1112,8 +1112,7 @@ mod tests {
                       |
                     1 | [com.heroku
                       |            ^
-                    invalid table header
-                    expected `.`, `]`
+                    unclosed table, expected `]`
 
                 ! Error parsing `/path/to/project.toml` with invalid TOML file
                 !
