@@ -9,6 +9,7 @@ use crate::o11y::*;
 use bullet_stream::{global::print, style};
 use indoc::formatdoc;
 use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
+use libcnb::data::build_plan::BuildPlanBuilder;
 use libcnb::detect::{DetectContext, DetectResult, DetectResultBuilder};
 use libcnb::generic::{GenericMetadata, GenericPlatform};
 use libcnb::{buildpack_main, Buildpack, Env};
@@ -49,20 +50,30 @@ impl Buildpack for DebianPackagesBuildpack {
     type Error = DebianPackagesBuildpackError;
 
     fn detect(&self, context: DetectContext<Self>) -> libcnb::Result<DetectResult, Self::Error> {
+        let buildpack_id = context.buildpack_descriptor.buildpack.id;
+
+        let buildplan = BuildPlanBuilder::new()
+            .provides(buildpack_id.to_string())
+            .build();
+
         if let Some(project_toml) = get_project_toml(&context.app_dir)? {
             info!({ PROJECT_TOML_DETECTED } = true);
-            if BuildpackConfig::is_present(project_toml)? {
-                DetectResultBuilder::pass().build()
-            } else {
-                print::plain("project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.");
+            if !BuildpackConfig::is_present(project_toml)? {
                 info!({ PROJECT_TOML_NO_CONFIG } = true);
-                DetectResultBuilder::fail().build()
             }
+            DetectResultBuilder::pass().build_plan(buildplan).build()
+            // if BuildpackConfig::is_present(project_toml)? {
+            //     DetectResultBuilder::pass().build()
+            // } else {
+            //     print::plain("project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.");
+            //     info!({ PROJECT_TOML_NO_CONFIG } = true);
+            //     DetectResultBuilder::fail().build()
+            // }
         } else if get_aptfile(&context.app_dir)?.is_some() {
             // NOTE: This buildpack doesn't use an Aptfile, but we'll pass detection to display a message
             //       to users in the build step detailing how to migrate away from the Aptfile format.
             info!({ APTFILE_DETECTED } = true);
-            DetectResultBuilder::pass().build()
+            DetectResultBuilder::pass().build_plan(buildplan).build()
         } else {
             print::plain("No project.toml or Aptfile found.");
             DetectResultBuilder::fail().build()
@@ -115,7 +126,15 @@ impl Buildpack for DebianPackagesBuildpack {
             }
         }
 
-        let config = BuildpackConfig::try_from(context.app_dir.join("project.toml"))?;
+        let buildplan_config = BuildpackConfig::try_from(context.as_ref())?;
+        let user_config = if context.app_dir.join("project.toml").exists()
+            && BuildpackConfig::is_present(context.app_dir.join("project.toml"))?
+        {
+            BuildpackConfig::try_from(context.app_dir.join("project.toml"))?
+        } else {
+            BuildpackConfig::default()
+        };
+        let config = BuildpackConfig::merge([buildplan_config, user_config]);
 
         if config.install.is_empty() {
             info!({ EARLY_EXIT_REASON } = "nothing_to_install", "early exit");
