@@ -347,6 +347,7 @@ dependencies = [
  "tokio",
  "tokio-tar",
  "tokio-util",
+ "toml 0.9.4",
  "toml_edit 0.23.2",
  "tracing",
  "walkdir",
