@@ -1,10 +1,12 @@
 use crate::config::custom_source::{CustomSource, ParseCustomSourceError};
 use crate::config::{ParseRequestedPackageError, RequestedPackage};
-use crate::DebianPackagesBuildpackError;
+use crate::{DebianPackagesBuildpack, DebianPackagesBuildpackError};
 use indexmap::IndexSet;
+use libcnb::build::BuildContext;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use toml::Table;
 use toml_edit::{DocumentMut, TableLike};
 
 pub(crate) const NAMESPACED_CONFIG: &str = "com.heroku.buildpacks.deb-packages";
@@ -25,6 +27,43 @@ impl BuildpackConfig {
             Err(e) => Err(e),
         }
     }
+
+    pub(crate) fn merge<I>(configs: I) -> BuildpackConfig
+    where
+        I: IntoIterator<Item = BuildpackConfig>,
+    {
+        let mut merged_config = BuildpackConfig::default();
+        for config in configs {
+            let BuildpackConfig { install, sources } = config;
+            merged_config.install.extend(install);
+            merged_config.sources.extend(sources);
+        }
+        merged_config
+    }
+}
+
+impl TryFrom<&BuildContext<DebianPackagesBuildpack>> for BuildpackConfig {
+    type Error = ConfigError;
+
+    fn try_from(value: &BuildContext<DebianPackagesBuildpack>) -> Result<Self, Self::Error> {
+        let buildpack_id = &value.buildpack_descriptor.buildpack.id;
+        let buildpack_configs = value
+            .buildpack_plan
+            .entries
+            .iter()
+            .filter_map(|entry| {
+                if entry.name == buildpack_id.to_string() {
+                    Some(
+                        BuildpackConfig::try_from(&entry.metadata)
+                            .map_err(ConfigError::ParseBuildplanConfig),
+                    )
+                } else {
+                    None
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(BuildpackConfig::merge(buildpack_configs))
+    }
 }
 
 impl TryFrom<PathBuf> for BuildpackConfig {
@@ -43,6 +82,20 @@ impl FromStr for BuildpackConfig {
         let doc = parse_config_toml(contents)?;
         let config = get_buildpack_namespaced_config(&doc)?;
         BuildpackConfig::try_from(config)
+    }
+}
+
+impl TryFrom<&Table> for BuildpackConfig {
+    type Error = ParseConfigError;
+
+    fn try_from(value: &Table) -> Result<Self, Self::Error> {
+        let toml_contents = toml::to_string(value).expect("toml should be serializable");
+        let doc = parse_config_toml(&toml_contents)?;
+        let table = doc
+            .as_item()
+            .as_table_like()
+            .expect("toml doc should be table-like");
+        BuildpackConfig::try_from(table)
     }
 }
 
@@ -79,9 +132,11 @@ impl TryFrom<&dyn TableLike> for BuildpackConfig {
 }
 
 #[derive(Debug)]
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum ConfigError {
     ReadConfig(PathBuf, std::io::Error),
     ParseConfig(PathBuf, ParseConfigError),
+    ParseBuildplanConfig(ParseConfigError),
 }
 
 #[derive(Debug)]
@@ -199,7 +254,7 @@ iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
                     arch: vec![AMD_64, ARM_64],
                     signed_by: indoc! { "
                         -----BEGIN PGP PUBLIC KEY BLOCK-----
-                       
+
                         NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
                         sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
                         nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd

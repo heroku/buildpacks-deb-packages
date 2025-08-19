@@ -5,10 +5,11 @@
 #![allow(unused_crate_dependencies)]
 #![allow(clippy::unwrap_used)]
 
+use indoc::indoc;
+use libcnb_test::{assert_contains, assert_contains_match, assert_not_contains, BuildConfig, BuildpackReference, PackResult, TestContext, TestRunner};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-
-use libcnb_test::{assert_contains, assert_contains_match, assert_not_contains, BuildConfig, BuildpackReference, PackResult, TestContext, TestRunner};
 use toml_edit::{value, Array, DocumentMut, InlineTable};
 
 #[test]
@@ -581,6 +582,159 @@ fn custom_repository_for_noble_distro() {
     });
 }
 
+#[test]
+#[ignore = "integration test"]
+fn multiple_configuration_sources() {
+    if get_integration_test_builder().as_str() != "heroku/builder:24" {
+        return;
+    }
+    integration_test_with_config(
+        "fixtures/project_file_with_empty_config",
+        |config| {
+            config.app_dir_preprocessor(|app_dir| {
+                set_install_config(&app_dir, [requested_package_config("libvips-tools", false)]);
+            });
+
+            config.buildpacks(vec![
+                BuildpackReference::CurrentCrate,
+                custom_buildpack()
+                    .id("test/buildplan_config")
+                    .detect(indoc! { r#"
+                        #!/usr/bin/env bash
+                        build_plan="$2"
+
+                        cat <<EOF >"$build_plan"
+                        [[requires]]
+                        name = "heroku/deb-packages"
+
+                        [requires.metadata]
+                        install = ["mongodb-org-tools", "mongodb-org-shell"]
+
+                        [[requires.metadata.sources]]
+                        uri = "https://repo.mongodb.org/apt/ubuntu"
+                        suites = ["noble/mongodb-org/8.0"]
+                        components = ["multiverse"]
+                        arch = ["amd64", "arm64"]
+                        signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+                        mQINBGWgEhwBEADJpjwR+5n6na3tqZ6ueHsW/U8lvcvMFZ1DYNo+/JhrNjHkZ7HR
+                        Wbc2IzWej1zqTtctSKZvrCkPGZxiDsKB5xta/NVtnpjSuV02Gp0F6hf0gnvark04
+                        HnEFaV2w15Tyr8Z4KHRDbdja6h/24t4tR0KkRzxh5U7FwLL8BpK2drbTog9FBMy+
+                        lqYDfOLHx6JDeOMC7eSNe/jJsAiuVcP/y+vQbLuMYAaMPSvJoidRIQ88oFLoUlVZ
+                        NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+                        sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+                        nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+                        WvyJvY2o35eE0WFcDdstU7UiP39usE+jk4jbQS5WbMYk9yyZCCbd74T7eYAfSEXg
+                        GqrE1O6pjMmwbEjHwHDkbn/2WGvOSgWKHJVSh8V1K5ijlAd/9SCbsY0Yh5K3G16k
+                        gnzHZ7OuQItfvMlPLQA7P2cPj/bGkO2ayyZU4+9rCsXlHw4Cee+u1APFSO2rj1TE
+                        vX80grtqXNmj6nV21nIiXASvBKRO3kU4t8yV9i8EEREKYx/gLIl5i3PYGwARAQAB
+                        tDdNb25nb0RCIDguMCBSZWxlYXNlIFNpZ25pbmcgS2V5IDxwYWNrYWdpbmdAbW9u
+                        Z29kYi5jb20+iQJOBBMBCgA4FiEESwdSwbyiOMC07hTcQd4Fik59ygUFAmWgEhwC
+                        GwMFCwkIBwIGFQoJCAsCBBYCAwECHgECF4AACgkQQd4Fik59ygWy4w//e+IQ5eFT
+                        rlowx196DaInUTiv+aMkkN5hAtJDMicV9+ZDChEfqqQH1WJuUUKfX00AeEDocQnI
+                        LgESy0+rp2FoRPG5bXaJXTv6xQkqIMQQMNMkG4Nx3AxggRVkzd2arOr9FBwcnmf0
+                        7xu9EsMJndmzTsDO+ohWnNb0ILSdPVKDafpfg4ycBWDZT7ynD6TT0JpG8WWJi8F+
+                        9GR4k4CpBujk49POZbjeVDOuP/o/tosmEO9jo03C/u1qNuVVXy6vvTB6WjO79QTX
+                        OlSTLHAiu9N/VknG1B7lW15X1yl3jl3vZ33N68ncXUW2gAJi7Nh6H6RSm288IC4i
+                        hSmSBFabffQtwOTVE0CaKge2nU4Oc3Tp2h8moEgi81vYT/CioMt6wmHTzY0grcfF
+                        WLwtDMFJ0VQYRrUIOMmYBFyRp2jdRYYkA+vlL+6DNAAjCeuvwCs3PqUhgFvHNxVv
+                        bumKiRMIOoNUwpLEKsEq8jBs+U+gUfa+CmBn67G9mjDRu4cXXrtItooxnbfM/m0i
+                        hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+                        LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+                        iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+                        =J31U
+                        -----END PGP PUBLIC KEY BLOCK-----
+                        """
+                        EOF
+                    "#})
+                    .call(),
+            ]);
+        },
+        |ctx| {
+            assert_contains!(ctx.pack_stderr, "https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 [multiverse]");
+            assert_contains!(ctx.pack_stderr, "Downloaded release file https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.0/InRelease");
+            assert_contains_match!(ctx.pack_stderr, r"Downloaded package index https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.0/multiverse/binary-(amd|arm)64/Packages.gz");
+            assert_contains!(ctx.pack_stderr, "Adding `mongodb-org-tools");
+            assert_contains!(ctx.pack_stderr, "Adding `mongodb-org-shell");
+            assert_contains!(ctx.pack_stderr, "Adding `libvips-tools");
+        },
+    );
+}
+
+#[test]
+#[ignore = "integration test"]
+fn only_buildplan_configuration_source() {
+    if get_integration_test_builder().as_str() != "heroku/builder:24" {
+        return;
+    }
+    integration_test_with_config(
+        "fixtures/project_file_with_no_config",
+        |config| {
+            config.buildpacks(vec![
+                BuildpackReference::CurrentCrate,
+                custom_buildpack()
+                    .id("test/buildplan_config")
+                    .detect(indoc! { r#"
+                        #!/usr/bin/env bash
+                        build_plan="$2"
+
+                        cat <<EOF >"$build_plan"
+                        [[requires]]
+                        name = "heroku/deb-packages"
+
+                        [requires.metadata]
+                        install = ["mongodb-org-tools", "mongodb-org-shell"]
+
+                        [[requires.metadata.sources]]
+                        uri = "https://repo.mongodb.org/apt/ubuntu"
+                        suites = ["noble/mongodb-org/8.0"]
+                        components = ["multiverse"]
+                        arch = ["amd64", "arm64"]
+                        signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+                        mQINBGWgEhwBEADJpjwR+5n6na3tqZ6ueHsW/U8lvcvMFZ1DYNo+/JhrNjHkZ7HR
+                        Wbc2IzWej1zqTtctSKZvrCkPGZxiDsKB5xta/NVtnpjSuV02Gp0F6hf0gnvark04
+                        HnEFaV2w15Tyr8Z4KHRDbdja6h/24t4tR0KkRzxh5U7FwLL8BpK2drbTog9FBMy+
+                        lqYDfOLHx6JDeOMC7eSNe/jJsAiuVcP/y+vQbLuMYAaMPSvJoidRIQ88oFLoUlVZ
+                        NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
+                        sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
+                        nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd
+                        WvyJvY2o35eE0WFcDdstU7UiP39usE+jk4jbQS5WbMYk9yyZCCbd74T7eYAfSEXg
+                        GqrE1O6pjMmwbEjHwHDkbn/2WGvOSgWKHJVSh8V1K5ijlAd/9SCbsY0Yh5K3G16k
+                        gnzHZ7OuQItfvMlPLQA7P2cPj/bGkO2ayyZU4+9rCsXlHw4Cee+u1APFSO2rj1TE
+                        vX80grtqXNmj6nV21nIiXASvBKRO3kU4t8yV9i8EEREKYx/gLIl5i3PYGwARAQAB
+                        tDdNb25nb0RCIDguMCBSZWxlYXNlIFNpZ25pbmcgS2V5IDxwYWNrYWdpbmdAbW9u
+                        Z29kYi5jb20+iQJOBBMBCgA4FiEESwdSwbyiOMC07hTcQd4Fik59ygUFAmWgEhwC
+                        GwMFCwkIBwIGFQoJCAsCBBYCAwECHgECF4AACgkQQd4Fik59ygWy4w//e+IQ5eFT
+                        rlowx196DaInUTiv+aMkkN5hAtJDMicV9+ZDChEfqqQH1WJuUUKfX00AeEDocQnI
+                        LgESy0+rp2FoRPG5bXaJXTv6xQkqIMQQMNMkG4Nx3AxggRVkzd2arOr9FBwcnmf0
+                        7xu9EsMJndmzTsDO+ohWnNb0ILSdPVKDafpfg4ycBWDZT7ynD6TT0JpG8WWJi8F+
+                        9GR4k4CpBujk49POZbjeVDOuP/o/tosmEO9jo03C/u1qNuVVXy6vvTB6WjO79QTX
+                        OlSTLHAiu9N/VknG1B7lW15X1yl3jl3vZ33N68ncXUW2gAJi7Nh6H6RSm288IC4i
+                        hSmSBFabffQtwOTVE0CaKge2nU4Oc3Tp2h8moEgi81vYT/CioMt6wmHTzY0grcfF
+                        WLwtDMFJ0VQYRrUIOMmYBFyRp2jdRYYkA+vlL+6DNAAjCeuvwCs3PqUhgFvHNxVv
+                        bumKiRMIOoNUwpLEKsEq8jBs+U+gUfa+CmBn67G9mjDRu4cXXrtItooxnbfM/m0i
+                        hVnssTC1arrx273zFepLosPvgrT0TS7tnyXbzuq5mo0zD1fSj4kuSS9V/SSy9fWF
+                        LAtHiNQJkjzGFxu0/9dyQyX6C523uvfdcOzpObTyjBeGKqmEEf0lF5OYLDlkk2Sm
+                        iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
+                        =J31U
+                        -----END PGP PUBLIC KEY BLOCK-----
+                        """
+                        EOF
+                    "#})
+                    .call(),
+            ]);
+        },
+        |ctx| {
+            assert_contains!(ctx.pack_stderr, "https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 [multiverse]");
+            assert_contains!(ctx.pack_stderr, "Downloaded release file https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.0/InRelease");
+            assert_contains_match!(ctx.pack_stderr, r"Downloaded package index https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.0/multiverse/binary-(amd|arm)64/Packages.gz");
+            assert_contains!(ctx.pack_stderr, "Adding `mongodb-org-tools");
+            assert_contains!(ctx.pack_stderr, "Adding `mongodb-org-shell");
+        },
+    );
+}
+
 const DEFAULT_BUILDER: &str = "heroku/builder:24";
 
 fn get_integration_test_builder() -> String {
@@ -657,5 +811,33 @@ fn update_project_toml(app_dir: &Path, update_fn: impl FnOnce(&mut DocumentMut))
     let contents = std::fs::read_to_string(&project_toml).unwrap();
     let mut doc = toml_edit::DocumentMut::from_str(&contents).unwrap();
     update_fn(&mut doc);
-    std::fs::write(&project_toml, doc.to_string()).unwrap();
+    fs::write(&project_toml, doc.to_string()).unwrap();
+}
+
+#[bon::builder(on(String, into))]
+pub fn custom_buildpack(id: &str, detect: Option<String>, build: Option<String>) -> BuildpackReference {
+    let buildpack_dir = tempfile::tempdir().unwrap().keep();
+    let bin_dir = buildpack_dir.join("bin");
+
+    fs::create_dir(&bin_dir).unwrap();
+
+    fs::write(
+        buildpack_dir.join("buildpack.toml"),
+        format!(
+            "
+api = \"0.10\"
+
+[buildpack]
+id = \"{id}\"
+version = \"0.0.0\"
+    "
+        ),
+    )
+    .unwrap();
+
+    fs::write(bin_dir.join("detect"), detect.unwrap_or("#!/usr/bin/env bash".to_string())).unwrap();
+
+    fs::write(bin_dir.join("build"), build.unwrap_or("#!/usr/bin/env bash".to_string())).unwrap();
+
+    BuildpackReference::Other(buildpack_dir.to_string_lossy().to_string())
 }
