@@ -1,14 +1,14 @@
 use crate::debian::{Distro, MultiarchName, RepositoryPackage};
 use crate::o11y::*;
 use crate::{
-    is_buildpack_debug_logging_enabled, BuildpackResult, DebianPackagesBuildpack,
-    DebianPackagesBuildpackError,
+    BuildpackResult, DebianPackagesBuildpack, DebianPackagesBuildpackError,
+    is_buildpack_debug_logging_enabled,
 };
 use ar::Archive as ArArchive;
 use async_compression::tokio::bufread::{GzipDecoder, XzDecoder, ZstdDecoder};
 use bullet_stream::{global::print, style};
-use futures::io::AllowStdIo;
 use futures::TryStreamExt;
+use futures::io::AllowStdIo;
 use indexmap::IndexSet;
 use libcnb::build::BuildContext;
 use libcnb::data::layer_name;
@@ -28,13 +28,13 @@ use std::io::Write;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::fs::{read_to_string as async_read_to_string, write as async_write, File as AsyncFile};
-use tokio::io::{copy as async_copy, BufReader as AsyncBufReader, BufWriter as AsyncBufWriter};
+use tokio::fs::{File as AsyncFile, read_to_string as async_read_to_string, write as async_write};
+use tokio::io::{BufReader as AsyncBufReader, BufWriter as AsyncBufWriter, copy as async_copy};
 use tokio::task::{JoinError, JoinSet};
 use tokio_tar::Archive as TarArchive;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
-use tracing::{info, instrument, Instrument};
+use tracing::{Instrument, info, instrument};
 use walkdir::{DirEntry, WalkDir};
 
 #[instrument(skip_all)]
@@ -153,10 +153,10 @@ fn print_layer_contents(install_path: &Path) {
             .flatten()
             .filter(|entry| {
                 // filter out the env layer that's created for CNB environment files
-                if let Some(parent) = entry.path().parent() {
-                    if parent == install_path.join("env") {
-                        return false;
-                    }
+                if let Some(parent) = entry.path().parent()
+                    && parent == install_path.join("env")
+                {
+                    return false;
                 }
                 entry.file_type().is_file()
             })
@@ -386,10 +386,10 @@ fn find_all_dirs_containing(
     let mut matches = vec![];
     if let Ok(true) = starting_dir.try_exists() {
         for entry in WalkDir::new(starting_dir).into_iter().flatten() {
-            if let Some(parent_dir) = entry.path().parent() {
-                if condition(entry.path()) {
-                    matches.push(parent_dir.to_path_buf());
-                }
+            if let Some(parent_dir) = entry.path().parent()
+                && condition(entry.path())
+            {
+                matches.push(parent_dir.to_path_buf());
             }
         }
     }

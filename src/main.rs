@@ -1,21 +1,21 @@
 use crate::config::{BuildpackConfig, ConfigError, NAMESPACED_CONFIG};
-use crate::create_package_index::{create_package_index, CreatePackageIndexError};
+use crate::create_package_index::{CreatePackageIndexError, create_package_index};
 use crate::debian::{Distro, UnsupportedDistroError};
 use crate::determine_packages_to_install::{
-    determine_packages_to_install, DeterminePackagesToInstallError,
+    DeterminePackagesToInstallError, determine_packages_to_install,
 };
-use crate::install_packages::{install_packages, InstallPackagesError};
+use crate::install_packages::{InstallPackagesError, install_packages};
 use crate::o11y::*;
 use bullet_stream::{global::print, style};
 use indoc::formatdoc;
 use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
 use libcnb::detect::{DetectContext, DetectResult, DetectResultBuilder};
 use libcnb::generic::{GenericMetadata, GenericPlatform};
-use libcnb::{buildpack_main, Buildpack, Env};
+use libcnb::{Buildpack, Env, buildpack_main};
 use reqwest::Client;
 use reqwest_middleware::ClientBuilder;
-use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
+use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_tracing::{SpanBackendWithUrl, TracingMiddleware};
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
@@ -54,7 +54,9 @@ impl Buildpack for DebianPackagesBuildpack {
             if BuildpackConfig::is_present(project_toml)? {
                 DetectResultBuilder::pass().build()
             } else {
-                print::plain("project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.");
+                print::plain(
+                    "project.toml found, but no [com.heroku.buildpacks.deb-packages] configuration present.",
+                );
                 info!({ PROJECT_TOML_NO_CONFIG } = true);
                 DetectResultBuilder::fail().build()
             }

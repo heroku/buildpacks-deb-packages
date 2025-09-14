@@ -1,5 +1,5 @@
 use crate::config::custom_source::ParseCustomSourceError;
-use crate::config::{ConfigError, ParseConfigError, ParseRequestedPackageError, NAMESPACED_CONFIG};
+use crate::config::{ConfigError, NAMESPACED_CONFIG, ParseConfigError, ParseRequestedPackageError};
 use crate::create_package_index::CreatePackageIndexError;
 use crate::debian::UnsupportedDistroError;
 use crate::determine_packages_to_install::DeterminePackagesToInstallError;
@@ -957,11 +957,11 @@ enum SuggestSubmitIssue {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::DebianPackagesBuildpackError::UnsupportedDistro;
     use crate::debian::{
         ParsePackageNameError, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
         UnsupportedArchitectureNameError,
     };
-    use crate::DebianPackagesBuildpackError::UnsupportedDistro;
     use anyhow::anyhow;
     use bullet_stream::strip_ansi;
     use libcnb::data::layer::LayerNameError;
