@@ -367,21 +367,28 @@ impl Display for PackageNotification {
                 system_package_name,
                 system_package_version,
             } => {
-                write!(f,
-                       "Skipping {package} because {name_with_version} is already installed on the system",
-                       package = style::value(system_package_name),
-                       name_with_version = style::value(format!("{system_package_name}@{system_package_version}")),
+                write!(
+                    f,
+                    "Skipping {package} because {name_with_version} is already installed on the system",
+                    package = style::value(system_package_name),
+                    name_with_version =
+                        style::value(format!("{system_package_name}@{system_package_version}")),
                 )
             }
             PackageNotification::AlreadyInstalledByOtherPackage {
                 installed_package,
                 installed_by,
             } => {
-                write!(f,
-                       "Skipping {package} because {name_with_version} was already installed as a dependency of {installed_by}",
-                       package = style::value(&installed_package.name),
-                       name_with_version = style::value(format!("{name}@{version}", name = &installed_package.name, version = &installed_package.version)),
-                       installed_by = style::value(installed_by),
+                write!(
+                    f,
+                    "Skipping {package} because {name_with_version} was already installed as a dependency of {installed_by}",
+                    package = style::value(&installed_package.name),
+                    name_with_version = style::value(format!(
+                        "{name}@{version}",
+                        name = &installed_package.name,
+                        version = &installed_package.version
+                    )),
+                    installed_by = style::value(installed_by),
                 )
             }
             PackageNotification::VirtualPackageHasOnlyOneImplementor {

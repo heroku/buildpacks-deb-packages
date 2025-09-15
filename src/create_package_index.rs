@@ -5,12 +5,12 @@ use crate::debian::{
 use crate::o11y::*;
 use crate::pgp::CertHelper;
 use crate::{BuildpackResult, DebianPackagesBuildpack, DebianPackagesBuildpackError};
-use apt_parser::errors::APTError;
 use apt_parser::Release;
+use apt_parser::errors::APTError;
 use async_compression::tokio::bufread::GzipDecoder;
 use bullet_stream::{global::print, style};
-use futures::io::AllowStdIo;
 use futures::TryStreamExt;
+use futures::io::AllowStdIo;
 use libcnb::build::BuildContext;
 use libcnb::data::layer::{LayerName, LayerNameError};
 use libcnb::layer::{
@@ -20,26 +20,26 @@ use rayon::iter::{Either, IntoParallelIterator, ParallelBridge, ParallelIterator
 use reqwest::header::ETAG;
 use reqwest_middleware::ClientWithMiddleware;
 use reqwest_middleware::Error::Reqwest;
-use sequoia_openpgp::parse::stream::VerifierBuilder;
-use sequoia_openpgp::parse::Parse;
-use sequoia_openpgp::policy::StandardPolicy;
 use sequoia_openpgp::Cert;
+use sequoia_openpgp::parse::Parse;
+use sequoia_openpgp::parse::stream::VerifierBuilder;
+use sequoia_openpgp::policy::StandardPolicy;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::fs::{read_to_string as async_read_to_string, write as async_write, File as AsyncFile};
+use tokio::fs::{File as AsyncFile, read_to_string as async_read_to_string, write as async_write};
 use tokio::io::{
-    copy as async_copy, AsyncWriteExt, BufReader as AsyncBufReader, BufWriter as AsyncBufWriter,
+    AsyncWriteExt, BufReader as AsyncBufReader, BufWriter as AsyncBufWriter, copy as async_copy,
 };
 use tokio::sync::oneshot::channel;
 use tokio::sync::oneshot::error::RecvError;
 use tokio::task::{JoinError, JoinSet};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
-use tracing::{info, instrument, Instrument};
+use tracing::{Instrument, info, instrument};
 
 #[instrument(skip_all)]
 pub(crate) async fn create_package_index(

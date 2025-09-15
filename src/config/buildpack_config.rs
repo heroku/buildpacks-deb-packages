@@ -1,6 +1,6 @@
+use crate::DebianPackagesBuildpackError;
 use crate::config::custom_source::{CustomSource, ParseCustomSourceError};
 use crate::config::{ParseRequestedPackageError, RequestedPackage};
-use crate::DebianPackagesBuildpackError;
 use indexmap::IndexSet;
 use std::fs;
 use std::path::{Path, PathBuf};
