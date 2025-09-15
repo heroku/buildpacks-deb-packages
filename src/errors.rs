@@ -241,6 +241,8 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
                 }
             }
         }
+
+        ConfigError::ParseBuildplanConfig(e) => todo!("{e:?}"),
     }
 }
 
