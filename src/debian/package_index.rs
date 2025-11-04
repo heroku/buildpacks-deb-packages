@@ -45,7 +45,7 @@ impl PackageIndex {
         }
 
         self.name_to_repository_packages
-            .entry(package.name.to_string())
+            .entry(package.name.clone())
             .or_default()
             .push(package);
 

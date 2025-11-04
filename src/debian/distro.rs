@@ -31,15 +31,15 @@ impl TryFrom<&Target> for Distro {
     type Error = UnsupportedDistroError;
 
     fn try_from(target: &Target) -> Result<Self, Self::Error> {
-        let name = target.distro_name.to_string();
-        let version = target.distro_version.to_string();
-        let target_arch = target.arch.to_string();
+        let name = target.distro_name.clone();
+        let version = target.distro_version.clone();
+        let target_arch = target.arch.clone();
 
         let architecture =
             ArchitectureName::from_str(&target_arch).map_err(|_| UnsupportedDistroError {
-                name: name.to_string(),
-                version: version.to_string(),
-                architecture: target_arch.to_string(),
+                name: name.clone(),
+                version: version.clone(),
+                architecture: target_arch.clone(),
             })?;
 
         match (name.to_lowercase().as_str(), version.as_str()) {

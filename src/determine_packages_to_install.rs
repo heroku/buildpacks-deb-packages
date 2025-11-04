@@ -144,7 +144,7 @@ fn visit(
             forced_install: force_if_installed_on_system,
         });
 
-        visit_stack.insert(repository_package.name.to_string());
+        visit_stack.insert(repository_package.name.clone());
 
         if !skip_dependencies {
             for dependency in repository_package.get_dependencies() {
@@ -459,7 +459,7 @@ mod test {
         assert_eq!(
             package_notifications,
             IndexSet::from([PackageNotification::AlreadyInstalledOnSystem {
-                system_package_name: package_a.name.to_string(),
+                system_package_name: package_a.name.clone(),
                 system_package_version: DEFAULT_VERSION.to_string(),
             }])
         );
@@ -854,20 +854,20 @@ mod test {
                 },
                 PackageNotification::Added {
                     repository_package: package_b.clone(),
-                    dependency_path: vec![package_a.name.to_string()],
+                    dependency_path: vec![package_a.name.clone()],
                     forced_install: false,
                 },
                 PackageNotification::Added {
                     repository_package: package_c.clone(),
-                    dependency_path: vec![package_a.name.to_string(), package_b.name.to_string()],
+                    dependency_path: vec![package_a.name.clone(), package_b.name.clone()],
                     forced_install: false,
                 },
                 PackageNotification::Added {
                     repository_package: package_d,
                     dependency_path: vec![
-                        package_a.name.to_string(),
-                        package_b.name.to_string(),
-                        package_c.name.to_string()
+                        package_a.name.clone(),
+                        package_b.name.clone(),
+                        package_c.name.clone()
                     ],
                     forced_install: false,
                 }
@@ -1006,17 +1006,17 @@ mod test {
                 },
                 PackageNotification::Added {
                     repository_package: package_b.clone(),
-                    dependency_path: vec![package_a.name.to_string()],
+                    dependency_path: vec![package_a.name.clone()],
                     forced_install: false,
                 },
                 PackageNotification::Added {
                     repository_package: package_c.clone(),
-                    dependency_path: vec![package_a.name.to_string(), package_b.name.to_string()],
+                    dependency_path: vec![package_a.name.clone(), package_b.name.clone()],
                     forced_install: false,
                 },
                 PackageNotification::Added {
                     repository_package: package_d,
-                    dependency_path: vec![package_a.name.to_string(), package_b.name.to_string()],
+                    dependency_path: vec![package_a.name.clone(), package_b.name.clone()],
                     forced_install: false,
                 },
             ])
@@ -1093,7 +1093,7 @@ mod test {
                 },
                 PackageNotification::AlreadyInstalledByOtherPackage {
                     installed_package: libvips42t64,
-                    installed_by: package_a.name.to_string(),
+                    installed_by: package_a.name.clone(),
                 }
             ])
         );

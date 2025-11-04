@@ -142,10 +142,10 @@ async fn update_sources(
                     context.clone(),
                     client.clone(),
                     source.uri.clone(),
-                    suite.to_string(),
+                    suite.clone(),
                     source.components.clone(),
                     source.arch.clone(),
-                    source.signed_by.to_string(),
+                    source.signed_by.clone(),
                 )
                 .in_current_span(),
             );
@@ -224,7 +224,7 @@ async fn update_source(
                 suite.clone(),
                 component.clone(),
                 arch.clone(),
-                package_index_release_hash.hash.to_string(),
+                package_index_release_hash.hash.clone(),
             )
             .in_current_span(),
         );
@@ -393,9 +393,7 @@ async fn get_package_list(
     let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&package_index_url)))
         .map_err(|e| CreatePackageIndexError::InvalidLayerName(package_index_url.clone(), e))?;
 
-    let new_metadata = PackageIndexMetadata {
-        hash: hash.to_string(),
-    };
+    let new_metadata = PackageIndexMetadata { hash: hash.clone() };
 
     let package_index_layer = context.cached_layer(
         layer_name,
