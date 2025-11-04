@@ -144,7 +144,7 @@ fn visit(
             forced_install: force_if_installed_on_system,
         });
 
-        visit_stack.insert(repository_package.name.to_string());
+        visit_stack.insert(repository_package.name.clone());
 
         if !skip_dependencies {
             for dependency in repository_package.get_dependencies() {

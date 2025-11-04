@@ -49,7 +49,7 @@ pub(crate) async fn install_packages(
     let new_metadata = InstallationMetadata {
         package_checksums: packages_to_install
             .iter()
-            .map(|package| (package.name.to_string(), package.sha256sum.to_string()))
+            .map(|package| (package.name.clone(), package.sha256sum.clone()))
             .collect(),
         distro: distro.clone(),
     };
@@ -243,7 +243,7 @@ async fn download(
     })?;
 
     let calculated_hash = format!("{:x}", hasher.finalize());
-    let hash = repository_package.sha256sum.to_string();
+    let hash = repository_package.sha256sum.clone();
 
     if hash != calculated_hash {
         Err(InstallPackagesError::ChecksumFailed {
