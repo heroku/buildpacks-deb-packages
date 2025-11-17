@@ -12,8 +12,8 @@ that could invalidate how [CNB rebasing][cnb-rebase] functionality works.
 
 > [!IMPORTANT]
 > This is a [Cloud Native Buildpack][cnb], and is a component of the [Heroku Cloud Native Buildpacks][heroku-cnbs]
-> project, which is in preview. If you are instead looking for the Heroku Apt Buildpack (for use on the Heroku
-> platform), you may find it [here][classic-apt-buildpack].
+> project. If you are instead looking for the Heroku Classic Apt Buildpack
+> you may find it [here][classic-apt-buildpack].
 
 This buildpack is compatible with the following environments:
 
