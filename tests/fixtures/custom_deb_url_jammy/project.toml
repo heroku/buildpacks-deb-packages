@@ -1,0 +1,7 @@
+[_]
+schema-version = "0.2"
+
+[com.heroku.buildpacks.deb-packages]
+download = [
+  "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb"
+]

@@ -1,4 +1,5 @@
 use crate::config::custom_source::ParseCustomSourceError;
+use crate::config::download_url::ParseDownloadUrlError;
 use crate::config::{ConfigError, NAMESPACED_CONFIG, ParseConfigError, ParseRequestedPackageError};
 use crate::create_package_index::CreatePackageIndexError;
 use crate::debian::UnsupportedDistroError;
@@ -238,6 +239,50 @@ fn on_config_error(error: ConfigError) -> ErrorMessage {
                             " },
                         })
                         .call()
+                }
+
+                ParseConfigError::ParseDownloadUrl(error) => match *error {
+                    ParseDownloadUrlError::InvalidUrl { url, reason } => {
+                        let url = style::value(url);
+                        create_error()
+                            .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
+                            .header(format!("Error parsing {config_file} with invalid download url"))
+                            .body(formatdoc! { "
+                                The {BUILDPACK_NAME} reads configuration from {config_file} to \
+                                complete the build but we found an invalid download url {url} \
+                                in the key {root_config_key}.
+
+                                Validation error: {reason}
+
+                                Suggestions:
+                                - Verify the download url is valid.
+                            " })
+                            .call()
+                    }
+                    ParseDownloadUrlError::UnexpectedTomlValue(value) => {
+                        let string_example = "\"https://example.com/package-1.2.3.deb\"";
+                        let value_type = style::value(value.type_name());
+                        let value = style::value(value.to_string());
+
+                        create_error()
+                            .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::No))
+                            .header(format!("Error parsing {config_file} with invalid download url"))
+                            .body(formatdoc! { "
+                                The {BUILDPACK_NAME} reads configuration from {config_file} to \
+                                complete the build but we found an invalid download url in the \
+                                key {root_config_key}.
+
+                                Download urls must either be the following TOML values:
+                                - String (e.g.; {string_example})
+
+                                Suggestions:
+                                - See the buildpack documentation for the proper usage for this configuration at \
+                                {configuration_doc_url}
+                                - See the TOML documentation for more details on the TOML string at {toml_spec_url}
+                            " })
+                            .debug_info(format!("Invalid type {value_type} with value {value}"))
+                            .call()
+                    }
                 }
             }
         }
@@ -698,6 +743,23 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
                 .call()
         }
 
+        InstallPackagesError::RequestPackageUrl(download_url, e) => {
+            let url = style::value(download_url.to_string());
+            create_error()
+                .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::Yes))
+                .header("Failed to request package from download url")
+                .body(formatdoc! { "
+                    While installing packages, an error occurred while downloading the package at {url}. \
+                    This error can occur due to an unstable network connection or an issue \
+                    with site this package is hosted at.
+
+                    Suggestions:
+                    - Check if {url} can be downloaded locally or if there's an error.
+                " })
+                .debug_info(e.to_string())
+                .call()
+        }
+
         InstallPackagesError::WritePackage(package, download_url, destination_path, e) => {
             let package = style::value(package.name);
             let download_url = style::url(download_url);
@@ -712,6 +774,24 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
 
                     Suggestions:
                     - Check the status of {canonical_status_url} for any reported issues.
+                " })
+                .debug_info(e.to_string())
+                .call()
+        }
+
+        InstallPackagesError::WritePackageUrl(download_url, destination_path, e) => {
+            let download_url = style::url(download_url.to_string());
+            let destination_path = file_value(destination_path);
+            create_error()
+                .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::Yes))
+                .header("Failed to download package")
+                .body(formatdoc! { "
+                    An unexpected I/O error occured while downloading the package at {download_url} \
+                    to {destination_path}. This error can occur due to an unstable network connection or an issue \
+                    with the site this packages is hosted at.
+
+                    Suggestions:
+                    - Check if {download_url} can be downloaded locally or if there's an error.
                 " })
                 .debug_info(e.to_string())
                 .call()
@@ -958,6 +1038,7 @@ enum SuggestSubmitIssue {
 mod tests {
     use super::*;
     use crate::DebianPackagesBuildpackError::UnsupportedDistro;
+    use crate::config::download_url::DownloadUrl;
     use crate::debian::{
         ParsePackageNameError, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
         UnsupportedArchitectureNameError,
@@ -966,6 +1047,7 @@ mod tests {
     use bullet_stream::strip_ansi;
     use libcnb::data::layer::LayerNameError;
     use libcnb_test::assert_contains_match;
+    use reqwest::Url;
     use std::collections::HashSet;
     use std::str::FromStr;
     use toml_edit::Table;
@@ -1699,6 +1781,84 @@ mod tests {
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
         "#},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_invalid_download_url() {
+        test_error_output(
+            "
+            Context
+            -------
+            We read the buildpack configuration from project.toml which must be a valid TOML file.
+            If the file is valid but the value supplied using the configuration for this buildpack
+            contains a download url that would be invalid according to some validation rules,
+            we report this url to the user and ask them to verify it.
+            ",
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseDownloadUrl(Box::from(ParseDownloadUrlError::InvalidUrl {
+                    url: "not a url".into(),
+                    reason: Url::parse("not a url").unwrap_err().to_string(),
+                })),
+            ),
+            indoc! {"
+                ! Error parsing `/path/to/project.toml` with invalid download url
+                !
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                to complete the build but we found an invalid download url `not a url` \
+                in the key `[com.heroku.buildpacks.deb-packages]`.
+                !
+                ! Validation error: relative URL without a base
+                !
+                ! Suggestions:
+                ! - Verify the download url is valid.
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
+        );
+    }
+
+    #[test]
+    fn config_parse_config_error_for_invalid_download_url_config_type() {
+        test_error_output(
+            "
+            Context
+            -------
+            We read the buildpack configuration from project.toml which must be a valid TOML file.
+            If the file is valid but the value supplied using the configuration for this buildpack
+            contains a package entry that is neither a string nor inline table value, it is invalid.
+            We report this to the user and request they check the buildpack documentation for proper
+            usage.
+            ",
+            ConfigError::ParseConfig(
+                "/path/to/project.toml".into(),
+                ParseConfigError::ParseDownloadUrl(Box::from(
+                    ParseDownloadUrlError::UnexpectedTomlValue(
+                        toml_edit::value(37).into_value().unwrap(),
+                    ),
+                )),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - Invalid type `integer` with value `37`
+
+                ! Error parsing `/path/to/project.toml` with invalid download url
+                !
+                ! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` \
+                to complete the build but we found an invalid download url in the key \
+                `[com.heroku.buildpacks.deb-packages]`.
+                !
+                ! Download urls must either be the following TOML values:
+                ! - String (e.g.; \"https://example.com/package-1.2.3.deb\")
+                !
+                ! Suggestions:
+                ! - See the buildpack documentation for the proper usage for this configuration at \
+                https://github.com/heroku/buildpacks-deb-packages#configuration
+                ! - See the TOML documentation for more details on the TOML string at https://toml.io/en/v1.0.0
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+            "},
         );
     }
 
@@ -2723,6 +2883,42 @@ mod tests {
     }
 
     #[test]
+    fn install_packages_error_request_package_url() {
+        test_error_output(
+            "
+                Context
+                -------
+                Packages are downloaded from custom URLs. Network I/O can fail for any number
+                of reasons including DNS issues, connectivity problems, or the remote server being unavailable.
+            ",
+            InstallPackagesError::RequestPackageUrl(
+                DownloadUrl::from_str("https://example.com/custom-package.deb").unwrap(),
+                create_reqwest_middleware_error(),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - error sending request for url (https://test/error)
+
+                ! Failed to request package from download url
+                !
+                ! While installing packages, an error occurred while downloading the package at \
+                `https://example.com/custom-package.deb`. This error can occur due to an unstable network \
+                connection or an issue with site this package is hosted at.
+                !
+                ! Suggestions:
+                ! - Check if `https://example.com/custom-package.deb` can be downloaded locally or if there's an error.
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
     fn install_packages_error_write_package() {
         test_error_output(
             "
@@ -2749,6 +2945,45 @@ mod tests {
                 !
                 ! Suggestions:
                 ! - Check the status of https://status.canonical.com/ for any reported issues.
+                !
+                ! Use the debug information above to troubleshoot and retry your build.
+                !
+                ! If the issue persists and you think you found a bug in the buildpack, reproduce the \
+                issue locally with a minimal example. Open an issue in the buildpack's GitHub repository \
+                and include the details here:
+                ! https://github.com/heroku/buildpacks-deb-packages/issues/new
+            "},
+        );
+    }
+
+    #[test]
+    fn install_packages_error_write_package_url() {
+        test_error_output(
+            "
+                Context
+                -------
+                Packages downloaded from custom URLs are written directly to disk. Network I/O
+                can fail for any number of reasons including connectivity issues, disk space problems,
+                or interrupted connections.
+            ",
+            InstallPackagesError::WritePackageUrl(
+                DownloadUrl::from_str("https://example.com/custom-package.deb").unwrap(),
+                "/path/to/layer/custom-package.deb".into(),
+                create_io_error("connection reset"),
+            ),
+            indoc! {"
+                - Debug Info:
+                  - connection reset
+
+                ! Failed to download package
+                !
+                ! An unexpected I/O error occured while downloading the package at \
+                https://example.com/custom-package.deb to `/path/to/layer/custom-package.deb`. This error \
+                can occur due to an unstable network connection or an issue with the site this packages is \
+                hosted at.
+                !
+                ! Suggestions:
+                ! - Check if https://example.com/custom-package.deb can be downloaded locally or if there's an error.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
                 !
