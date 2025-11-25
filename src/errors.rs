@@ -744,7 +744,7 @@ fn on_install_packages_error(error: InstallPackagesError) -> ErrorMessage {
         }
 
         InstallPackagesError::RequestPackageUrl(download_url, e) => {
-            let url = style::value(download_url.to_string());
+            let url = style::url(download_url.to_string());
             create_error()
                 .error_type(UserFacing(SuggestRetryBuild::Yes, SuggestSubmitIssue::Yes))
                 .header("Failed to request package from download url")
