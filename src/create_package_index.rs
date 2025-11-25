@@ -254,26 +254,24 @@ async fn get_release(
 
     let release_file_url = format!("{}/dists/{suite}/InRelease", &uri);
 
-    let response = client
-        .get(&release_file_url)
-        .send()
-        .await
-        .and_then(|res| res.error_for_status().map_err(Reqwest))
-        .map_err(CreatePackageIndexError::GetReleaseRequest)?;
-
     // it would be nice to use the url as the layer name but urls don't make for good file names
     // so instead we'll convert the url to a sha256 hex value
     let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&release_file_url)))
         .map_err(|e| CreatePackageIndexError::InvalidLayerName(release_file_url.clone(), e))?;
 
+    // make a HEAD request to get the current ETag without downloading the full body
+    let head_response = client
+        .head(&release_file_url)
+        .send()
+        .await
+        .and_then(|res| res.error_for_status().map_err(Reqwest))
+        .map_err(CreatePackageIndexError::GetReleaseRequest)?;
+
     let new_metadata = ReleaseFileMetadata {
-        etag: response.headers().get(ETAG).and_then(|header_value| {
-            if let Ok(etag) = header_value.to_str() {
-                Some(etag.to_string())
-            } else {
-                None
-            }
-        }),
+        etag: head_response
+            .headers()
+            .get(ETAG)
+            .and_then(|v| v.to_str().ok().map(String::from)),
     };
 
     let release_file_layer = context.cached_layer(
@@ -303,6 +301,14 @@ async fn get_release(
             async_write(&raw_release_url_path, &release_file_url)
                 .await
                 .map_err(|e| CreatePackageIndexError::WriteReleaseLayer(raw_release_url_path, e))?;
+
+            // layer was not restored or ETag didn't match, download the full body
+            let response = client
+                .get(&release_file_url)
+                .send()
+                .await
+                .and_then(|res| res.error_for_status().map_err(Reqwest))
+                .map_err(CreatePackageIndexError::GetReleaseRequest)?;
 
             let unverified_response_body = response
                 .text()
