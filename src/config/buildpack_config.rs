@@ -172,7 +172,7 @@ install = [
 ]
 
 download = [
-  "http://some.url/path/to/package.deb"
+  "https://some.url/path/to/package.deb"
 ]
 
 [[com.heroku.buildpacks.deb-packages.sources]]
@@ -215,7 +215,7 @@ iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
                     }
                 ]),
                 download: IndexSet::from([DownloadUrl::from_str(
-                    "http://some.url/path/to/package.deb"
+                    "https://some.url/path/to/package.deb"
                 )
                 .unwrap()]),
                 sources: Vec::from([CustomSource {

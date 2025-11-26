@@ -30,10 +30,10 @@ impl FromStr for DownloadUrl {
             url: value.into(),
             reason: e.to_string(),
         })?;
-        if url.scheme() != "http" && url.scheme() != "https" {
+        if url.scheme() != "https" {
             return Err(ParseDownloadUrlError::InvalidUrl {
                 url: value.into(),
-                reason: "must start with `http://` or `https://`".into(),
+                reason: "must start with `https://`".into(),
             });
         }
         match std::path::Path::new(url.path()).extension() {
@@ -79,10 +79,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_valid_http_url() {
+    fn test_invalid_http_url() {
         let url = "http://example.com/package-1.2.3.deb";
-        let download_url = DownloadUrl::from_str(url).unwrap();
-        assert_eq!(download_url.to_string(), url);
+        let error = DownloadUrl::from_str(url).unwrap_err();
+        match error {
+            ParseDownloadUrlError::InvalidUrl { url: u, reason } => {
+                assert_eq!(u, url);
+                assert_eq!(reason, "must start with `https://`");
+            }
+            ParseDownloadUrlError::UnexpectedTomlValue(_) => panic!("Expected InvalidUrl error"),
+        }
     }
 
     #[test]
@@ -99,7 +105,7 @@ mod tests {
         match error {
             ParseDownloadUrlError::InvalidUrl { url: u, reason } => {
                 assert_eq!(u, url);
-                assert_eq!(reason, "must start with `http://` or `https://`");
+                assert_eq!(reason, "must start with `https://`");
             }
             ParseDownloadUrlError::UnexpectedTomlValue(_) => panic!("Expected InvalidUrl error"),
         }
