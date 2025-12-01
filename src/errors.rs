@@ -2902,11 +2902,11 @@ mod tests {
                 ! Failed to request package from download url
                 !
                 ! While installing packages, an error occurred while downloading the package at \
-                `https://example.com/custom-package.deb`. This error can occur due to an unstable network \
+                https://example.com/custom-package.deb. This error can occur due to an unstable network \
                 connection or an issue with site this package is hosted at.
                 !
                 ! Suggestions:
-                ! - Check if `https://example.com/custom-package.deb` can be downloaded locally or if there's an error.
+                ! - Check if https://example.com/custom-package.deb can be downloaded locally or if there's an error.
                 !
                 ! Use the debug information above to troubleshoot and retry your build.
                 !
