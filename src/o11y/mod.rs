@@ -45,6 +45,10 @@ pub(crate) const SOURCE_LIST: &str = formatcp!("{NAMESPACE}.source_list");
 // Useful for understanding what packages are commonly requested by users that may be candidates for inclusion in the base image
 pub(crate) const CONFIG_INSTALL: &str = formatcp!("{NAMESPACE}.config.install");
 
+// User requested debian urls for installation
+// Useful for understanding what custom urls are commonly requested by users
+pub(crate) const CONFIG_DOWNLOAD: &str = formatcp!("{NAMESPACE}.config.download");
+
 const RELEASE: &str = formatcp!("{NAMESPACE}.release");
 
 // The URI of the distribution release
@@ -94,6 +98,10 @@ pub(crate) const DOWNLOAD_PACKAGE_NAME: &str = formatcp!("{DOWNLOAD_PACKAGE}.nam
 // The version of the package being downloaded
 // Important for version tracking and compatibility verification
 pub(crate) const DOWNLOAD_PACKAGE_VERSION: &str = formatcp!("{DOWNLOAD_PACKAGE}.version");
+
+// The url of a debian package to download
+// Helps track individual download urls and potential issues
+pub(crate) const DOWNLOAD_PACKAGE_URL: &str = formatcp!("{DOWNLOAD_PACKAGE}.url");
 
 // The decoder being used for package extraction (e.g. "gzip", "xz", "zstd")
 // Helps track package format and extraction method

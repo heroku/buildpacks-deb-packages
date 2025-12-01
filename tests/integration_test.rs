@@ -578,6 +578,19 @@ fn custom_repository_for_noble_distro() {
     });
 }
 
+#[test]
+#[ignore = "integration test"]
+fn custom_deb_url_for_jammy_distro() {
+    if get_integration_test_builder().as_str() != "heroku/builder:22" {
+        return;
+    }
+    integration_test("fixtures/custom_deb_url_jammy", |ctx| {
+        assert_not_contains!(ctx.pack_stdout, "Determining packages to install"); // this test only exercises downloads, so no package solving is performed
+        assert_contains!(ctx.pack_stdout, "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb");
+        assert_contains!(ctx.run_shell_command("wkhtmltopdf --version").stdout, "wkhtmltopdf 0.12.6.1");
+    });
+}
+
 const DEFAULT_BUILDER: &str = "heroku/builder:24";
 
 fn get_integration_test_builder() -> String {

@@ -60,12 +60,16 @@ schema-version = "0.2"
 
 # buildpack configuration goes here
 [com.heroku.buildpacks.deb-packages]
+# one or more packages from Debian repositories can be provided with the following:
 install = [
     # string version of a dependency to install
     "package-name",
     # inline-table version of a dependency to install
     { name = "package-name", skip_dependencies = true, force = true }
 ]
+
+# one or more custom urls for Debian packages can be provided with the following:
+download = ["https://example.com/package-1.2.3.deb"]
 
 # one or more custom sources can be configured with the following:
 [[com.heroku.buildpacks.deb-packages.sources]]
@@ -108,6 +112,14 @@ signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
 
               If set to `true`, the package will be installed even if it's already installed on the system.
 
+    - `download` *__([array][toml-array], optional)__*
+
+      A list of one or more packages to install. Each package can be specified in either of the following formats:
+
+        - *__([string][toml-string])__*
+
+          The url to download the package from.
+
     - `sources` *__([array_of_tables][toml-array-of-tables], optional)__*
 
         - `uri` *__([string][toml-string], required)__*
@@ -141,12 +153,22 @@ signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
 > schema-version = "0.2"
 >
 > [com.heroku.buildpacks.deb-packages]
-> install = [
->   # copy the contents of your Aptfile here, e.g.;
->   # "package-a",
->   # "package-b",
->   # "package-c"
-> ]
+> # packages to install are listed here:
+> install = ["libexample-dev"]
+>
+> # links to specific .deb files are listed here:
+> download = ["https://downloads.example.com/example.deb"]
+>
+> # custom apt repos like ":repo:deb https://apt.example.com/ example-distro main" become:
+> [[com.heroku.buildpacks.deb-packages.sources]]
+> uri = "https://apt.example.com/"
+> suites = ["example-distro"]
+> components = ["main"]
+> arch = ["<architecture> (e.g.; amd64 or arm64)"]
+> signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+> <ASCII-armored GPG key>
+> -----END PGP PUBLIC KEY BLOCK-----
+>
 > ```
 >
 > If your Aptfile contains a package name that uses wildcards (e.g.; `mysql-*`) this must be replaced with the full list
@@ -229,15 +251,15 @@ For each package added after [determining the packages to install](#step-2-deter
   package.
 - Configure the following [layer environment variables][cnb-environment] to be available at both `build` and `launch`:
 
-| Environment Variable | Appended Values                                                                                                  | Contents         |
-|----------------------|------------------------------------------------------------------------------------------------------------------|------------------|
-| `PATH`               | `/<layer_dir>/bin` <br> `/<layer_dir>/usr/bin` <br> `/<layer_dir>/usr/sbin`                                      | binaries         |
-| `LD_LIBRARY_PATH`    | `/<layer_dir>/usr/lib/<arch>` <br> `/<layer_dir>/usr/lib` <br> `/<layer_dir>/lib/<arch>` <br> `/<layer_dir>/lib` | shared libraries |
-| `LIBRARY_PATH`       | Same as `LD_LIBRARY_PATH`                                                                                        | static libraries |
-| `INCLUDE_PATH`       | `/<layer_dir>/usr/include/<arch>` <br> `/<layer_dir>/usr/include`                                                | header files     |
-| `CPATH`              | Same as `INCLUDE_PATH`                                                                                           | header files     |
-| `CPPPATH`            | Same as `INCLUDE_PATH`                                                                                           | header files     |
-| `PKG_CONFIG_PATH`    | `/<layer_dir>/usr/lib/<arch>/pkgconfig` <br> `/<layer_dir>/usr/lib/pkgconfig`                                    | pc files         |
+| Environment Variable | Appended Values                                                                                                                                          | Contents         |
+|----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|
+| `PATH`               | `/<layer_dir>/bin` <br> `/<layer_dir>/usr/bin` <br> `/<layer_dir>/usr/sbin` <br> `/<layer_dir>/usr/local/bin` <br> `/<layer_dir>/usr/local/sbin`         | binaries         |
+| `LD_LIBRARY_PATH`    | `/<layer_dir>/usr/local/lib/<arch>` <br>`/<layer_dir>/usr/lib/<arch>` <br> `/<layer_dir>/usr/lib` <br> `/<layer_dir>/lib/<arch>` <br> `/<layer_dir>/lib` | shared libraries |
+| `LIBRARY_PATH`       | Same as `LD_LIBRARY_PATH`                                                                                                                                | static libraries |
+| `INCLUDE_PATH`       | `/<layer_dir>/usr/local/include/<arch>` <br>`/<layer_dir>/usr/include/<arch>` <br> `/<layer_dir>/usr/include`                                            | header files     |
+| `CPATH`              | Same as `INCLUDE_PATH`                                                                                                                                   | header files     |
+| `CPPPATH`            | Same as `INCLUDE_PATH`                                                                                                                                   | header files     |
+| `PKG_CONFIG_PATH`    | `/<layer_dir>/usr/local/lib/<arch>/pkgconfig` <br>`/<layer_dir>/usr/lib/<arch>/pkgconfig` <br> `/<layer_dir>/usr/lib/pkgconfig`                          | pc files         |
 
 ## Contributing
 

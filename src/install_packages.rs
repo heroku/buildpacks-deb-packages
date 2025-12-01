@@ -1,3 +1,4 @@
+use crate::config::download_url::DownloadUrl;
 use crate::debian::{Distro, MultiarchName, RepositoryPackage};
 use crate::o11y::*;
 use crate::{
@@ -27,6 +28,7 @@ use std::fs::File;
 use std::io::Write;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 use tokio::fs::{File as AsyncFile, read_to_string as async_read_to_string, write as async_write};
 use tokio::io::{BufReader as AsyncBufReader, BufWriter as AsyncBufWriter, copy as async_copy};
@@ -38,11 +40,13 @@ use tracing::{Instrument, info, instrument};
 use walkdir::{DirEntry, WalkDir};
 
 #[instrument(skip_all)]
+#[allow(clippy::too_many_lines)]
 pub(crate) async fn install_packages(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
     client: &ClientWithMiddleware,
     distro: &Distro,
     packages_to_install: Vec<RepositoryPackage>,
+    packages_to_download: IndexSet<DownloadUrl>,
 ) -> BuildpackResult<()> {
     print::header("Installing packages");
 
@@ -52,6 +56,10 @@ pub(crate) async fn install_packages(
             .map(|package| (package.name.clone(), package.sha256sum.clone()))
             .collect(),
         distro: distro.clone(),
+        download_urls: packages_to_download
+            .iter()
+            .map(ToString::to_string)
+            .collect(),
     };
 
     let install_layer = context.cached_layer(
@@ -102,6 +110,12 @@ pub(crate) async fn install_packages(
                     url = style::url(build_download_url(package_to_install))
                 ));
             }
+            for download_url in &packages_to_download {
+                print::sub_bullet(format!(
+                    "Package from {url}",
+                    url = style::url(download_url.to_string())
+                ));
+            }
 
             let timer = print::sub_start_timer("Downloading");
             install_layer.write_metadata(new_metadata)?;
@@ -112,7 +126,18 @@ pub(crate) async fn install_packages(
                 download_and_extract_handles.spawn(
                     download_and_extract(
                         client.clone(),
-                        repository_package.clone(),
+                        DownloadTask::Package(repository_package),
+                        install_layer.path(),
+                    )
+                    .in_current_span(),
+                );
+            }
+
+            for download_url in packages_to_download {
+                download_and_extract_handles.spawn(
+                    download_and_extract(
+                        client.clone(),
+                        DownloadTask::Url(download_url),
                         install_layer.path(),
                     )
                     .in_current_span(),
@@ -171,32 +196,57 @@ fn print_layer_contents(install_path: &Path) {
 #[instrument(skip_all)]
 async fn download_and_extract(
     client: ClientWithMiddleware,
-    repository_package: RepositoryPackage,
+    download_task: DownloadTask,
     install_dir: PathBuf,
 ) -> BuildpackResult<()> {
-    let download_path = download(client, &repository_package).await?;
+    let download_path = download(client, download_task).await?;
     extract(download_path, install_dir).await
 }
 
 #[instrument(skip_all)]
 async fn download(
     client: ClientWithMiddleware,
-    repository_package: &RepositoryPackage,
+    download_task: DownloadTask,
 ) -> BuildpackResult<PathBuf> {
-    info!(
-        { DOWNLOAD_PACKAGE_NAME } = %repository_package.name,
-        { DOWNLOAD_PACKAGE_VERSION } = %repository_package.version,
-        "downloading package"
-    );
-    let download_url = build_download_url(repository_package);
+    match &download_task {
+        DownloadTask::Package(repository_package) => {
+            info!(
+                { DOWNLOAD_PACKAGE_NAME } = %repository_package.name,
+                { DOWNLOAD_PACKAGE_VERSION } = %repository_package.version,
+                "downloading package"
+            );
+        }
+        DownloadTask::Url(download_url) => {
+            info!(
+                { DOWNLOAD_PACKAGE_URL } = %download_url.to_string(),
+                "downloading package"
+            );
+        }
+    }
 
-    let download_file_name = PathBuf::from(repository_package.filename.as_str())
-        .file_name()
-        .map(ToOwned::to_owned)
-        .ok_or(InstallPackagesError::InvalidFilename(
-            repository_package.name.clone(),
-            repository_package.filename.clone(),
-        ))?;
+    let download_url = match &download_task {
+        DownloadTask::Package(repository_package) => build_download_url(repository_package),
+        DownloadTask::Url(download_url) => download_url.to_string(),
+    };
+
+    let download_file_name = match &download_task {
+        DownloadTask::Package(repository_package) => {
+            PathBuf::from(repository_package.filename.as_str())
+                .file_name()
+                .map(ToOwned::to_owned)
+                .ok_or(InstallPackagesError::InvalidFilename(
+                    repository_package.name.clone(),
+                    repository_package.filename.clone(),
+                ))?
+        }
+        DownloadTask::Url(download_url) => match download_url.filename().map(OsString::from_str) {
+            Some(Ok(filename)) => filename,
+            _ => Err(InstallPackagesError::InvalidFilename(
+                download_url.to_string(),
+                download_url.filename().unwrap_or("<empty>").to_string(),
+            ))?,
+        },
+    };
 
     let download_path = temp_dir().join::<&Path>(download_file_name.as_ref());
 
@@ -205,20 +255,32 @@ async fn download(
         .send()
         .await
         .and_then(|res| res.error_for_status().map_err(Reqwest))
-        .map_err(|e| InstallPackagesError::RequestPackage(repository_package.clone(), e))?;
+        .map_err(|e| match &download_task {
+            DownloadTask::Package(repository_package) => {
+                InstallPackagesError::RequestPackage(repository_package.clone(), e)
+            }
+            DownloadTask::Url(download_url) => {
+                InstallPackagesError::RequestPackageUrl(download_url.clone(), e)
+            }
+        })?;
 
     let mut hasher = Sha256::new();
 
+    let on_write_error_handler = |e| match &download_task {
+        DownloadTask::Package(repository_package) => InstallPackagesError::WritePackage(
+            repository_package.clone(),
+            download_url.clone(),
+            download_path.clone(),
+            e,
+        ),
+        DownloadTask::Url(download_url) => {
+            InstallPackagesError::WritePackageUrl(download_url.clone(), download_path.clone(), e)
+        }
+    };
+
     let mut writer = AsyncFile::create(&download_path)
         .await
-        .map_err(|e| {
-            InstallPackagesError::WritePackage(
-                repository_package.clone(),
-                download_url.clone(),
-                download_path.clone(),
-                e,
-            )
-        })
+        .map_err(on_write_error_handler)
         .map(AsyncBufWriter::new)?;
 
     // the inspect reader lets us pipe the response to both the output file and the hash digest
@@ -233,24 +295,21 @@ async fn download(
         |bytes| hasher.update(bytes),
     ));
 
-    async_copy(&mut reader, &mut writer).await.map_err(|e| {
-        InstallPackagesError::WritePackage(
-            repository_package.clone(),
-            download_url.clone(),
-            download_path.clone(),
-            e,
-        )
-    })?;
+    async_copy(&mut reader, &mut writer)
+        .await
+        .map_err(on_write_error_handler)?;
 
-    let calculated_hash = format!("{:x}", hasher.finalize());
-    let hash = repository_package.sha256sum.clone();
+    if let DownloadTask::Package(repository_package) = &download_task {
+        let calculated_hash = format!("{:x}", hasher.finalize());
+        let hash = repository_package.sha256sum.clone();
 
-    if hash != calculated_hash {
-        Err(InstallPackagesError::ChecksumFailed {
-            url: download_url,
-            expected: hash,
-            actual: calculated_hash,
-        })?;
+        if hash != calculated_hash {
+            Err(InstallPackagesError::ChecksumFailed {
+                url: download_url,
+                expected: hash,
+                actual: calculated_hash,
+            })?;
+        }
     }
 
     Ok(download_path)
@@ -324,12 +383,16 @@ fn configure_layer_environment(install_path: &Path, multiarch_name: &MultiarchNa
         install_path.join("bin"),
         install_path.join("usr/bin"),
         install_path.join("usr/sbin"),
+        install_path.join("usr/local/bin"),
+        install_path.join("usr/local/sbin"),
     ];
     prepend_to_env_var(&mut layer_env, "PATH", &bin_paths);
 
     // support multi-arch and legacy filesystem layouts for debian packages
     // https://wiki.ubuntu.com/MultiarchSpec
     let library_paths = [
+        install_path.join(format!("usr/local/lib/{multiarch_name}")),
+        install_path.join("usr/local/lib"),
         install_path.join(format!("usr/lib/{multiarch_name}")),
         install_path.join("usr/lib"),
         install_path.join(format!("lib/{multiarch_name}")),
@@ -347,6 +410,8 @@ fn configure_layer_environment(install_path: &Path, multiarch_name: &MultiarchNa
     prepend_to_env_var(&mut layer_env, "LIBRARY_PATH", &library_paths);
 
     let include_paths = [
+        install_path.join(format!("usr/local/include/{multiarch_name}")),
+        install_path.join("usr/local/include"),
         install_path.join(format!("usr/include/{multiarch_name}")),
         install_path.join("usr/include"),
     ]
@@ -363,6 +428,8 @@ fn configure_layer_environment(install_path: &Path, multiarch_name: &MultiarchNa
     prepend_to_env_var(&mut layer_env, "CPPPATH", &include_paths);
 
     let pkg_config_paths = [
+        install_path.join(format!("usr/local/lib/{multiarch_name}/pkgconfig")),
+        install_path.join("usr/local/lib/pkgconfig"),
         install_path.join(format!("usr/lib/{multiarch_name}/pkgconfig")),
         install_path.join("usr/lib/pkgconfig"),
     ];
@@ -496,7 +563,9 @@ pub(crate) enum InstallPackagesError {
     TaskFailed(JoinError),
     InvalidFilename(String, String),
     RequestPackage(RepositoryPackage, reqwest_middleware::Error),
+    RequestPackageUrl(DownloadUrl, reqwest_middleware::Error),
     WritePackage(RepositoryPackage, String, PathBuf, std::io::Error),
+    WritePackageUrl(DownloadUrl, PathBuf, std::io::Error),
     ChecksumFailed {
         url: String,
         expected: String,
@@ -522,6 +591,12 @@ impl From<InstallPackagesError> for libcnb::Error<DebianPackagesBuildpackError> 
 struct InstallationMetadata {
     package_checksums: HashMap<String, String>,
     distro: Distro,
+    download_urls: Vec<String>,
+}
+
+enum DownloadTask {
+    Package(RepositoryPackage),
+    Url(DownloadUrl),
 }
 
 #[cfg(test)]
@@ -552,6 +627,8 @@ mod test {
         assert_eq!(
             split_into_paths(layer_env.apply_to_empty(Scope::All).get("LD_LIBRARY_PATH")),
             vec![
+                install_path.join(format!("usr/local/lib/{arch}")),
+                install_path.join("usr/local/lib"),
                 install_path.join(format!("usr/lib/{arch}/nested-1")),
                 install_path.join(format!("usr/lib/{arch}")),
                 install_path.join("usr/lib/nested-2"),
@@ -580,6 +657,8 @@ mod test {
         assert_eq!(
             split_into_paths(layer_env.apply_to_empty(Scope::All).get("INCLUDE_PATH")),
             vec![
+                install_path.join(format!("usr/local/include/{arch}")),
+                install_path.join("usr/local/include"),
                 install_path.join(format!("usr/include/{arch}/nested-1")),
                 install_path.join(format!("usr/include/{arch}")),
                 install_path.join("usr/include/nested-2/deeply"),
