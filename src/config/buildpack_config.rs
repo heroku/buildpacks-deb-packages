@@ -1,5 +1,6 @@
 use crate::DebianPackagesBuildpackError;
 use crate::config::custom_source::{CustomSource, ParseCustomSourceError};
+use crate::config::download_url::{DownloadUrl, ParseDownloadUrlError};
 use crate::config::{ParseRequestedPackageError, RequestedPackage};
 use indexmap::IndexSet;
 use std::fs;
@@ -13,6 +14,7 @@ pub(crate) const NAMESPACED_CONFIG: &str = "com.heroku.buildpacks.deb-packages";
 pub(crate) struct BuildpackConfig {
     pub(crate) install: IndexSet<RequestedPackage>,
     pub(crate) sources: Vec<CustomSource>,
+    pub(crate) download: IndexSet<DownloadUrl>,
 }
 
 impl BuildpackConfig {
@@ -52,6 +54,7 @@ impl TryFrom<&dyn TableLike> for BuildpackConfig {
     fn try_from(config_item: &dyn TableLike) -> Result<Self, Self::Error> {
         let mut install = IndexSet::new();
         let mut sources = Vec::new();
+        let mut download = IndexSet::new();
 
         if let Some(install_values) = config_item.get("install").and_then(|item| item.as_array()) {
             for install_value in install_values {
@@ -74,7 +77,21 @@ impl TryFrom<&dyn TableLike> for BuildpackConfig {
             }
         }
 
-        Ok(BuildpackConfig { install, sources })
+        if let Some(download_values) = config_item.get("download").and_then(|item| item.as_array())
+        {
+            for download_value in download_values {
+                download.insert(
+                    DownloadUrl::try_from(download_value)
+                        .map_err(|e| Self::Error::ParseDownloadUrl(Box::new(e)))?,
+                );
+            }
+        }
+
+        Ok(BuildpackConfig {
+            install,
+            sources,
+            download,
+        })
     }
 }
 
@@ -90,6 +107,7 @@ pub(crate) enum ParseConfigError {
     MissingNamespacedConfig,
     ParseRequestedPackage(Box<ParseRequestedPackageError>),
     ParseCustomSource(Box<ParseCustomSourceError>),
+    ParseDownloadUrl(Box<ParseDownloadUrlError>),
     WrongConfigType,
 }
 
@@ -153,6 +171,10 @@ install = [
     { name = "package3", skip_dependencies = true, force = true },
 ]
 
+download = [
+  "https://some.url/path/to/package.deb"
+]
+
 [[com.heroku.buildpacks.deb-packages.sources]]
 uri = "http://archive.ubuntu.com/ubuntu"
 suites = ["main"]
@@ -192,6 +214,10 @@ iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
                         force: true,
                     }
                 ]),
+                download: IndexSet::from([DownloadUrl::from_str(
+                    "https://some.url/path/to/package.deb"
+                )
+                .unwrap()]),
                 sources: Vec::from([CustomSource {
                     uri: "http://archive.ubuntu.com/ubuntu".into(),
                     suites: vec!["main".into()],
@@ -199,7 +225,7 @@ iGa6i2oLaGzGaQZDpdqyQZiYpQEYw9xN+8g=
                     arch: vec![AMD_64, ARM_64],
                     signed_by: indoc! { "
                         -----BEGIN PGP PUBLIC KEY BLOCK-----
-                       
+
                         NxRt3Z+7w5HMIN2laKp+ItxloPWGBdcHU4o2ZnWgsVT8Y/a+RED75DDbAQ6lS3fV
                         sSlmQLExcf75qOPy34XNv3gWP4tbfIXXt8olflF8hwHggmKZzEImnzEozPabDsN7
                         nkhHZEWhGcPRcuHbFOqcirV1sfsKK1gOsTbxS00iD3OivOFCQqujF196cal/utTd

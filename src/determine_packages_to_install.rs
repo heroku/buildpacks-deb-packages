@@ -17,6 +17,10 @@ pub(crate) fn determine_packages_to_install(
     package_index: &PackageIndex,
     requested_packages: IndexSet<RequestedPackage>,
 ) -> BuildpackResult<Vec<RepositoryPackage>> {
+    if requested_packages.is_empty() {
+        return Ok(vec![]);
+    }
+
     print::header("Determining packages to install");
     print::bullet("Collecting system install information");
     let system_packages_path = PathBuf::from("/var/lib/dpkg/status");

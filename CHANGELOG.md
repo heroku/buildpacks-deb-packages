@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support download and install of `.deb` packages from a custom url. ([#141](https://github.com/heroku/buildpacks-deb-packages/pull/141))
+
 ## [0.2.0] - 2025-07-03
 
 ### Added

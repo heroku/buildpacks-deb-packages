@@ -119,7 +119,7 @@ impl Buildpack for DebianPackagesBuildpack {
 
         let config = BuildpackConfig::try_from(context.app_dir.join("project.toml"))?;
 
-        if config.install.is_empty() {
+        if config.install.is_empty() && config.download.is_empty() {
             info!({ EARLY_EXIT_REASON } = "nothing_to_install", "early exit");
 
             print::plain(style::important(empty_config_help_message()));
@@ -147,6 +147,7 @@ impl Buildpack for DebianPackagesBuildpack {
             { DISTRO_ARCH } = %distro.architecture,
             { SOURCE_LIST } = as_json_value(&source_list),
             { CONFIG_INSTALL } = as_json_value(&config.install.iter().collect::<Vec<_>>()),
+            { CONFIG_DOWNLOAD } = as_json_value(&config.download.iter().map(ToString::to_string).collect::<Vec<_>>()),
             "configuration"
         );
 
@@ -166,6 +167,7 @@ impl Buildpack for DebianPackagesBuildpack {
             &client,
             &distro,
             packages_to_install,
+            config.download,
         ))?;
 
         print::all_done(&Some(started));
