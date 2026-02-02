@@ -19,7 +19,7 @@ indoc = "2"
 libcnb = { version = "0.29", features = ["trace"] }
 rayon = "1"
 reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
-reqwest-middleware = "0.4"
+reqwest-middleware = "0.5"
 reqwest-retry = "0.8"
 reqwest-tracing = "0.5"
 serde = { version = "1", features = ["derive"] }
