@@ -50,11 +50,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      # The pack CLI has performance issues with containerd. Disabling it for now.
       - name: Disable containerd snapshotter feature
         run: |
           docker info -f '{{ .DriverStatus }}'
           sudo systemctl stop docker
-          (sudo test -f /etc/docker/daemon.json && sudo cat /etc/docker/daemon.json || echo '{}') | jq '.features |= (. // {}) | .features."containerd-snapshotter" = false' | sudo tee /etc/docker/daemon.json
+          (sudo test -f /etc/docker/daemon.json && sudo cat /etc/docker/daemon.json || echo '{}') \
+            | jq '.features |= (. // {}) | .features."containerd-snapshotter" = false' \
+            | sudo tee /etc/docker/daemon.json
           sudo systemctl start docker
           docker info -f '{{ .DriverStatus }}'
       # The dpkg man-db trigger is excessively slow on GHA runners, see e.g.:
