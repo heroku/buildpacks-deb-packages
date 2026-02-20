@@ -1,18 +1,14 @@
 name: CI
-
 on:
   push:
     # Avoid duplicate builds on PRs.
     branches:
       - main
   pull_request:
-
 permissions:
   contents: read
-
 env:
   CARGO_TERM_COLOR: always
-
 jobs:
   lint:
     runs-on: ubuntu-24.04
@@ -27,7 +23,6 @@ jobs:
         run: cargo clippy --all-targets --locked -- --deny warnings
       - name: rustfmt
         run: cargo fmt -- --check
-
   unit-test:
     runs-on: ubuntu-24.04
     steps:
@@ -39,7 +34,6 @@ jobs:
         uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
       - name: Run unit tests
         run: cargo test --locked
-
   integration-test:
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     strategy:
@@ -56,6 +50,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Disable containerd snapshotter feature
+        run: |
+          docker info -f '{{ .DriverStatus }}'
+          sudo systemctl stop docker
+          (sudo test -f /etc/docker/daemon.json && sudo cat /etc/docker/daemon.json || echo '{}') | jq '.features |= (. // {}) | .features."containerd-snapshotter" = false' | sudo tee /etc/docker/daemon.json
+          sudo systemctl start docker
+          docker info -f '{{ .DriverStatus }}'
       # The dpkg man-db trigger is excessively slow on GHA runners, see e.g.:
       # https://github.com/actions/runner-images/issues/10977
       # https://github.com/actions/runner/issues/4030
