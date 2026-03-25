@@ -34,7 +34,7 @@ tracing = "0.1"
 walkdir = "2"
 
 [dev-dependencies]
-libcnb-test = "0.29"
+libcnb-test = "0.30"
 regex = "1"
 tempfile = "3"
 
