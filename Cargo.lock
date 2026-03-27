@@ -311,6 +311,7 @@ dependencies = [
  "debversion",
  "edit-distance",
  "futures 0.3.32",
+ "hex",
  "indexmap",
  "indoc",
  "libcnb",

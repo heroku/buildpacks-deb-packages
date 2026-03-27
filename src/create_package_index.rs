@@ -263,7 +263,7 @@ async fn get_release(
 
     // it would be nice to use the url as the layer name but urls don't make for good file names
     // so instead we'll convert the url to a sha256 hex value
-    let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&release_file_url)))
+    let layer_name = LayerName::from_str(&hex::encode(Sha256::digest(&release_file_url)))
         .map_err(|e| CreatePackageIndexError::InvalidLayerName(release_file_url.clone(), e))?;
 
     let new_metadata = ReleaseFileMetadata {
@@ -390,7 +390,7 @@ async fn get_package_list(
 
     // it would be nice to use the url as the layer name but urls don't make for good file names
     // so instead we'll convert the url to a sha256 hex value
-    let layer_name = LayerName::from_str(&format!("{:x}", Sha256::digest(&package_index_url)))
+    let layer_name = LayerName::from_str(&hex::encode(Sha256::digest(&package_index_url)))
         .map_err(|e| CreatePackageIndexError::InvalidLayerName(package_index_url.clone(), e))?;
 
     let new_metadata = PackageIndexMetadata { hash: hash.clone() };
@@ -472,7 +472,7 @@ async fn get_package_list(
                 )
             })?;
 
-            let calculated_hash = format!("{:x}", hasher.finalize());
+            let calculated_hash = hex::encode(hasher.finalize());
 
             if hash != calculated_hash {
                 Err(CreatePackageIndexError::ChecksumFailed {

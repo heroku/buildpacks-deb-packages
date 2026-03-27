@@ -300,7 +300,7 @@ async fn download(
         .map_err(on_write_error_handler)?;
 
     if let DownloadTask::Package(repository_package) = &download_task {
-        let calculated_hash = format!("{:x}", hasher.finalize());
+        let calculated_hash = hex::encode(hasher.finalize());
         let hash = repository_package.sha256sum.clone();
 
         if hash != calculated_hash {
