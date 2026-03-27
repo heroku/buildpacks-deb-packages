@@ -9,6 +9,9 @@ updates:
       - "rust"
       - "skip changelog"
     groups:
+      libcnb:
+        patterns:
+          - "libcnb*"
       rust-dependencies:
         update-types:
           - "minor"
