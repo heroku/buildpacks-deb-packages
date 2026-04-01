@@ -25,11 +25,12 @@ for target in $(yq --exit-status --output-format json --indent 0 '.targets[]' "$
     key_output="${name}_${version}_${os}_${arch}"
 
     echo "Extracting keyring from $docker_image ($platform)..."
+
     docker run \
       --volume "$volume_external:$volume_internal:rw" \
       --platform "$platform" \
       --rm -it "$docker_image" \
-      bash -c "apt update && apt install -y gnupg && apt-key export 'ftpmaster@ubuntu.com' > /$volume_internal/$key_output"
+      bash -c "apt update && apt install -y gnupg && gpg --no-default-keyring --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg --export --armor 'ftpmaster@ubuntu.com' > $volume_internal/$key_output"
 
     checksum=$(md5sum "$volume_external/$key_output" | cut -d ' ' -f 1)
     mv "$volume_external/$key_output" "$volume_external/$key_output.$checksum.asc"

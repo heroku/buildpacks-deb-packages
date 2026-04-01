@@ -18,6 +18,7 @@ impl Distro {
         let source_list = match self.codename {
             DistroCodename::Jammy => get_jammy_source_list(),
             DistroCodename::Noble => get_noble_source_list(),
+            DistroCodename::Resolute => get_resolute_source_list(),
         };
 
         source_list
@@ -54,6 +55,12 @@ impl TryFrom<&Target> for Distro {
                 version,
                 architecture,
                 codename: DistroCodename::Noble,
+            }),
+            ("ubuntu", "26.04") => Ok(Distro {
+                name,
+                version,
+                architecture,
+                codename: DistroCodename::Resolute,
             }),
             _ => Err(UnsupportedDistroError {
                 name,
@@ -111,6 +118,40 @@ fn get_noble_source_list() -> Vec<Source> {
             vec!["noble", "noble-updates", "noble-security"],
             vec!["main", "universe"],
             include_str!("../../keys/ubuntu_24.04.asc"),
+            ARM_64,
+        ),
+    ]
+}
+
+fn get_resolute_source_list() -> Vec<Source> {
+    vec![
+        Source::new(
+            // see note above for why http is used here instead of https
+            "http://archive.ubuntu.com/ubuntu",
+            vec!["resolute", "resolute-updates", "resolute-backports"],
+            vec!["main", "universe"],
+            include_str!("../../keys/ubuntu_26.04.asc"),
+            AMD_64,
+        ),
+        Source::new(
+            // see note above for why http is used here instead of https
+            "http://security.ubuntu.com/ubuntu",
+            vec!["resolute-security"],
+            vec!["main", "universe"],
+            include_str!("../../keys/ubuntu_26.04.asc"),
+            AMD_64,
+        ),
+        Source::new(
+            // see note above for why http is used here instead of https
+            "http://ports.ubuntu.com/ubuntu-ports",
+            vec![
+                "resolute",
+                "resolute-updates",
+                "resolute-backports",
+                "resolute-security",
+            ],
+            vec!["main", "universe"],
+            include_str!("../../keys/ubuntu_26.04.asc"),
             ARM_64,
         ),
     ]

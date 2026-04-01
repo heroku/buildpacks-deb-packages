@@ -12,6 +12,10 @@ use libcnb::build::{BuildContext, BuildResult, BuildResultBuilder};
 use libcnb::detect::{DetectContext, DetectResult, DetectResultBuilder};
 use libcnb::generic::{GenericMetadata, GenericPlatform};
 use libcnb::{Buildpack, Env, buildpack_main};
+#[cfg(test)]
+use libcnb_test as _;
+#[cfg(test)]
+use regex as _;
 use reqwest::Client;
 use reqwest_middleware::ClientBuilder;
 use reqwest_retry::RetryTransientMiddleware;
@@ -22,11 +26,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
-
-#[cfg(test)]
-use libcnb_test as _;
-#[cfg(test)]
-use regex as _;
 
 mod config;
 mod create_package_index;

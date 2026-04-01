@@ -21,6 +21,7 @@ use reqwest::header::ETAG;
 use reqwest_middleware::ClientWithMiddleware;
 use reqwest_middleware::Error::Reqwest;
 use sequoia_openpgp::Cert;
+use sequoia_openpgp::cert::CertParser;
 use sequoia_openpgp::parse::Parse;
 use sequoia_openpgp::parse::stream::VerifierBuilder;
 use sequoia_openpgp::policy::StandardPolicy;
@@ -311,9 +312,11 @@ async fn get_release(
 
             // GPG verification
             let policy = StandardPolicy::new();
-            let cert_helper = Cert::from_str(&signed_by)
-                .map_err(CreatePackageIndexError::CreatePgpCertificate)
-                .map(CertHelper::new)?;
+            let certs: Vec<Cert> = CertParser::from_bytes(signed_by.as_bytes())
+                .map_err(CreatePackageIndexError::CreatePgpCertificate)?
+                .collect::<sequoia_openpgp::Result<Vec<Cert>>>()
+                .map_err(CreatePackageIndexError::CreatePgpCertificate)?;
+            let cert_helper = CertHelper::new(certs);
 
             let mut reader = FuturesAsyncReadCompatExt::compat(AllowStdIo::new(
                 VerifierBuilder::from_bytes(&unverified_response_body)
@@ -543,6 +546,7 @@ async fn read_packages(
         let (errors, packages): (Vec<_>, Vec<_>) = contents
             .trim()
             .split("\n\n")
+            .filter(|entry| !entry.is_empty())
             .par_bridge()
             .into_par_iter()
             .partition_map(|package_data| {

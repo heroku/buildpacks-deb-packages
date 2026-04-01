@@ -2,12 +2,12 @@ use sequoia_openpgp::parse::stream::{MessageLayer, MessageStructure, Verificatio
 use sequoia_openpgp::{Cert, KeyHandle, Result};
 
 pub(crate) struct CertHelper {
-    cert: Cert,
+    certs: Vec<Cert>,
 }
 
 impl CertHelper {
-    pub(crate) fn new(cert: Cert) -> CertHelper {
-        CertHelper { cert }
+    pub(crate) fn new(certs: Vec<Cert>) -> CertHelper {
+        CertHelper { certs }
     }
 }
 
@@ -15,7 +15,7 @@ impl CertHelper {
 // https://gitlab.com/sequoia-pgp/sequoia/-/blob/main/openpgp/examples/generate-sign-verify.rs
 impl VerificationHelper for CertHelper {
     fn get_certs(&mut self, _: &[KeyHandle]) -> Result<Vec<Cert>> {
-        Ok(vec![self.cert.clone()])
+        Ok(self.certs.clone())
     }
 
     fn check(&mut self, structure: MessageStructure) -> Result<()> {
