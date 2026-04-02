@@ -8,7 +8,8 @@ use crate::errors::ErrorType::{Framework, Internal, UserFacing};
 use crate::install_packages::InstallPackagesError;
 use crate::{DebianPackagesBuildpackError, DetectError};
 use bon::builder;
-use bullet_stream::{global::print, style};
+use bullet_stream::{Print, global::print, style};
+use std::fmt;
 use indoc::{formatdoc, indoc};
 use libcnb::Error;
 use std::collections::BTreeSet;
@@ -1011,6 +1012,20 @@ fn get_package_search_url() -> String {
 struct ErrorMessage {
     debug_info: Option<String>,
     message: String,
+}
+
+impl fmt::Display for ErrorMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut log = Print::new(vec![]).without_header();
+        if let Some(debug_info) = &self.debug_info {
+            log = log
+                .bullet(style::important("Debug Info:"))
+                .sub_bullet(debug_info)
+                .done();
+        }
+        let output = log.error(&self.message);
+        write!(f, "{}", String::from_utf8_lossy(&output))
+    }
 }
 
 #[derive(Debug, PartialEq)]
