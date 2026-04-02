@@ -1,0 +1,17 @@
+---
+source: src/errors.rs
+---
+- Debug Info:
+  - Invalid Value: 623e1a2085e65abc3dc626a97909466ce19efe37f7a6529a842c290fcfc65b3b
+
+! Invalid layer name
+!
+! For caching purposes, a unique layer name is generated for Debian Release files and Package indices based on their download urls. The generated name for the following url was invalid:
+! - http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease
+!
+! You can find the invalid layer name in the debug information above.
+!
+! The causes for this error are unknown. We do not have suggestions for diagnosis or a workaround at this time. You can help our understanding by sharing your buildpack log and a description of the issue at:
+! https://github.com/heroku/buildpacks-deb-packages/issues/new
+!
+! If you're able to reproduce the problem with an example application and the `pack` build tool (https://buildpacks.io/docs/for-platform-operators/how-to/integrate-ci/pack/), adding that information to the discussion will also help. Once we have more information around the causes of this error we may update this message.

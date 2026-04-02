@@ -1,0 +1,11 @@
+---
+source: src/errors.rs
+---
+- Debug Info:
+  - test I/O error
+
+! Unable to complete buildpack detection
+!
+! An unexpected I/O error occurred while checking `/path/to/project.toml` to determine if the Heroku .deb Packages buildpack is compatible for this application.
+!
+! Use the debug information above to troubleshoot and retry your build.

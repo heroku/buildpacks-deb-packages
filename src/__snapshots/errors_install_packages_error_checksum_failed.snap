@@ -1,0 +1,12 @@
+---
+source: src/errors.rs
+---
+! Package checksum verification failed
+!
+! An error occurred while verifying the checksum of the package at http://archive.ubuntu.com/ubuntu/dists/jammy/some-package.tgz. This error can occur due to an issue with the upstream Debian package repository.
+!
+! Checksum:
+! - Expected: `7931f51fd704f93171f36f5f6f1d7b7b`
+! - Actual: `19a47cdb280539511523382fa1cabbe5`
+!
+! Use the debug information above to troubleshoot and retry your build.

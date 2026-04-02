@@ -1,0 +1,17 @@
+---
+source: src/errors.rs
+---
+- Debug Info:
+  - Failed to parse an APT value
+
+! Failed to parse Release file data
+!
+! We couldn't parse the Release file data stored in `/path/to/layer/release-file`. This error is most likely a buildpack bug. It can also be caused by cached data that's no longer valid or an issue with the upstream repository.
+!
+! Suggestions:
+! - Run the build again with a clean cache.
+!
+! Use the debug information above to troubleshoot and retry your build.
+!
+! If the issue persists and you think you found a bug in the buildpack, reproduce the issue locally with a minimal example. Open an issue in the buildpack's GitHub repository and include the details here:
+! https://github.com/heroku/buildpacks-deb-packages/issues/new
