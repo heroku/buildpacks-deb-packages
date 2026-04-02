@@ -1,0 +1,12 @@
+---
+source: src/errors.rs
+---
+! Package Index checksum verification failed
+!
+! While updating package sources, an error occurred while verifying the checksum of the Package Index at http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/d41d8cd98f00b204e9800998ecf8427e. This error can occur due to an issue with the upstream Debian package repository.
+!
+! Checksum:
+! - Expected: `d41d8cd98f00b204e9800998ecf8427e`
+! - Actual: `e62ff0123a74adfc6903d59a449cbdb0`
+!
+! Use the debug information above to troubleshoot and retry your build.

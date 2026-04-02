@@ -1,0 +1,18 @@
+---
+source: src/errors.rs
+---
+- Debug Info:
+  - TOML parse error at line 1, column 12
+      |
+    1 | [com.heroku
+      |            ^
+    unclosed table, expected `]`
+
+! Error parsing `/path/to/project.toml` with invalid TOML file
+!
+! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to complete the build but this file isn't a valid TOML file.
+!
+! Suggestions:
+! - Ensure the file follows the TOML format described at https://toml.io/en/v1.0.0
+!
+! Use the debug information above to troubleshoot and retry your build.

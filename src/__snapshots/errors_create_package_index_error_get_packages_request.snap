@@ -1,0 +1,17 @@
+---
+source: src/errors.rs
+---
+- Debug Info:
+  - error sending request for url (https://test/error)
+
+! Failed to request Package Index file
+!
+! While updating package sources, a request to download a Package Index file failed. This error can occur due to an unstable network connection or an issue with the upstream Debian package repository.
+!
+! Suggestions:
+! - Check the status of https://status.canonical.com/ for any reported issues.
+!
+! Use the debug information above to troubleshoot and retry your build.
+!
+! If the issue persists and you think you found a bug in the buildpack, reproduce the issue locally with a minimal example. Open an issue in the buildpack's GitHub repository and include the details here:
+! https://github.com/heroku/buildpacks-deb-packages/issues/new

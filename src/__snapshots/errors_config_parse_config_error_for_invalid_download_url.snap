@@ -1,0 +1,13 @@
+---
+source: src/errors.rs
+---
+! Error parsing `/path/to/project.toml` with invalid download url
+!
+! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to complete the build but we found an invalid download url `not a url` in the key `[com.heroku.buildpacks.deb-packages]`.
+!
+! Validation error: relative URL without a base
+!
+! Suggestions:
+! - Verify the download url is valid.
+!
+! Use the debug information above to troubleshoot and retry your build.
