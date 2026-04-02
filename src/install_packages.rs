@@ -34,6 +34,7 @@ use tokio::fs::{File as AsyncFile, read_to_string as async_read_to_string, write
 use tokio::io::{BufReader as AsyncBufReader, BufWriter as AsyncBufWriter, copy as async_copy};
 use tokio::task::{JoinError, JoinSet};
 use tokio_tar::Archive as TarArchive;
+use tokio_util::bytes::Bytes;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
 use tracing::{Instrument, info, instrument};
@@ -300,7 +301,7 @@ async fn download(
         .map_err(on_write_error_handler)?;
 
     if let DownloadTask::Package(repository_package) = &download_task {
-        let calculated_hash = hex::encode(hasher.finalize());
+        let calculated_hash = format!("{:x}", Bytes::copy_from_slice(hasher.finalize().as_slice()));
         let hash = repository_package.sha256sum.clone();
 
         if hash != calculated_hash {
