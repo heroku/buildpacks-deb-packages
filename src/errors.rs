@@ -303,6 +303,7 @@ fn on_unsupported_distro_error(error: UnsupportedDistroError) -> ErrorMessage {
             The {BUILDPACK_NAME} doesn't support the {name} {version} ({architecture}) distribution.
 
             Supported distributions:
+            - Ubuntu 26.04 (amd64, arm64)
             - Ubuntu 24.04 (amd64, arm64)
             - Ubuntu 22.04 (amd64)
         " })
@@ -1870,6 +1871,7 @@ mod tests {
                 This buildpack only supports the following distributions:
                 - Ubuntu 22.04 (amd64)
                 - Ubuntu 24.04 (amd64, arm64)
+                - Ubuntu 26.04 (amd64, arm64)
 
                 Anything else is unsupported. This error is unlikely to be seen by an end-user but may
                 be helpful for developers hacking on this buildpack. Tools like pack also validate
@@ -1886,6 +1888,7 @@ mod tests {
                 ! The Heroku .deb Packages buildpack doesn't support the Windows XP (x86) distribution.
                 !
                 ! Supported distributions:
+                ! - Ubuntu 26.04 (amd64, arm64)
                 ! - Ubuntu 24.04 (amd64, arm64)
                 ! - Ubuntu 22.04 (amd64)
                 !

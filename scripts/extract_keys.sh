@@ -29,7 +29,7 @@ for target in $(yq --exit-status --output-format json --indent 0 '.targets[]' "$
     docker run \
       --volume "$volume_external:$volume_internal:rw" \
       --platform "$platform" \
-      --rm -it "$docker_image" \
+      --rm "$docker_image" \
       bash -c "apt update && apt install -y gnupg && gpg --no-default-keyring --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg --export --armor 'ftpmaster@ubuntu.com' > $volume_internal/$key_output"
 
     checksum=$(md5sum "$volume_external/$key_output" | cut -d ' ' -f 1)

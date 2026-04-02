@@ -10,7 +10,7 @@ error_with_usage() {
   echo "$message"
   echo
   echo "Usage:"
-  echo "${BASH_SOURCE[0]} <package_name> <jammy | noble> <linux/arm64 | linux/amd64>"
+  echo "${BASH_SOURCE[0]} <package_name> <jammy | noble | resolute> <linux/arm64 | linux/amd64>"
   echo
   echo "Given:"
   echo "${BASH_SOURCE[0]} ${args[0]:-"<missing arg>"} ${args[1]:-"<missing arg>"} ${args[2]:-"<missing arg>"}"
@@ -32,8 +32,11 @@ case "$2" in
   "noble")
     docker_image="ubuntu:24.04"
     ;;
+  "resolute")
+    docker_image="ubuntu:26.04"
+    ;;
   *)
-    error_with_usage "Expected argument #1 to be either jammy or noble but it was $2!"
+    error_with_usage "Expected argument #1 to be either jammy, noble, or resolute but it was $2!"
     ;;
 esac
 
@@ -76,6 +79,6 @@ docker run \
   --volume "$external_output_dir:$internal_output_dir:rw" \
   --volume "$external_script_dir:$internal_script_dir:rw" \
   --platform "$platform" \
-  --rm -it "$docker_image" \
+  --rm "$docker_image" \
   "$internal_script_dir/run.sh"
 echo "Saved to $external_output_dir/$package_name"

@@ -19,6 +19,8 @@ This buildpack is compatible with the following environments:
 
 | OS    | Arch  | Distro Name | Distro Version |
 |-------|-------|-------------|----------------|
+| linux | amd64 | Ubuntu      | 26.04          |
+| linux | arm64 | Ubuntu      | 26.04          |
 | linux | amd64 | Ubuntu      | 24.04          |
 | linux | arm64 | Ubuntu      | 24.04          |
 | linux | amd64 | Ubuntu      | 22.04          |
