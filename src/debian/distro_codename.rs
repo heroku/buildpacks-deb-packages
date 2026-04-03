@@ -5,6 +5,7 @@ use std::fmt::{Display, Formatter};
 pub(crate) enum DistroCodename {
     Jammy,
     Noble,
+    Resolute,
 }
 
 impl Display for DistroCodename {
@@ -12,6 +13,7 @@ impl Display for DistroCodename {
         match self {
             DistroCodename::Jammy => write!(f, "jammy"),
             DistroCodename::Noble => write!(f, "noble"),
+            DistroCodename::Resolute => write!(f, "resolute"),
         }
     }
 }

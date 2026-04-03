@@ -296,15 +296,13 @@ fn on_unsupported_distro_error(error: UnsupportedDistroError) -> ErrorMessage {
         architecture,
     } = error;
 
+    let buildpack_toml = style::value("buildpack.toml");
     create_error()
         .error_type(Internal)
         .header("Unsupported distribution")
         .body(formatdoc! { "
-            The {BUILDPACK_NAME} doesn't support the {name} {version} ({architecture}) distribution.
-
-            Supported distributions:
-            - Ubuntu 24.04 (amd64, arm64)
-            - Ubuntu 22.04 (amd64)
+            The {BUILDPACK_NAME} doesn't support the {name} {version} ({architecture}) \
+            distribution. See {buildpack_toml} for the configuration of supported distributions.
         " })
         .call()
 }
@@ -1867,10 +1865,7 @@ mod tests {
         test_error_output("
                 Context
                 -------
-                This buildpack only supports the following distributions:
-                - Ubuntu 22.04 (amd64)
-                - Ubuntu 24.04 (amd64, arm64)
-
+                This buildpack only supports specific distributions listed in buildpack.toml.
                 Anything else is unsupported. This error is unlikely to be seen by an end-user but may
                 be helpful for developers hacking on this buildpack. Tools like pack also validate
                 buildpacks against their target distribution metadata to prevent this exact scenario.
@@ -1883,11 +1878,8 @@ mod tests {
                           indoc! {"
                 ! Unsupported distribution
                 !
-                ! The Heroku .deb Packages buildpack doesn't support the Windows XP (x86) distribution.
-                !
-                ! Supported distributions:
-                ! - Ubuntu 24.04 (amd64, arm64)
-                ! - Ubuntu 22.04 (amd64)
+                ! The Heroku .deb Packages buildpack doesn't support the Windows XP (x86) \
+                distribution. See `buildpack.toml` for the configuration of supported distributions.
                 !
                 ! The causes for this error are unknown. We do not have suggestions for diagnosis or \
                 a workaround at this time. You can help our understanding by sharing your buildpack log \

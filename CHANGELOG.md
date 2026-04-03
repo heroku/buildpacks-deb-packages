@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for Heroku-26 (Ubuntu 26.04, Resolute Raccoon). ([#177](https://github.com/heroku/buildpacks-deb-packages/pull/177))
+
+### Changed
+
+- PGP signature verification now supports keyrings with multiple certificates. ([#177](https://github.com/heroku/buildpacks-deb-packages/pull/177))
+
+### Fixed
+
+- Empty package index files no longer cause a parse error. ([#177](https://github.com/heroku/buildpacks-deb-packages/pull/177))
+
 ## [0.3.0] - 2025-12-08
 
 ### Added

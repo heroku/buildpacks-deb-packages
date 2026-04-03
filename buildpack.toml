@@ -15,6 +15,7 @@ type = "Apache-2.0"
 os = "linux"
 arch = "amd64"
 distros = [
+  { name = "ubuntu", version = "26.04" },
   { name = "ubuntu", version = "24.04" },
   { name = "ubuntu", version = "22.04" }
 ]
@@ -23,6 +24,7 @@ distros = [
 os = "linux"
 arch = "arm64"
 distros = [
+  { name = "ubuntu", version = "26.04" },
   { name = "ubuntu", version = "24.04" }
 ]
 
