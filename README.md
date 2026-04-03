@@ -17,13 +17,11 @@ that could invalidate how [CNB rebasing][cnb-rebase] functionality works.
 
 This buildpack is compatible with the following environments:
 
-| OS    | Arch  | Distro Name | Distro Version |
-|-------|-------|-------------|----------------|
-| linux | amd64 | Ubuntu      | 26.04          |
-| linux | arm64 | Ubuntu      | 26.04          |
-| linux | amd64 | Ubuntu      | 24.04          |
-| linux | arm64 | Ubuntu      | 24.04          |
-| linux | amd64 | Ubuntu      | 22.04          |
+| OS    | Architecture  | Distro Name | Distro Version |
+|-------|---------------|-------------|----------------|
+| linux | amd64 + arm64 | Ubuntu      | 26.04          |
+| linux | amd64 + arm64 | Ubuntu      | 24.04          |
+| linux | amd64         | Ubuntu      | 22.04          |
 
 ---
 
