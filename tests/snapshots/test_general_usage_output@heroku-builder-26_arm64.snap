@@ -1,0 +1,100 @@
+---
+source: tests/integration_test.rs
+---
+===> ANALYZING
+Image with name "<image-name>" not found
+===> DETECTING
+heroku/deb-packages <buildpack-version>
+===> RESTORING
+<restoring-output>
+===> BUILDING
+
+## Heroku .deb Packages (v<buildpack-version>)
+
+- Distribution Info
+  - Name: ubuntu
+  - Version: 26.04
+  - Codename: resolute
+  - Architecture: arm64
+
+### Creating package index
+
+- Package sources
+  - http://ports.ubuntu.com/ubuntu-ports resolute [main, universe]
+  - http://ports.ubuntu.com/ubuntu-ports resolute-updates [main, universe]
+  - http://ports.ubuntu.com/ubuntu-ports resolute-backports [main, universe]
+  - http://ports.ubuntu.com/ubuntu-ports resolute-security [main, universe]
+  - Updating ... (<time_elapsed>)
+  - Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/resolute/InRelease
+  - Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute/main/binary-arm64/by-hash/SHA256/<sha256-hash>
+  - Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute/universe/binary-arm64/by-hash/SHA256/<sha256-hash>
+  - Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/InRelease
+  - Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/main/binary-arm64/by-hash/SHA256/<sha256-hash>
+  - Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/universe/binary-arm64/by-hash/SHA256/<sha256-hash>
+  - Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/InRelease
+  - Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/main/binary-arm64/by-hash/SHA256/<sha256-hash>
+  - Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/universe/binary-arm64/by-hash/SHA256/<sha256-hash>
+  - Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/InRelease
+  - Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/main/binary-arm64/by-hash/SHA256/<sha256-hash>
+  - Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/universe/binary-arm64/by-hash/SHA256/<sha256-hash>
+- Building package index
+  - Processing package files ... (<time_elapsed>)
+  - Indexed <N> packages
+
+### Determining packages to install
+
+- Collecting system install information
+- Determining install requirements for requested package `libgwenhywfar79`
+  - Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.14.1-2`
+  - Adding `libgwenhywfar79t64@5.14.1-2` [from libgwenhywfar79]
+  - Adding `libgwenhywfar-data@5.14.1-2` [from libgwenhywfar79t64 ← libgwenhywfar79]
+- Determining install requirements for requested package `libgwenhywfar-data`
+  - Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.14.1-2` was already installed as a dependency of `libgwenhywfar79`
+- Determining install requirements for requested package `xmlsec1`
+  - Adding `xmlsec1@1.3.9-1`
+- Determining install requirements for requested package `wget`
+  - Skipping `wget` because `wget@1.25.0-2ubuntu4` is already installed on the system
+- Determining install requirements for requested package `libvips`
+  - Virtual package `libvips` is provided by `libvips42t64@8.18.0-1build1`
+  - Skipping `libvips42t64` because `libvips42t64@8.18.0-1build1` is already installed on the system
+- Determining install requirements for requested package `curl`
+  - Adding `curl@8.18.0-1ubuntu2` (forced)
+
+### Installing packages
+
+- Requesting packages
+  - `libgwenhywfar79t64@5.14.1-2` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_5.14.1-2_arm64.deb
+  - `libgwenhywfar-data@5.14.1-2` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.14.1-2_all.deb
+  - `xmlsec1@1.3.9-1` from http://ports.ubuntu.com/ubuntu-ports/pool/main/x/xmlsec1/xmlsec1_1.3.9-1_arm64.deb
+  - `curl@8.18.0-1ubuntu2` from http://ports.ubuntu.com/ubuntu-ports/pool/main/c/curl/curl_8.18.0-1ubuntu2_arm64.deb
+  - Downloading ... (<time_elapsed>)
+- Installation complete
+- Done (finished in <time_elapsed>)
+===> EXPORTING
+Adding layer 'heroku/deb-packages:packages'
+Adding layer 'buildpacksio/lifecycle:launch.sbom'
+Added 1/1 app layer(s)
+Adding layer 'buildpacksio/lifecycle:launcher'
+Adding layer 'buildpacksio/lifecycle:config'
+Adding label 'io.buildpacks.lifecycle.metadata'
+Adding label 'io.buildpacks.build.metadata'
+Adding label 'io.buildpacks.project.metadata'
+Adding label 'io.buildpacks.exec-env'
+no default process type
+Saving <image-name>...
+*** Images (<random-hex>):
+      <image-name>
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:packages'
+Successfully built image '<image-name>'
