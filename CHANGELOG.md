@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Empty package index files no longer cause a parse error. ([#177](https://github.com/heroku/buildpacks-deb-packages/pull/177))
+- Package resolution now respects the order of declared sources when the same version exists in multiple repositories. ([#182](https://github.com/heroku/buildpacks-deb-packages/pull/182))
 
 ## [0.3.0] - 2025-12-08
 
