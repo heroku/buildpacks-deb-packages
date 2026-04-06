@@ -107,6 +107,19 @@ mod test {
         }
     }
 
+    fn create_repository_package_with_repository_uri(
+        name: &str,
+        version: &str,
+        repository_uri: &str,
+    ) -> RepositoryPackage {
+        RepositoryPackage {
+            name: name.to_string(),
+            version: version.to_string(),
+            repository_uri: RepositoryUri::from(repository_uri),
+            ..default_test_repository_package()
+        }
+    }
+
     fn create_repository_package_with_provides(
         name: &str,
         version: &str,
@@ -148,6 +161,29 @@ mod test {
         assert_eq!(
             package_index.get_highest_available_version("my-package"),
             Some(&create_repository_package("my-package", "2.0.0"))
+        );
+    }
+
+    #[test]
+    fn test_highest_available_version_respects_insertion_order_for_equal_versions() {
+        let mut package_index = PackageIndex::default();
+        package_index.add_package(create_repository_package_with_repository_uri(
+            "curl",
+            "8.5.0-2ubuntu10.8",
+            "http://archive.ubuntu.com/ubuntu",
+        ));
+        package_index.add_package(create_repository_package_with_repository_uri(
+            "curl",
+            "8.5.0-2ubuntu10.8",
+            "http://security.ubuntu.com/ubuntu",
+        ));
+        let resolved = package_index
+            .get_highest_available_version("curl")
+            .expect("package should exist");
+        assert_eq!(
+            resolved.repository_uri,
+            RepositoryUri::from("http://archive.ubuntu.com/ubuntu"),
+            "When the same version exists in multiple sources, the first-inserted source should win"
         );
     }
 

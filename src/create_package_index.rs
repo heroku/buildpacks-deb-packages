@@ -136,31 +136,39 @@ async fn update_sources(
 
     let mut update_source_handles = JoinSet::new();
 
-    for source in sources {
-        for suite in &source.suites {
-            update_source_handles.spawn(
-                update_source(
-                    context.clone(),
-                    client.clone(),
-                    source.uri.clone(),
-                    suite.clone(),
-                    source.components.clone(),
-                    source.arch.clone(),
-                    source.signed_by.clone(),
-                )
-                .in_current_span(),
-            );
-        }
+    for (index, (source, suite)) in sources
+        .iter()
+        .flat_map(|source| source.suites.iter().map(move |suite| (source, suite)))
+        .enumerate()
+    {
+        let context = context.clone();
+        let client = client.clone();
+        let uri = source.uri.clone();
+        let suite = suite.clone();
+        let components = source.components.clone();
+        let arch = source.arch.clone();
+        let signed_by = source.signed_by.clone();
+        update_source_handles.spawn(
+            async move {
+                let result =
+                    update_source(context, client, uri, suite, components, arch, signed_by).await;
+                (index, result)
+            }
+            .in_current_span(),
+        );
     }
 
-    let mut updated_sources = vec![];
-    while let Some(update_source_handle) = update_source_handles.join_next().await {
-        let updated_source =
-            update_source_handle.map_err(CreatePackageIndexError::TaskFailed)??;
-        updated_sources.push(updated_source);
+    let mut indexed_results = vec![];
+    while let Some(handle) = update_source_handles.join_next().await {
+        let (index, result) = handle.map_err(CreatePackageIndexError::TaskFailed)?;
+        indexed_results.push((index, result?));
     }
+    indexed_results.sort_by_key(|(index, _)| *index);
 
-    Ok(updated_sources)
+    Ok(indexed_results
+        .into_iter()
+        .map(|(_, updated_source)| updated_source)
+        .collect())
 }
 
 #[instrument(skip_all)]
@@ -200,8 +208,9 @@ async fn update_source(
         })?;
 
     let mut get_package_list_handles = JoinSet::new();
+    let acquire_by_hash = release.acquire_by_hash.unwrap_or_default();
 
-    for component in components {
+    for (index, component) in components.iter().enumerate() {
         let package_index = format!("{component}/binary-{arch}/Packages.gz");
         let package_index_release_hash = release
             .sha256sum
@@ -216,26 +225,42 @@ async fn update_source(
                 package_index,
             ))?;
 
+        let context = context.clone();
+        let client = client.clone();
+        let repository_uri = repository_uri.clone();
+        let suite = suite.clone();
+        let component = component.clone();
+        let arch = arch.clone();
+        let hash = package_index_release_hash.hash.clone();
         get_package_list_handles.spawn(
-            get_package_list(
-                context.clone(),
-                client.clone(),
-                repository_uri.clone(),
-                release.acquire_by_hash.unwrap_or_default(),
-                suite.clone(),
-                component.clone(),
-                arch.clone(),
-                package_index_release_hash.hash.clone(),
-            )
+            async move {
+                let result = get_package_list(
+                    context,
+                    client,
+                    repository_uri,
+                    acquire_by_hash,
+                    suite,
+                    component,
+                    arch,
+                    hash,
+                )
+                .await;
+                (index, result)
+            }
             .in_current_span(),
         );
     }
 
-    let mut updated_package_indexes = vec![];
-    while let Some(get_package_list_handle) = get_package_list_handles.join_next().await {
-        updated_package_indexes
-            .push(get_package_list_handle.map_err(CreatePackageIndexError::TaskFailed)??);
+    let mut indexed_results = vec![];
+    while let Some(handle) = get_package_list_handles.join_next().await {
+        let (index, result) = handle.map_err(CreatePackageIndexError::TaskFailed)?;
+        indexed_results.push((index, result?));
     }
+    indexed_results.sort_by_key(|(index, _)| *index);
+    let updated_package_indexes = indexed_results
+        .into_iter()
+        .map(|(_, updated)| updated)
+        .collect();
 
     Ok(UpdatedSource {
         release_file: updated_release_file,
@@ -512,13 +537,25 @@ async fn build_package_index(
     updated_sources: Vec<UpdatedPackageIndex>,
 ) -> BuildpackResult<PackageIndex> {
     let mut get_packages_handles = JoinSet::new();
-    for update_source in updated_sources {
-        get_packages_handles.spawn(read_packages(update_source).in_current_span());
+    for (index, update_source) in updated_sources.into_iter().enumerate() {
+        get_packages_handles.spawn(
+            async move {
+                let result = read_packages(update_source).await;
+                (index, result)
+            }
+            .in_current_span(),
+        );
     }
 
+    let mut indexed_results = vec![];
+    while let Some(handle) = get_packages_handles.join_next().await {
+        let (index, result) = handle.map_err(CreatePackageIndexError::TaskFailed)?;
+        indexed_results.push((index, result?));
+    }
+    indexed_results.sort_by_key(|(index, _)| *index);
+
     let mut package_index = PackageIndex::default();
-    while let Some(get_package_handle) = get_packages_handles.join_next().await {
-        let packages = get_package_handle.map_err(CreatePackageIndexError::TaskFailed)??;
+    for (_, packages) in indexed_results {
         for package in packages {
             package_index.add_package(package);
         }
