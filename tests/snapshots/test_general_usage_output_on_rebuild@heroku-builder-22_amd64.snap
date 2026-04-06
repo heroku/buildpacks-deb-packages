@@ -1,0 +1,192 @@
+---
+source: tests/integration_test.rs
+---
+===> ANALYZING
+Image with name "<image-name>" not found
+===> DETECTING
+heroku/deb-packages <buildpack-version>
+===> RESTORING
+<restoring-output>
+===> BUILDING
+
+## Heroku .deb Packages (v<buildpack-version>)
+
+- Distribution Info
+  - Name: ubuntu
+  - Version: 22.04
+  - Codename: jammy
+  - Architecture: amd64
+
+### Creating package index
+
+- Package sources
+  - http://archive.ubuntu.com/ubuntu jammy [main, universe]
+  - http://archive.ubuntu.com/ubuntu jammy-security [main, universe]
+  - http://archive.ubuntu.com/ubuntu jammy-updates [main, universe]
+  - Updating ... (<time_elapsed>)
+  - Downloaded release file http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease
+  - Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy/main/binary-amd64/by-hash/SHA256/<sha256-hash>
+  - Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy/universe/binary-amd64/by-hash/SHA256/<sha256-hash>
+  - Downloaded release file http://archive.ubuntu.com/ubuntu/dists/jammy-security/InRelease
+  - Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy-security/main/binary-amd64/by-hash/SHA256/<sha256-hash>
+  - Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy-security/universe/binary-amd64/by-hash/SHA256/<sha256-hash>
+  - Downloaded release file http://archive.ubuntu.com/ubuntu/dists/jammy-updates/InRelease
+  - Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy-updates/main/binary-amd64/by-hash/SHA256/<sha256-hash>
+  - Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy-updates/universe/binary-amd64/by-hash/SHA256/<sha256-hash>
+- Building package index
+  - Processing package files ... (<time_elapsed>)
+  - Indexed <N> packages
+
+### Determining packages to install
+
+- Collecting system install information
+- Determining install requirements for requested package `libgwenhywfar79`
+  - Adding `libgwenhywfar79@5.9.0-1`
+  - Adding `libgwenhywfar-data@5.9.0-1` [from libgwenhywfar79]
+- Determining install requirements for requested package `libgwenhywfar-data`
+  - Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.9.0-1` was already installed as a dependency of `libgwenhywfar79`
+- Determining install requirements for requested package `xmlsec1`
+  - Adding `xmlsec1@1.2.33-1build2`
+- Determining install requirements for requested package `wget`
+  - Skipping `wget` because `wget@1.21.2-2ubuntu1.1` is already installed on the system
+- Determining install requirements for requested package `libvips`
+  - Virtual package `libvips` is provided by `libvips42@8.12.1-1build1`
+  - Skipping `libvips42` because `libvips42@8.12.1-1build1` is already installed on the system
+- Determining install requirements for requested package `curl`
+  - Adding `curl@7.81.0-1ubuntu1.23` (forced)
+
+### Installing packages
+
+- Requesting packages
+  - `libgwenhywfar79@5.9.0-1` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar79_5.9.0-1_amd64.deb
+  - `libgwenhywfar-data@5.9.0-1` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.9.0-1_all.deb
+  - `xmlsec1@1.2.33-1build2` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_1.2.33-1build2_amd64.deb
+  - `curl@7.81.0-1ubuntu1.23` from http://archive.ubuntu.com/ubuntu/pool/main/c/curl/curl_7.81.0-1ubuntu1.23_amd64.deb
+  - Downloading ... (<time_elapsed>)
+- Installation complete
+- Done (finished in <time_elapsed>)
+===> EXPORTING
+Adding layer 'heroku/deb-packages:packages'
+Adding layer 'buildpacksio/lifecycle:launch.sbom'
+Added 1/1 app layer(s)
+Adding layer 'buildpacksio/lifecycle:launcher'
+Adding layer 'buildpacksio/lifecycle:config'
+Adding label 'io.buildpacks.lifecycle.metadata'
+Adding label 'io.buildpacks.build.metadata'
+Adding label 'io.buildpacks.project.metadata'
+Adding label 'io.buildpacks.exec-env'
+no default process type
+Saving <image-name>...
+*** Images (<random-hex>):
+      <image-name>
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:packages'
+Successfully built image '<image-name>'
+
+--------------------------------------------- REBUILD ---------------------------------------------
+===> ANALYZING
+Restoring data for SBOM from previous image
+===> DETECTING
+heroku/deb-packages <buildpack-version>
+===> RESTORING
+<restoring-output>
+===> BUILDING
+
+## Heroku .deb Packages (v<buildpack-version>)
+
+- Distribution Info
+  - Name: ubuntu
+  - Version: 22.04
+  - Codename: jammy
+  - Architecture: amd64
+
+### Creating package index
+
+- Package sources
+  - http://archive.ubuntu.com/ubuntu jammy [main, universe]
+  - http://archive.ubuntu.com/ubuntu jammy-security [main, universe]
+  - http://archive.ubuntu.com/ubuntu jammy-updates [main, universe]
+  - Updating ... (<time_elapsed>)
+  - <RESTORED_OR_REDOWNLOADED> release file (http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease)
+  - Restored package index from cache (http://archive.ubuntu.com/ubuntu/dists/jammy/main/binary-amd64/by-hash/SHA256/<sha256-hash>)
+  - Restored package index from cache (http://archive.ubuntu.com/ubuntu/dists/jammy/universe/binary-amd64/by-hash/SHA256/<sha256-hash>)
+  - <RESTORED_OR_REDOWNLOADED> release file (http://archive.ubuntu.com/ubuntu/dists/jammy-security/InRelease)
+  - Restored package index from cache (http://archive.ubuntu.com/ubuntu/dists/jammy-security/main/binary-amd64/by-hash/SHA256/<sha256-hash>)
+  - Restored package index from cache (http://archive.ubuntu.com/ubuntu/dists/jammy-security/universe/binary-amd64/by-hash/SHA256/<sha256-hash>)
+  - <RESTORED_OR_REDOWNLOADED> release file (http://archive.ubuntu.com/ubuntu/dists/jammy-updates/InRelease)
+  - Restored package index from cache (http://archive.ubuntu.com/ubuntu/dists/jammy-updates/main/binary-amd64/by-hash/SHA256/<sha256-hash>)
+  - Restored package index from cache (http://archive.ubuntu.com/ubuntu/dists/jammy-updates/universe/binary-amd64/by-hash/SHA256/<sha256-hash>)
+- Building package index
+  - Processing package files ... (<time_elapsed>)
+  - Indexed <N> packages
+
+### Determining packages to install
+
+- Collecting system install information
+- Determining install requirements for requested package `libgwenhywfar79`
+  - Adding `libgwenhywfar79@5.9.0-1`
+  - Adding `libgwenhywfar-data@5.9.0-1` [from libgwenhywfar79]
+- Determining install requirements for requested package `libgwenhywfar-data`
+  - Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.9.0-1` was already installed as a dependency of `libgwenhywfar79`
+- Determining install requirements for requested package `xmlsec1`
+  - Adding `xmlsec1@1.2.33-1build2`
+- Determining install requirements for requested package `wget`
+  - Skipping `wget` because `wget@1.21.2-2ubuntu1.1` is already installed on the system
+- Determining install requirements for requested package `libvips`
+  - Virtual package `libvips` is provided by `libvips42@8.12.1-1build1`
+  - Skipping `libvips42` because `libvips42@8.12.1-1build1` is already installed on the system
+- Determining install requirements for requested package `curl`
+  - Adding `curl@7.81.0-1ubuntu1.23` (forced)
+
+### Installing packages
+
+- Restoring packages from cache
+  - `libgwenhywfar79@5.9.0-1`
+  - `libgwenhywfar-data@5.9.0-1`
+  - `xmlsec1@1.2.33-1build2`
+  - `curl@7.81.0-1ubuntu1.23`
+- Installation complete
+- Done (finished in <time_elapsed>)
+===> EXPORTING
+Reusing layer 'heroku/deb-packages:packages'
+Reusing layer 'buildpacksio/lifecycle:launch.sbom'
+Reused 1/1 app layer(s)
+Reusing layer 'buildpacksio/lifecycle:launcher'
+Reusing layer 'buildpacksio/lifecycle:config'
+Adding label 'io.buildpacks.lifecycle.metadata'
+Adding label 'io.buildpacks.build.metadata'
+Adding label 'io.buildpacks.project.metadata'
+Adding label 'io.buildpacks.exec-env'
+no default process type
+Saving <image-name>...
+*** Images (<random-hex>):
+      <image-name>
+Reusing cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Reusing cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Reusing cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Reusing cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Reusing cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Reusing cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Reusing cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Reusing cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Reusing cache layer 'heroku/deb-packages:<layer-hash>'
+Adding cache layer 'heroku/deb-packages:<layer-hash>'
+Reusing cache layer 'heroku/deb-packages:packages'
+Adding cache layer 'heroku/deb-packages:packages'
+Successfully built image '<image-name>'
