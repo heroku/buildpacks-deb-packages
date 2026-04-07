@@ -405,6 +405,7 @@ fn test_general_usage_output_when_buildpack_log_level_is_debug() {
 
 #[test]
 #[ignore = "integration test"]
+#[allow(clippy::too_many_lines)]
 fn test_general_usage_output_on_rebuild() {
     integration_test("fixtures/general_usage", |ctx| {
         let config = ctx.config.clone();
@@ -413,13 +414,19 @@ fn test_general_usage_output_on_rebuild() {
 
             match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
                 ("heroku/builder:22", "amd64") => {
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease\)");
+                    assert_contains_match!(ctx.pack_stdout, r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease\)?(?: \(Stored ETag did not match\))?");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy-security/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/jammy-security/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy-updates/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/jammy-updates/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
 
@@ -430,13 +437,19 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains_match!(ctx.pack_stdout, "`curl@7.81.0-.*`");
                 }
                 ("heroku/builder:24", "amd64") => {
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://archive.ubuntu.com/ubuntu/dists/noble/InRelease\)");
+                    assert_contains_match!(ctx.pack_stdout, r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/noble/InRelease\)?(?: \(Stored ETag did not match\))?");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/noble/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://security.ubuntu.com/ubuntu/dists/noble-security/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://security.ubuntu.com/ubuntu/dists/noble-security/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://security.ubuntu.com/ubuntu/dists/noble-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://security.ubuntu.com/ubuntu/dists/noble-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://archive.ubuntu.com/ubuntu/dists/noble-updates/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/noble-updates/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/noble-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
 
@@ -447,13 +460,22 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains_match!(ctx.pack_stdout, "`curl@8.5.0-.*`");
                 }
                 ("heroku/builder:24", "arm64") => {
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/noble/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
 
@@ -464,16 +486,28 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains_match!(ctx.pack_stdout, "`curl@8.5.0-.*`");
                 }
                 ("heroku/builder:26", "amd64") => {
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/resolute/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://security.ubuntu.com/ubuntu/dists/resolute-security/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://security.ubuntu.com/ubuntu/dists/resolute-security/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://security.ubuntu.com/ubuntu/dists/resolute-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://security.ubuntu.com/ubuntu/dists/resolute-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute-updates/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/resolute-updates/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute-backports/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/resolute-backports/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute-backports/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute-backports/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
 
@@ -484,16 +518,28 @@ fn test_general_usage_output_on_rebuild() {
                     assert_contains_match!(ctx.pack_stdout, "`curl@8.18.0-.*`");
                 }
                 ("heroku/builder:26", "arm64") => {
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/resolute/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored release file from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/InRelease\)");
+                    assert_contains_match!(
+                        ctx.pack_stdout,
+                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/InRelease\)?(?: \(Stored ETag did not match\))?"
+                    );
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
                     assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
 
