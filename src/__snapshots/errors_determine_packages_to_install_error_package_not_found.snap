@@ -1,0 +1,15 @@
+---
+source: src/errors.rs
+---
+! Package not found
+!
+! We can't find `some-package` in the Package Index. If this package is listed in the packages to install for this buildpack then the name is most likely misspelled. Otherwise, it can be an issue with the upstream Debian package repository.
+!
+! Did you mean?
+! - `some-package1`
+! - `some-package2`
+!
+! Suggestions:
+! - Verify the package name is correct and exists for the target distribution at https://packages.ubuntu.com/
+!
+! Use the debug information above to troubleshoot and retry your build.

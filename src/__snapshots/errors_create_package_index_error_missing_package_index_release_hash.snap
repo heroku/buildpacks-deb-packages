@@ -1,0 +1,14 @@
+---
+source: src/errors.rs
+---
+! Missing Package Index
+!
+! The Release file from http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease is missing an entry for `main/binary-amd64/Packages.gz` within the SHA256 section. This error is most likely a buildpack bug but can also be an issue with the upstream repository.
+!
+! Suggestions:
+! - Verify if `main/binary-amd64/Packages.gz` is under the SHA256 section of http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease
+!
+! Use the debug information above to troubleshoot and retry your build.
+!
+! If the issue persists and you think you found a bug in the buildpack, reproduce the issue locally with a minimal example. Open an issue in the buildpack's GitHub repository and include the details here:
+! https://github.com/heroku/buildpacks-deb-packages/issues/new

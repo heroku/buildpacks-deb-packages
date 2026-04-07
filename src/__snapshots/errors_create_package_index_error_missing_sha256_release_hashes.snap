@@ -1,0 +1,11 @@
+---
+source: src/errors.rs
+---
+! Missing SHA256 Release hash
+!
+! The Release file from http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease is missing the SHA256 key which is required according to the documented Debian repository format. This error is most likely an issue with the upstream repository. See https://wiki.debian.org/DebianRepository/Format
+!
+! Use the debug information above to troubleshoot and retry your build.
+!
+! If the issue persists and you think you found a bug in the buildpack, reproduce the issue locally with a minimal example. Open an issue in the buildpack's GitHub repository and include the details here:
+! https://github.com/heroku/buildpacks-deb-packages/issues/new

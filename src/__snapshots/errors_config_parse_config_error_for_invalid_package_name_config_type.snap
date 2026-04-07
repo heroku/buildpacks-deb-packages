@@ -1,0 +1,19 @@
+---
+source: src/errors.rs
+---
+- Debug Info:
+  - Invalid type `integer` with value `37`
+
+! Error parsing `/path/to/project.toml` with invalid package format
+!
+! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to complete the build but we found an invalid package format in the key `[com.heroku.buildpacks.deb-packages]`.
+!
+! Packages must either be the following TOML values:
+! - String (e.g.; "package-name")
+! - Inline table (e.g.; { name = "package-name", skip_dependencies = true })
+!
+! Suggestions:
+! - See the buildpack documentation for the proper usage for this configuration at https://github.com/heroku/buildpacks-deb-packages#configuration
+! - See the TOML documentation for more details on the TOML string and inline table types at https://toml.io/en/v1.0.0
+!
+! Use the debug information above to troubleshoot and retry your build.

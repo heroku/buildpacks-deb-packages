@@ -1,0 +1,15 @@
+---
+source: src/errors.rs
+---
+! Multiple providers were found for the package `some-package`
+!
+! Sometimes there are several packages which offer more-or-less the same functionality. In this case, Debian repositories define a virtual package and one or more actual packages provide an implementation for this virtual package. When multiple providers are found for a requested package, this buildpack can't automatically choose which one is the desired implementation.
+!
+! Providing packages:
+! - package-a
+! - package-b
+!
+! Suggestions:
+! - Replace the virtual package `some-package` with one of the above providers.
+!
+! Use the debug information above to troubleshoot and retry your build.
