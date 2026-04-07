@@ -8,6 +8,7 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use insta::{assert_snapshot, with_settings};
 use libcnb_test::{BuildConfig, BuildpackReference, PackResult, TestContext, TestRunner, assert_contains, assert_contains_match, assert_not_contains};
 use toml_edit::{Array, DocumentMut, InlineTable, value};
 
@@ -78,306 +79,9 @@ fn test_aptfile_passes_detection_and_prints_help_during_build() {
 
 #[test]
 #[ignore = "integration test"]
-#[allow(clippy::too_many_lines)]
 fn test_general_usage_output() {
     integration_test("fixtures/general_usage", |ctx| {
-        assert_contains_match!(ctx.pack_stdout, r"# Heroku .deb Packages \(v\d+\.\d+\.\d+\)");
-
-        match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
-            ("heroku/builder:22", "amd64") => {
-                assert_contains!(ctx.pack_stdout, "Distribution Info");
-                assert_contains!(ctx.pack_stdout, "Name: ubuntu");
-                assert_contains!(ctx.pack_stdout, "Version: 22.04");
-                assert_contains!(ctx.pack_stdout, "Codename: jammy");
-                assert_contains!(ctx.pack_stdout, "Architecture: amd64");
-
-                assert_contains!(ctx.pack_stdout, "## Creating package index");
-                assert_contains!(ctx.pack_stdout, "Package sources");
-                assert_contains!(ctx.pack_stdout, "http://archive.ubuntu.com/ubuntu jammy [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://archive.ubuntu.com/ubuntu jammy-security [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://archive.ubuntu.com/ubuntu jammy-updates [main, universe]");
-                assert_contains!(ctx.pack_stdout, "Updating");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://archive.ubuntu.com/ubuntu/dists/jammy-security/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://archive.ubuntu.com/ubuntu/dists/jammy-updates/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/jammy-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains!(ctx.pack_stdout, "Building package index");
-                assert_contains!(ctx.pack_stdout, "Processing package files");
-                assert_contains_match!(ctx.pack_stdout, r"Indexed \d+ packages");
-
-                assert_contains!(ctx.pack_stdout, "## Determining packages to install");
-                assert_contains!(ctx.pack_stdout, "Collecting system install information");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar79@5.9.0-1`");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar-data@5.9.0-1` [from libgwenhywfar79]");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar-data`");
-                assert_contains!(ctx.pack_stdout, "Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.9.0-1` was already installed as a dependency of `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `xmlsec1`");
-                assert_contains!(ctx.pack_stdout, "Adding `xmlsec1@1.2.33-1build2`");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `wget`");
-                assert_contains_match!(ctx.pack_stdout, "Skipping `wget` because `wget@1.21.2-.*` is already installed on the system");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libvips`");
-                assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42@8.12.1-1build1`");
-                assert_contains!(ctx.pack_stdout, "Skipping `libvips42` because `libvips42@8.12.1-1build1` is already installed on the system");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `curl`");
-                assert_contains_match!(ctx.pack_stdout, "Adding `curl@7.81.0-.*` \\(forced\\)");
-
-                assert_contains!(ctx.pack_stdout, "## Installing packages");
-                assert_contains!(ctx.pack_stdout, "Requesting packages");
-                assert_contains!(ctx.pack_stdout, "`libgwenhywfar79@5.9.0-1` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar79_5.9.0-1_amd64.deb");
-                assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.9.0-1` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.9.0-1_all.deb");
-                assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.33-1build2` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_1.2.33-1build2_amd64.deb");
-                assert_contains_match!(ctx.pack_stdout, "`curl@7.81.0-.*` from http://archive.ubuntu.com/ubuntu/pool/main/c/curl/curl_7.81.0-.*_amd64.deb");
-                assert_contains!(ctx.pack_stdout, "Downloading");
-                assert_contains!(ctx.pack_stdout, "Installation complete");
-
-                assert_not_contains!(ctx.pack_stdout, "Layer file listing");
-                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
-                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/x86_64-linux-gnu/libgwenhywfar.so");
-            }
-            ("heroku/builder:24", "amd64") => {
-                assert_contains!(ctx.pack_stdout, "Distribution Info");
-                assert_contains!(ctx.pack_stdout, "Name: ubuntu");
-                assert_contains!(ctx.pack_stdout, "Version: 24.04");
-                assert_contains!(ctx.pack_stdout, "Codename: noble");
-                assert_contains!(ctx.pack_stdout, "Architecture: amd64");
-
-                assert_contains!(ctx.pack_stdout, "## Creating package index");
-                assert_contains!(ctx.pack_stdout, "Package sources");
-                assert_contains!(ctx.pack_stdout, "http://archive.ubuntu.com/ubuntu noble [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://security.ubuntu.com/ubuntu noble-security [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://archive.ubuntu.com/ubuntu noble-updates [main, universe]");
-                assert_contains!(ctx.pack_stdout, "Updating");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://archive.ubuntu.com/ubuntu/dists/noble/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/noble/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://security.ubuntu.com/ubuntu/dists/noble-security/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://security.ubuntu.com/ubuntu/dists/noble-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://security.ubuntu.com/ubuntu/dists/noble-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://archive.ubuntu.com/ubuntu/dists/noble-updates/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/noble-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains!(ctx.pack_stdout, "Building package index");
-                assert_contains!(ctx.pack_stdout, "Processing package files");
-                assert_contains_match!(ctx.pack_stdout, r"Indexed \d+ packages");
-
-                assert_contains!(ctx.pack_stdout, "## Determining packages to install");
-                assert_contains!(ctx.pack_stdout, "Collecting system install information");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.10.2-2.1build4`");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar79t64@5.10.2-2.1build4` [from libgwenhywfar79]");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar-data@5.10.2-2.1build4` [from libgwenhywfar79t64 ← libgwenhywfar79]");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar-data`");
-                assert_contains!(ctx.pack_stdout, "Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.10.2-2.1build4` was already installed as a dependency of `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `xmlsec1`");
-                assert_contains!(ctx.pack_stdout, "Adding `xmlsec1@1.2.39-5build2`");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `wget`");
-                assert_contains_match!(ctx.pack_stdout, "Skipping `wget` because `wget@1.21.4-.*` is already installed on the system");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libvips`");
-                assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42t64@8.15.1-1.1build4`");
-                assert_contains!(ctx.pack_stdout, "Skipping `libvips42t64` because `libvips42t64@8.15.1-1.1build4` is already installed on the system");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `curl`");
-                assert_contains_match!(ctx.pack_stdout, "Adding `curl@8.5.0-.*` \\(forced\\)");
-
-                assert_contains!(ctx.pack_stdout, "## Installing packages");
-                assert_contains!(ctx.pack_stdout, "Requesting packages");
-                assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.10.2-2.1build4` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_5.10.2-2.1build4_amd64.deb");
-                assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.10.2-2.1build4` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.10.2-2.1build4_all.deb");
-                assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_1.2.39-5build2_amd64.deb");
-                assert_contains_match!(ctx.pack_stdout, "`curl@8.5.0-.*` from http://(security|archive).ubuntu.com/ubuntu/pool/main/c/curl/curl_8.5.0-.*_amd64.deb");
-                assert_contains!(ctx.pack_stdout, "Downloading");
-                assert_contains!(ctx.pack_stdout, "Installation complete");
-
-                assert_not_contains!(ctx.pack_stdout, "Layer file listing");
-                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
-                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/x86_64-linux-gnu/libgwenhywfar.so");
-            }
-            ("heroku/builder:24", "arm64") => {
-                assert_contains!(ctx.pack_stdout, "Distribution Info");
-                assert_contains!(ctx.pack_stdout, "Name: ubuntu");
-                assert_contains!(ctx.pack_stdout, "Version: 24.04");
-                assert_contains!(ctx.pack_stdout, "Codename: noble");
-                assert_contains!(ctx.pack_stdout, "Architecture: arm64");
-
-                assert_contains!(ctx.pack_stdout, "## Creating package index");
-                assert_contains!(ctx.pack_stdout, "Package sources");
-                assert_contains!(ctx.pack_stdout, "http://ports.ubuntu.com/ubuntu-ports noble [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://ports.ubuntu.com/ubuntu-ports noble-updates [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://ports.ubuntu.com/ubuntu-ports noble-security [main, universe]");
-                assert_contains!(ctx.pack_stdout, "Updating");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/noble/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/noble/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains!(ctx.pack_stdout, "Building package index");
-                assert_contains!(ctx.pack_stdout, "Processing package files");
-                assert_contains_match!(ctx.pack_stdout, r"Indexed \d+ packages");
-
-                assert_contains!(ctx.pack_stdout, "## Determining packages to install");
-                assert_contains!(ctx.pack_stdout, "Collecting system install information");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.10.2-2.1build4`");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar79t64@5.10.2-2.1build4` [from libgwenhywfar79]");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar-data@5.10.2-2.1build4` [from libgwenhywfar79t64 ← libgwenhywfar79]");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar-data`");
-                assert_contains!(ctx.pack_stdout, "Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.10.2-2.1build4` was already installed as a dependency of `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `xmlsec1`");
-                assert_contains!(ctx.pack_stdout, "Adding `xmlsec1@1.2.39-5build2`");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `wget`");
-                assert_contains_match!(ctx.pack_stdout, "Skipping `wget` because `wget@1.21.4-.*` is already installed on the system");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libvips`");
-                assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42t64@8.15.1-1.1build4`");
-                assert_contains!(ctx.pack_stdout, "Skipping `libvips42t64` because `libvips42t64@8.15.1-1.1build4` is already installed on the system");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `curl`");
-                assert_contains_match!(ctx.pack_stdout, "Adding `curl@8.5.0-.*` \\(forced\\)");
-
-                assert_contains!(ctx.pack_stdout, "## Installing packages");
-                assert_contains!(ctx.pack_stdout, "Requesting packages");
-                assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.10.2-2.1build4` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_5.10.2-2.1build4_arm64.deb");
-                assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.10.2-2.1build4` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.10.2-2.1build4_all.deb");
-                assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2` from http://ports.ubuntu.com/ubuntu-ports/pool/main/x/xmlsec1/xmlsec1_1.2.39-5build2_arm64.deb");
-                assert_contains_match!(ctx.pack_stdout, "`curl@8.5.0-.*` from http://ports.ubuntu.com/ubuntu-ports/pool/main/c/curl/curl_8.5.0-.*_arm64.deb");
-                assert_contains!(ctx.pack_stdout, "Downloading");
-                assert_contains!(ctx.pack_stdout, "Installation complete");
-
-                assert_not_contains!(ctx.pack_stdout, "Layer file listing");
-                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
-                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/aarch64-linux-gnu/libgwenhywfar.so");
-            }
-            ("heroku/builder:26", "amd64") => {
-                assert_contains!(ctx.pack_stdout, "Distribution Info");
-                assert_contains!(ctx.pack_stdout, "Name: ubuntu");
-                assert_contains!(ctx.pack_stdout, "Version: 26.04");
-                assert_contains!(ctx.pack_stdout, "Codename: resolute");
-                assert_contains!(ctx.pack_stdout, "Architecture: amd64");
-
-                assert_contains!(ctx.pack_stdout, "## Creating package index");
-                assert_contains!(ctx.pack_stdout, "Package sources");
-                assert_contains!(ctx.pack_stdout, "http://archive.ubuntu.com/ubuntu resolute [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://security.ubuntu.com/ubuntu resolute-security [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://archive.ubuntu.com/ubuntu resolute-updates [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://archive.ubuntu.com/ubuntu resolute-backports [main, universe]");
-                assert_contains!(ctx.pack_stdout, "Updating");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://archive.ubuntu.com/ubuntu/dists/resolute/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/resolute/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/resolute/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://security.ubuntu.com/ubuntu/dists/resolute-security/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://security.ubuntu.com/ubuntu/dists/resolute-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://security.ubuntu.com/ubuntu/dists/resolute-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://archive.ubuntu.com/ubuntu/dists/resolute-updates/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/resolute-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/resolute-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://archive.ubuntu.com/ubuntu/dists/resolute-backports/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/resolute-backports/main/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://archive.ubuntu.com/ubuntu/dists/resolute-backports/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains!(ctx.pack_stdout, "Building package index");
-                assert_contains!(ctx.pack_stdout, "Processing package files");
-                assert_contains_match!(ctx.pack_stdout, r"Indexed \d+ packages");
-
-                assert_contains!(ctx.pack_stdout, "## Determining packages to install");
-                assert_contains!(ctx.pack_stdout, "Collecting system install information");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.14.1-2`");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar79t64@5.14.1-2` [from libgwenhywfar79]");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar-data@5.14.1-2` [from libgwenhywfar79t64 \u{2190} libgwenhywfar79]");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar-data`");
-                assert_contains!(ctx.pack_stdout, "Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.14.1-2` was already installed as a dependency of `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `xmlsec1`");
-                assert_contains!(ctx.pack_stdout, "Adding `xmlsec1@1.3.9-1`");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `wget`");
-                assert_contains_match!(ctx.pack_stdout, "Skipping `wget` because `wget@1.25.0-.*` is already installed on the system");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libvips`");
-                assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42t64@8.18.0-1build1`");
-                assert_contains!(ctx.pack_stdout, "Skipping `libvips42t64` because `libvips42t64@8.18.0-1build1` is already installed on the system");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `curl`");
-                assert_contains_match!(ctx.pack_stdout, "Adding `curl@8.18.0-.*` \\(forced\\)");
-
-                assert_contains!(ctx.pack_stdout, "## Installing packages");
-                assert_contains!(ctx.pack_stdout, "Requesting packages");
-                assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.14.1-2` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_5.14.1-2_amd64.deb");
-                assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.14.1-2` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.14.1-2_all.deb");
-                assert_contains!(ctx.pack_stdout, "`xmlsec1@1.3.9-1` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_1.3.9-1_amd64.deb");
-                assert_contains_match!(ctx.pack_stdout, "`curl@8.18.0-.*` from http://(security|archive).ubuntu.com/ubuntu/pool/main/c/curl/curl_8.18.0-.*_amd64.deb");
-                assert_contains!(ctx.pack_stdout, "Downloading");
-                assert_contains!(ctx.pack_stdout, "Installation complete");
-
-                assert_not_contains!(ctx.pack_stdout, "Layer file listing");
-                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
-                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/x86_64-linux-gnu/libgwenhywfar.so");
-            }
-            ("heroku/builder:26", "arm64") => {
-                assert_contains!(ctx.pack_stdout, "Distribution Info");
-                assert_contains!(ctx.pack_stdout, "Name: ubuntu");
-                assert_contains!(ctx.pack_stdout, "Version: 26.04");
-                assert_contains!(ctx.pack_stdout, "Codename: resolute");
-                assert_contains!(ctx.pack_stdout, "Architecture: arm64");
-
-                assert_contains!(ctx.pack_stdout, "## Creating package index");
-                assert_contains!(ctx.pack_stdout, "Package sources");
-                assert_contains!(ctx.pack_stdout, "http://ports.ubuntu.com/ubuntu-ports resolute [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://ports.ubuntu.com/ubuntu-ports resolute-updates [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://ports.ubuntu.com/ubuntu-ports resolute-backports [main, universe]");
-                assert_contains!(ctx.pack_stdout, "http://ports.ubuntu.com/ubuntu-ports resolute-security [main, universe]");
-                assert_contains!(ctx.pack_stdout, "Updating");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/resolute/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded release file http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/InRelease");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/main/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains_match!(ctx.pack_stdout, r"Downloaded package index http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+$");
-                assert_contains!(ctx.pack_stdout, "Building package index");
-                assert_contains!(ctx.pack_stdout, "Processing package files");
-                assert_contains_match!(ctx.pack_stdout, r"Indexed \d+ packages");
-
-                assert_contains!(ctx.pack_stdout, "## Determining packages to install");
-                assert_contains!(ctx.pack_stdout, "Collecting system install information");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.14.1-2`");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar79t64@5.14.1-2` [from libgwenhywfar79]");
-                assert_contains!(ctx.pack_stdout, "Adding `libgwenhywfar-data@5.14.1-2` [from libgwenhywfar79t64 \u{2190} libgwenhywfar79]");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libgwenhywfar-data`");
-                assert_contains!(ctx.pack_stdout, "Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.14.1-2` was already installed as a dependency of `libgwenhywfar79`");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `xmlsec1`");
-                assert_contains!(ctx.pack_stdout, "Adding `xmlsec1@1.3.9-1`");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `wget`");
-                assert_contains_match!(ctx.pack_stdout, "Skipping `wget` because `wget@1.25.0-.*` is already installed on the system");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `libvips`");
-                assert_contains!(ctx.pack_stdout, "Virtual package `libvips` is provided by `libvips42t64@8.18.0-1build1`");
-                assert_contains!(ctx.pack_stdout, "Skipping `libvips42t64` because `libvips42t64@8.18.0-1build1` is already installed on the system");
-                assert_contains!(ctx.pack_stdout, "Determining install requirements for requested package `curl`");
-                assert_contains_match!(ctx.pack_stdout, "Adding `curl@8.18.0-.*` \\(forced\\)");
-
-                assert_contains!(ctx.pack_stdout, "## Installing packages");
-                assert_contains!(ctx.pack_stdout, "Requesting packages");
-                assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.14.1-2` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_5.14.1-2_arm64.deb");
-                assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.14.1-2` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.14.1-2_all.deb");
-                assert_contains!(ctx.pack_stdout, "`xmlsec1@1.3.9-1` from http://ports.ubuntu.com/ubuntu-ports/pool/main/x/xmlsec1/xmlsec1_1.3.9-1_arm64.deb");
-                assert_contains_match!(ctx.pack_stdout, "`curl@8.18.0-.*` from http://ports.ubuntu.com/ubuntu-ports/pool/main/c/curl/curl_8.18.0-.*_arm64.deb");
-                assert_contains!(ctx.pack_stdout, "Downloading");
-                assert_contains!(ctx.pack_stdout, "Installation complete");
-
-                assert_not_contains!(ctx.pack_stdout, "Layer file listing");
-                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/bin/xmlsec1");
-                assert_not_contains!(ctx.pack_stdout, "/layers/heroku_deb-packages/packages/usr/lib/aarch64-linux-gnu/libgwenhywfar.so");
-            }
-            _ => panic_unsupported_test_configuration(),
-        }
+        create_build_snapshot(&ctx.pack_stdout).assert();
     });
 }
 
@@ -408,149 +112,10 @@ fn test_general_usage_output_when_buildpack_log_level_is_debug() {
 #[allow(clippy::too_many_lines)]
 fn test_general_usage_output_on_rebuild() {
     integration_test("fixtures/general_usage", |ctx| {
+        let build_snapshot = create_build_snapshot(&ctx.pack_stdout);
         let config = ctx.config.clone();
         ctx.rebuild(config, |ctx| {
-            assert_contains_match!(ctx.pack_stdout, r"# Heroku .deb Packages \(v\d+\.\d+\.\d+\)");
-
-            match (get_integration_test_builder().as_str(), get_integration_test_arch().as_str()) {
-                ("heroku/builder:22", "amd64") => {
-                    assert_contains_match!(ctx.pack_stdout, r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease\)?(?: \(Stored ETag did not match\))?");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/jammy-security/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/jammy-updates/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/jammy-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-
-                    assert_contains!(ctx.pack_stdout, "Restoring packages from cache");
-                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar79@5.9.0-1`");
-                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.9.0-1`");
-                    assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.33-1build2`");
-                    assert_contains_match!(ctx.pack_stdout, "`curl@7.81.0-.*`");
-                }
-                ("heroku/builder:24", "amd64") => {
-                    assert_contains_match!(ctx.pack_stdout, r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/noble/InRelease\)?(?: \(Stored ETag did not match\))?");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/noble/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://security.ubuntu.com/ubuntu/dists/noble-security/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://security.ubuntu.com/ubuntu/dists/noble-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://security.ubuntu.com/ubuntu/dists/noble-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/noble-updates/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/noble-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-
-                    assert_contains!(ctx.pack_stdout, "Restoring packages from cache");
-                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.10.2-2.1build4`");
-                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.10.2-2.1build4`");
-                    assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2`");
-                    assert_contains_match!(ctx.pack_stdout, "`curl@8.5.0-.*`");
-                }
-                ("heroku/builder:24", "arm64") => {
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/noble/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-security/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-
-                    assert_contains!(ctx.pack_stdout, "Restoring packages from cache");
-                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.10.2-2.1build4`");
-                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.10.2-2.1build4`");
-                    assert_contains!(ctx.pack_stdout, "`xmlsec1@1.2.39-5build2`");
-                    assert_contains_match!(ctx.pack_stdout, "`curl@8.5.0-.*`");
-                }
-                ("heroku/builder:26", "amd64") => {
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/resolute/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://security.ubuntu.com/ubuntu/dists/resolute-security/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://security.ubuntu.com/ubuntu/dists/resolute-security/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://security.ubuntu.com/ubuntu/dists/resolute-security/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/resolute-updates/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute-updates/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute-updates/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://archive.ubuntu.com/ubuntu/dists/resolute-backports/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute-backports/main/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://archive.ubuntu.com/ubuntu/dists/resolute-backports/universe/binary-amd64/by-hash/SHA256/[0-9a-f]+\)");
-
-                    assert_contains!(ctx.pack_stdout, "Restoring packages from cache");
-                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.14.1-2`");
-                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.14.1-2`");
-                    assert_contains!(ctx.pack_stdout, "`xmlsec1@1.3.9-1`");
-                    assert_contains_match!(ctx.pack_stdout, "`curl@8.18.0-.*`");
-                }
-                ("heroku/builder:26", "arm64") => {
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/resolute/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-security/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(
-                        ctx.pack_stdout,
-                        r"(?:Restored release file from cache|Redownloaded release file) \(?http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/InRelease\)?(?: \(Stored ETag did not match\))?"
-                    );
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/main/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-                    assert_contains_match!(ctx.pack_stdout, r"Restored package index from cache \(http://ports.ubuntu.com/ubuntu-ports/dists/resolute-backports/universe/binary-arm64/by-hash/SHA256/[0-9a-f]+\)");
-
-                    assert_contains!(ctx.pack_stdout, "Restoring packages from cache");
-                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar79t64@5.14.1-2`");
-                    assert_contains!(ctx.pack_stdout, "`libgwenhywfar-data@5.14.1-2`");
-                    assert_contains!(ctx.pack_stdout, "`xmlsec1@1.3.9-1`");
-                    assert_contains_match!(ctx.pack_stdout, "`curl@8.18.0-.*`");
-                }
-                _ => panic_unsupported_test_configuration(),
-            }
+            build_snapshot.rebuild_output(&ctx.pack_stdout).assert();
         });
     });
 }
@@ -833,6 +398,109 @@ fn custom_deb_url_for_jammy_distro() {
         assert_contains!(ctx.pack_stdout, "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb");
         assert_contains!(ctx.run_shell_command("wkhtmltopdf --version").stdout, "wkhtmltopdf 0.12.6.1");
     });
+}
+
+const REBUILD_SEPARATOR: &str = "\
+--------------------------------------------- REBUILD ---------------------------------------------";
+
+#[bon::builder(finish_fn = assert)]
+#[allow(clippy::needless_pass_by_value)]
+fn create_build_snapshot(#[builder(start_fn, into)] build_output: String, #[builder(field)] custom_filters: Vec<(String, String)>, #[builder(into)] rebuild_output: Option<String>) {
+    let mut filters = create_snapshot_filters();
+    filters.extend(custom_filters);
+
+    let snapshot_output = if let Some(rebuild_output) = rebuild_output { format!("{build_output}\n{REBUILD_SEPARATOR}\n{rebuild_output}") } else { build_output };
+
+    with_settings!({
+        omit_expression => true,
+        prepend_module_to_snapshot => false,
+        snapshot_path => snapshots_dir(),
+        snapshot_suffix => snapshot_suffix(),
+        filters => filters.iter().map(|(k, v)| (k.as_str(), v.as_str()))
+    }, {
+        assert_snapshot!(test_name(), snapshot_output);
+    });
+}
+
+impl<S: create_build_snapshot_builder::State> CreateBuildSnapshotBuilder<S> {
+    #[allow(dead_code)]
+    fn filter(mut self, matcher: impl Into<String>, replacement: impl Into<String>) -> Self {
+        self.custom_filters.push((matcher.into(), replacement.into()));
+        self
+    }
+}
+
+fn test_name() -> String {
+    std::thread::current().name().expect("Test name should be available as the current thread name").to_string()
+}
+
+fn snapshot_suffix() -> String {
+    let builder = get_integration_test_builder().replace(['/', ':'], "-");
+    let arch = get_integration_test_arch();
+    format!("{builder}_{arch}")
+}
+
+fn snapshots_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("snapshots")
+}
+
+#[allow(clippy::vec_init_then_push)]
+fn create_snapshot_filters() -> Vec<(String, String)> {
+    let mut filters: Vec<(&str, &str)> = vec![];
+
+    // [pack] Filter out image name. e.g.;
+    // - Saving libcnbtest_vtekdznblpdd...
+    // - Successfully built image 'libcnbtest_prkmfnhkvvxu'
+    filters.push((r"libcnbtest_[a-z]{12}", "<image-name>"));
+
+    // [pack] Filter out "*** Images" output line. e.g.;
+    // - *** Images (fbc060d7a40f):
+    filters.push((r"Images \([a-z0-9]+\)", "Images (<random-hex>)"));
+
+    // [pack] Filter out RESTORING section as output is non-deterministic
+    filters.push((r"===> RESTORING\n(?:.*\n)*?===> BUILDING", "===> RESTORING\n<restoring-output>\n===> BUILDING"));
+
+    // [pack] Filter out buildpack version in DETECTING section. e.g.;
+    // - heroku/deb-packages  0.2.0
+    filters.push((r"heroku/deb-packages(.*)\d+\.\d+\.\d+", "heroku/deb-packages$1<buildpack-version>"));
+
+    // [bullet-stream] Timers from background progress completion. e.g.;
+    // - (2m 22s)
+    // - (10.9s)
+    // - (< 0.3s)
+    filters.push((r"(?:\(\d+m \d+s\)|\(\d+\.\d+s\)|\(< 0.\d+s\))", "(<time_elapsed>)"));
+
+    // [bullet-stream] Dots from background activity
+    filters.push((r" \.+ ", " ... "));
+
+    // [bullet-stream] Timer from streamed command output completion. e.g.;
+    // - Done (finished in 3m 29s)
+    filters.push((r"- Done \(finished in .*\)", "- Done (finished in <time_elapsed>)"));
+
+    // [deb-packages] Buildpack version in heading. e.g.;
+    // - ## Heroku .deb Packages (v0.3.0)
+    filters.push((r"Heroku \.deb Packages \(v\d+\.\d+\.\d+\)", "Heroku .deb Packages (v<buildpack-version>)"));
+
+    // [deb-packages] SHA256 hashes in package index URLs. e.g.;
+    // - by-hash/SHA256/abc123def456...
+    filters.push((r"by-hash/SHA256/[0-9a-f]+", "by-hash/SHA256/<sha256-hash>"));
+
+    // [deb-packages] Package index count which varies as repos are updated. e.g.;
+    // - Indexed 73521 packages
+    filters.push((r"Indexed \d+ packages", "Indexed <N> packages"));
+
+    // [deb-packages] Release file cache state can vary between builds. e.g.;
+    // - Restored release file from cache (http://...InRelease)
+    // - Redownloaded release file http://...InRelease (Stored ETag did not match)
+    filters.push((r"Restored release file from cache \((http://\S+)\)", "<RESTORED_OR_REDOWNLOADED> release file ($1)"));
+    filters.push((r"Redownloaded release file (http://\S+) \(Stored ETag did not match\)", "<RESTORED_OR_REDOWNLOADED> release file ($1)"));
+
+    // [pack] Cache layer hashes which are non-deterministic. e.g.;
+    // - Adding cache layer 'heroku/deb-packages:0d7890e3ad86a9ebafdd72f64499f94aa395cd89...'
+    // - Reusing cache layer 'heroku/deb-packages:0d7890e3ad86a9ebafdd72f64499f94aa395cd89...'
+    filters.push((r"((?:Adding|Reusing) cache layer 'heroku/deb-packages:)[0-9a-f]+'", "${1}<layer-hash>'"));
+
+    filters.into_iter().map(|(matcher, replacement)| (matcher.to_string(), replacement.to_string())).collect()
 }
 
 const DEFAULT_BUILDER: &str = "heroku/builder:24";
