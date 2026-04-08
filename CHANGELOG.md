@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- When the same package version exists in multiple repositories, the package from the first-declared source is now consistently preferred. ([#185](https://github.com/heroku/buildpacks-deb-packages/pull/185))
+
 ## [1.0.0] - 2026-04-03
 
 ### Added
