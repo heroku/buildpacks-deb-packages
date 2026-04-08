@@ -1,4 +1,4 @@
-use crate::debian::{PackagePriority, RepositoryPackage};
+use crate::debian::{RepositoryPackage, SourceOrder};
 use indexmap::{IndexMap, IndexSet};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -7,26 +7,26 @@ use std::str::FromStr;
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PackageResolutionKey {
     version: debversion::Version,
-    priority: PackagePriority,
+    source_order: SourceOrder,
 }
 
 impl PackageResolutionKey {
-    fn new(version: &str, priority: PackagePriority) -> Self {
+    fn new(version: &str, source_order: SourceOrder) -> Self {
         Self {
             version: debversion::Version::from_str(version)
                 .expect("Packages should always have a valid debian version"),
-            priority,
+            source_order,
         }
     }
 }
 
 impl Ord for PackageResolutionKey {
     fn cmp(&self, other: &Self) -> Ordering {
-        // Higher version first, then lower priority first
+        // Higher version first, then lower source order first (first-declared wins)
         other
             .version
             .cmp(&self.version)
-            .then(self.priority.cmp(&other.priority))
+            .then(self.source_order.cmp(&other.source_order))
     }
 }
 
@@ -65,7 +65,10 @@ impl PackageIndex {
                 .push(package.clone());
         }
 
-        let key = PackageResolutionKey::new(&package.version, package.priority);
+        // NOTE: If a duplicate (same version + source order) is inserted, it silently
+        // overwrites the previous entry. This shouldn't occur in practice since a given
+        // source/suite/component can't produce two entries with the same package name and version.
+        let key = PackageResolutionKey::new(&package.version, package.source_order);
         self.name_to_repository_packages
             .entry(package.name.clone())
             .or_default()
@@ -111,7 +114,7 @@ mod test {
     fn default_test_repository_package() -> RepositoryPackage {
         RepositoryPackage {
             repository_uri: RepositoryUri::from("test-repository"),
-            priority: PackagePriority::new(0, 0, 0),
+            source_order: SourceOrder::new(0, 0, 0),
             name: "test-name".to_string(),
             version: "test-version".to_string(),
             filename: "test-filename".to_string(),
@@ -130,17 +133,17 @@ mod test {
         }
     }
 
-    fn create_repository_package_with_priority(
+    fn create_repository_package_with_source_order(
         name: &str,
         version: &str,
         repository_uri: &str,
-        priority: PackagePriority,
+        source_order: SourceOrder,
     ) -> RepositoryPackage {
         RepositoryPackage {
             name: name.to_string(),
             version: version.to_string(),
             repository_uri: RepositoryUri::from(repository_uri),
-            priority,
+            source_order,
             ..default_test_repository_package()
         }
     }
@@ -192,17 +195,17 @@ mod test {
     #[test]
     fn test_same_version_different_priorities_prefers_lower_priority() {
         let mut package_index = PackageIndex::default();
-        package_index.add_package(create_repository_package_with_priority(
+        package_index.add_package(create_repository_package_with_source_order(
             "curl",
             "8.5.0-2ubuntu10.8",
             "http://security.ubuntu.com/ubuntu",
-            PackagePriority::new(1, 0, 0),
+            SourceOrder::new(1, 0, 0),
         ));
-        package_index.add_package(create_repository_package_with_priority(
+        package_index.add_package(create_repository_package_with_source_order(
             "curl",
             "8.5.0-2ubuntu10.8",
             "http://archive.ubuntu.com/ubuntu",
-            PackagePriority::new(0, 0, 0),
+            SourceOrder::new(0, 0, 0),
         ));
         let resolved = package_index
             .get_highest_available_version("curl")
@@ -217,17 +220,17 @@ mod test {
     #[test]
     fn test_higher_version_wins_regardless_of_priority() {
         let mut package_index = PackageIndex::default();
-        package_index.add_package(create_repository_package_with_priority(
+        package_index.add_package(create_repository_package_with_source_order(
             "curl",
             "7.0.0",
             "http://archive.ubuntu.com/ubuntu",
-            PackagePriority::new(0, 0, 0),
+            SourceOrder::new(0, 0, 0),
         ));
-        package_index.add_package(create_repository_package_with_priority(
+        package_index.add_package(create_repository_package_with_source_order(
             "curl",
             "8.5.0",
             "http://security.ubuntu.com/ubuntu",
-            PackagePriority::new(1, 0, 0),
+            SourceOrder::new(1, 0, 0),
         ));
         let resolved = package_index
             .get_highest_available_version("curl")
@@ -236,6 +239,31 @@ mod test {
             resolved.repository_uri,
             RepositoryUri::from("http://security.ubuntu.com/ubuntu"),
             "Higher version should win even from a lower-priority source"
+        );
+    }
+
+    #[test]
+    fn test_duplicate_version_and_source_order_last_insert_wins() {
+        let mut package_index = PackageIndex::default();
+        package_index.add_package(create_repository_package_with_source_order(
+            "curl",
+            "8.5.0",
+            "http://archive.ubuntu.com/ubuntu",
+            SourceOrder::new(0, 0, 0),
+        ));
+        package_index.add_package(create_repository_package_with_source_order(
+            "curl",
+            "8.5.0",
+            "http://mirror.ubuntu.com/ubuntu",
+            SourceOrder::new(0, 0, 0),
+        ));
+        let resolved = package_index
+            .get_highest_available_version("curl")
+            .expect("package should exist");
+        assert_eq!(
+            resolved.repository_uri,
+            RepositoryUri::from("http://mirror.ubuntu.com/ubuntu"),
+            "When version and source order are identical, the last-inserted entry overwrites"
         );
     }
 

@@ -1,6 +1,6 @@
 use crate::debian::{
-    ArchitectureName, PackageIndex, PackagePriority, ParseRepositoryPackageError,
-    RepositoryPackage, RepositoryUri, Source,
+    ArchitectureName, PackageIndex, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
+    Source, SourceOrder,
 };
 use crate::o11y::*;
 use crate::pgp::CertHelper;
@@ -222,7 +222,7 @@ async fn update_source(
                 package_index,
             ))?;
 
-        let priority = PackagePriority::new(source_index, suite_index, component_index);
+        let source_order = SourceOrder::new(source_index, suite_index, component_index);
 
         tasks.push_back(tokio::spawn(
             get_package_list(
@@ -234,7 +234,7 @@ async fn update_source(
                 component.clone(),
                 arch.clone(),
                 package_index_release_hash.hash.clone(),
-                priority,
+                source_order,
             )
             .in_current_span(),
         ));
@@ -377,7 +377,7 @@ async fn get_package_list(
     component: String,
     arch: ArchitectureName,
     hash: String,
-    priority: PackagePriority,
+    source_order: SourceOrder,
 ) -> BuildpackResult<UpdatedPackageIndex> {
     info!(
         { PACKAGE_LIST_URI } = %remove_url_credentials(&repository_uri),
@@ -510,7 +510,7 @@ async fn get_package_list(
 
     Ok(UpdatedPackageIndex {
         repository_uri,
-        priority,
+        source_order,
         package_index_path,
         package_index_url,
         cache_state,
@@ -562,7 +562,7 @@ async fn read_packages(
             .partition_map(|package_data| {
                 RepositoryPackage::parse_parallel(
                     updated_source.repository_uri.clone(),
-                    updated_source.priority,
+                    updated_source.source_order,
                     package_data,
                 )
                 .map_or_else(Either::Left, Either::Right)
@@ -650,7 +650,7 @@ struct UpdatedReleaseFile {
 #[derive(Debug)]
 struct UpdatedPackageIndex {
     repository_uri: RepositoryUri,
-    priority: PackagePriority,
+    source_order: SourceOrder,
     package_index_path: PathBuf,
     package_index_url: String,
     cache_state: UpdatedSourceCacheState,

@@ -1,4 +1,4 @@
-use crate::debian::{PackagePriority, RepositoryUri};
+use crate::debian::{RepositoryUri, SourceOrder};
 use bullet_stream::style;
 use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use serde::Serialize;
@@ -9,7 +9,7 @@ use std::fmt::{Display, Formatter};
 pub(crate) struct RepositoryPackage {
     pub(crate) repository_uri: RepositoryUri,
     #[serde(skip)]
-    pub(crate) priority: PackagePriority,
+    pub(crate) source_order: SourceOrder,
     pub(crate) name: String,
     pub(crate) version: String,
     #[serde(skip)]
@@ -27,7 +27,7 @@ impl RepositoryPackage {
     //       parser was too slow.
     pub(crate) fn parse_parallel(
         repository_uri: RepositoryUri,
-        priority: PackagePriority,
+        source_order: SourceOrder,
         contents: &str,
     ) -> Result<RepositoryPackage, ParseRepositoryPackageError> {
         let values = contents
@@ -57,7 +57,7 @@ impl RepositoryPackage {
 
         Ok(RepositoryPackage {
             repository_uri,
-            priority,
+            source_order,
             name: package_name.clone(),
             version: values
                 .get(VERSION_KEY)
@@ -185,7 +185,7 @@ static PROVIDES_KEY: &str = "Provides";
 mod test {
     use std::collections::HashSet;
 
-    use crate::debian::{PackagePriority, RepositoryPackage, RepositoryUri};
+    use crate::debian::{RepositoryPackage, RepositoryUri, SourceOrder};
 
     fn create_repository_package(
         depends: Option<&str>,
@@ -194,7 +194,7 @@ mod test {
     ) -> RepositoryPackage {
         RepositoryPackage {
             repository_uri: RepositoryUri::from("test-repository"),
-            priority: PackagePriority::new(0, 0, 0),
+            source_order: SourceOrder::new(0, 0, 0),
             name: "test-name".to_string(),
             version: "test-version".to_string(),
             filename: "test-filename".to_string(),
