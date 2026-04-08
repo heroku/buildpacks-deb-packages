@@ -2,17 +2,17 @@
 /// Lower values = higher priority (first-declared source wins).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct PackagePriority {
-    source_index: usize,
-    suite_index: usize,
-    component_index: usize,
+    source: usize,
+    suite: usize,
+    component: usize,
 }
 
 impl PackagePriority {
-    pub(crate) fn new(source_index: usize, suite_index: usize, component_index: usize) -> Self {
+    pub(crate) fn new(source: usize, suite: usize, component: usize) -> Self {
         Self {
-            source_index,
-            suite_index,
-            component_index,
+            source,
+            suite,
+            component,
         }
     }
 }

@@ -82,13 +82,14 @@ impl PackageIndex {
 
 #[cfg(test)]
 mod test {
-    use crate::debian::RepositoryUri;
+    use crate::debian::{PackagePriority, RepositoryUri};
 
     use super::*;
 
     fn default_test_repository_package() -> RepositoryPackage {
         RepositoryPackage {
             repository_uri: RepositoryUri::from("test-repository"),
+            priority: PackagePriority::new(0, 0, 0),
             name: "test-name".to_string(),
             version: "test-version".to_string(),
             filename: "test-filename".to_string(),

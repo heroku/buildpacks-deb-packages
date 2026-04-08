@@ -1,5 +1,5 @@
 use crate::debian::{
-    ArchitectureName, PackageIndex, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
+    ArchitectureName, PackageIndex, PackagePriority, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
     Source,
 };
 use crate::o11y::*;
@@ -552,6 +552,7 @@ async fn read_packages(
             .partition_map(|package_data| {
                 RepositoryPackage::parse_parallel(
                     updated_source.repository_uri.clone(),
+                    PackagePriority::new(0, 0, 0),
                     package_data,
                 )
                 .map_or_else(Either::Left, Either::Right)

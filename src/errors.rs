@@ -1038,7 +1038,7 @@ mod tests {
     use crate::DebianPackagesBuildpackError::UnsupportedDistro;
     use crate::config::download_url::DownloadUrl;
     use crate::debian::{
-        ParsePackageNameError, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
+        PackagePriority, ParsePackageNameError, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
         UnsupportedArchitectureNameError,
     };
     use anyhow::anyhow;
@@ -3370,6 +3370,7 @@ mod tests {
             version: "1.0.0".to_string(),
             filename: format!("{package_name}.tgz"),
             repository_uri: RepositoryUri::from("https://test/path/to/repository"),
+            priority: PackagePriority::new(0, 0, 0),
             sha256sum: String::new(),
             depends: None,
             pre_depends: None,
