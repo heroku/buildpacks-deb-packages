@@ -1,6 +1,6 @@
 use crate::debian::{
-    ArchitectureName, PackageIndex, PackagePriority, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
-    Source,
+    ArchitectureName, PackageIndex, PackagePriority, ParseRepositoryPackageError,
+    RepositoryPackage, RepositoryUri, Source,
 };
 use crate::o11y::*;
 use crate::pgp::CertHelper;
@@ -9,8 +9,10 @@ use apt_parser::Release;
 use apt_parser::errors::APTError;
 use async_compression::tokio::bufread::GzipDecoder;
 use bullet_stream::{global::print, style};
+use futures::StreamExt;
 use futures::TryStreamExt;
 use futures::io::AllowStdIo;
+use futures::stream::FuturesOrdered;
 use libcnb::build::BuildContext;
 use libcnb::data::layer::{LayerName, LayerNameError};
 use libcnb::layer::{
@@ -134,11 +136,11 @@ async fn update_sources(
         Err(CreatePackageIndexError::NoSources)?;
     }
 
-    let mut update_source_handles = JoinSet::new();
+    let mut tasks = FuturesOrdered::new();
 
-    for source in sources {
-        for suite in &source.suites {
-            update_source_handles.spawn(
+    for (source_index, source) in sources.iter().enumerate() {
+        for (suite_index, suite) in source.suites.iter().enumerate() {
+            tasks.push_back(tokio::spawn(
                 update_source(
                     context.clone(),
                     client.clone(),
@@ -147,23 +149,24 @@ async fn update_sources(
                     source.components.clone(),
                     source.arch.clone(),
                     source.signed_by.clone(),
+                    source_index,
+                    suite_index,
                 )
                 .in_current_span(),
-            );
+            ));
         }
     }
 
     let mut updated_sources = vec![];
-    while let Some(update_source_handle) = update_source_handles.join_next().await {
-        let updated_source =
-            update_source_handle.map_err(CreatePackageIndexError::TaskFailed)??;
-        updated_sources.push(updated_source);
+    while let Some(result) = tasks.next().await {
+        updated_sources.push(result.map_err(CreatePackageIndexError::TaskFailed)??);
     }
 
     Ok(updated_sources)
 }
 
 #[instrument(skip_all)]
+#[allow(clippy::too_many_arguments)]
 async fn update_source(
     context: Arc<BuildContext<DebianPackagesBuildpack>>,
     client: ClientWithMiddleware,
@@ -172,6 +175,8 @@ async fn update_source(
     components: Vec<String>,
     arch: ArchitectureName,
     signed_by: String,
+    source_index: usize,
+    suite_index: usize,
 ) -> BuildpackResult<UpdatedSource> {
     let updated_release_file = get_release(
         context.clone(),
@@ -199,9 +204,10 @@ async fn update_source(
             })
         })?;
 
-    let mut get_package_list_handles = JoinSet::new();
+    let acquire_by_hash = release.acquire_by_hash.unwrap_or_default();
+    let mut tasks = FuturesOrdered::new();
 
-    for component in components {
+    for (component_index, component) in components.iter().enumerate() {
         let package_index = format!("{component}/binary-{arch}/Packages.gz");
         let package_index_release_hash = release
             .sha256sum
@@ -216,25 +222,27 @@ async fn update_source(
                 package_index,
             ))?;
 
-        get_package_list_handles.spawn(
+        let priority = PackagePriority::new(source_index, suite_index, component_index);
+
+        tasks.push_back(tokio::spawn(
             get_package_list(
                 context.clone(),
                 client.clone(),
                 repository_uri.clone(),
-                release.acquire_by_hash.unwrap_or_default(),
+                acquire_by_hash,
                 suite.clone(),
                 component.clone(),
                 arch.clone(),
                 package_index_release_hash.hash.clone(),
+                priority,
             )
             .in_current_span(),
-        );
+        ));
     }
 
     let mut updated_package_indexes = vec![];
-    while let Some(get_package_list_handle) = get_package_list_handles.join_next().await {
-        updated_package_indexes
-            .push(get_package_list_handle.map_err(CreatePackageIndexError::TaskFailed)??);
+    while let Some(result) = tasks.next().await {
+        updated_package_indexes.push(result.map_err(CreatePackageIndexError::TaskFailed)??);
     }
 
     Ok(UpdatedSource {
@@ -369,6 +377,7 @@ async fn get_package_list(
     component: String,
     arch: ArchitectureName,
     hash: String,
+    priority: PackagePriority,
 ) -> BuildpackResult<UpdatedPackageIndex> {
     info!(
         { PACKAGE_LIST_URI } = %remove_url_credentials(&repository_uri),
@@ -501,6 +510,7 @@ async fn get_package_list(
 
     Ok(UpdatedPackageIndex {
         repository_uri,
+        priority,
         package_index_path,
         package_index_url,
         cache_state,
@@ -552,7 +562,7 @@ async fn read_packages(
             .partition_map(|package_data| {
                 RepositoryPackage::parse_parallel(
                     updated_source.repository_uri.clone(),
-                    PackagePriority::new(0, 0, 0),
+                    updated_source.priority,
                     package_data,
                 )
                 .map_or_else(Either::Left, Either::Right)
@@ -640,6 +650,7 @@ struct UpdatedReleaseFile {
 #[derive(Debug)]
 struct UpdatedPackageIndex {
     repository_uri: RepositoryUri,
+    priority: PackagePriority,
     package_index_path: PathBuf,
     package_index_url: String,
     cache_state: UpdatedSourceCacheState,
