@@ -42,6 +42,11 @@ use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
 use tracing::{Instrument, info, instrument};
 
+#[cfg(test)]
+pub(crate) static TEST_NOTIFY_READ_COMPLETE: std::sync::OnceLock<
+    tokio::sync::mpsc::UnboundedSender<String>,
+> = std::sync::OnceLock::new();
+
 #[instrument(skip_all)]
 pub(crate) async fn create_package_index(
     context: &Arc<BuildContext<DebianPackagesBuildpack>>,
@@ -541,6 +546,9 @@ async fn read_packages(
         .replace("\r\n", "\n")
         .replace('\0', "");
 
+    #[cfg(test)]
+    let completed_repository_uri = updated_source.repository_uri.to_string();
+
     let (send, recv) = channel();
     rayon::spawn(move || {
         let (errors, packages): (Vec<_>, Vec<_>) = contents
@@ -564,6 +572,12 @@ async fn read_packages(
             { PACKAGE_LIST_SIZE } = packages.len(),
             "parsed package list"
         );
+
+        #[cfg(test)]
+        if let Some(tx) = TEST_NOTIFY_READ_COMPLETE.get() {
+            let _ = tx.send(completed_repository_uri);
+        }
+
         Ok(packages)
     } else {
         Err(
@@ -653,5 +667,93 @@ impl Display for UpdatedSourceCacheState {
                 write!(f, "updated {}", style::details(reason))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn make_fifo(path: &std::path::Path) {
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(path)
+                .status()
+                .expect("mkfifo command should exist")
+                .success(),
+            "mkfifo should succeed"
+        );
+    }
+
+    fn package_entry(name: &str, version: &str, uri: &str) -> String {
+        format!(
+            "Package: {name}\n\
+             Version: {version}\n\
+             Filename: pool/{uri}/{name}.deb\n\
+             SHA256: 0000000000000000000000000000000000000000000000000000000000000000\n"
+        )
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_build_package_index_preserves_source_order_when_first_source_is_slow() {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        TEST_NOTIFY_READ_COMPLETE
+            .set(tx)
+            .expect("OnceLock should not be set yet");
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let source_a_fifo = dir.path().join("source_a");
+        let source_b_file = dir.path().join("source_b");
+
+        make_fifo(&source_a_fifo);
+        std::fs::write(&source_b_file, package_entry("my-package", "1.0.0", "source-b")).unwrap();
+
+        let source_a_content = package_entry("my-package", "1.0.0", "source-a");
+        let fifo_path = source_a_fifo.clone();
+
+        let updated_sources = vec![
+            UpdatedPackageIndex {
+                repository_uri: RepositoryUri::from("source-a"),
+                package_index_path: source_a_fifo,
+                package_index_url: "http://source-a/Packages.gz".to_string(),
+                cache_state: UpdatedSourceCacheState::New,
+            },
+            UpdatedPackageIndex {
+                repository_uri: RepositoryUri::from("source-b"),
+                package_index_path: source_b_file,
+                package_index_url: "http://source-b/Packages.gz".to_string(),
+                cache_state: UpdatedSourceCacheState::New,
+            },
+        ];
+
+        let handle = tokio::spawn(async move { build_package_index(updated_sources).await });
+
+        // Wait for source B to signal that it has finished reading and parsing.
+        // Source A is blocked on the FIFO so it cannot complete yet.
+        let completed_uri = rx.recv().await.expect("should receive completion signal");
+        assert_eq!(completed_uri, "source-b");
+
+        // Now unblock source A by writing its package data to the FIFO.
+        // Since B already completed, with JoinSet B's result is consumed first (wrong order).
+        // With FuturesOrdered, A's result is consumed first (correct order).
+        tokio::fs::write(&fifo_path, source_a_content)
+            .await
+            .expect("write to FIFO should succeed");
+
+        let package_index = handle
+            .await
+            .expect("task should not panic")
+            .expect("build_package_index should succeed");
+
+        let winner = package_index
+            .get_highest_available_version("my-package")
+            .expect("my-package should exist in the index");
+
+        assert_eq!(
+            winner.repository_uri,
+            RepositoryUri::from("source-a"),
+            "Source A should win because it was declared first, \
+             even though Source B completed faster"
+        );
     }
 }
