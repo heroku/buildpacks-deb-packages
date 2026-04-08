@@ -107,7 +107,7 @@ impl PackageIndex {
 
 #[cfg(test)]
 mod test {
-    use crate::debian::{PackagePriority, RepositoryUri};
+    use crate::debian::RepositoryUri;
 
     use super::*;
 
