@@ -9,8 +9,10 @@ use apt_parser::Release;
 use apt_parser::errors::APTError;
 use async_compression::tokio::bufread::GzipDecoder;
 use bullet_stream::{global::print, style};
+use futures::StreamExt;
 use futures::TryStreamExt;
 use futures::io::AllowStdIo;
+use futures::stream::FuturesOrdered;
 use libcnb::build::BuildContext;
 use libcnb::data::layer::{LayerName, LayerNameError};
 use libcnb::layer::{
@@ -37,7 +39,7 @@ use tokio::io::{
 };
 use tokio::sync::oneshot::channel;
 use tokio::sync::oneshot::error::RecvError;
-use tokio::task::{JoinError, JoinSet};
+use tokio::task::JoinError;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::InspectReader;
 use tracing::{Instrument, info, instrument};
@@ -134,11 +136,11 @@ async fn update_sources(
         Err(CreatePackageIndexError::NoSources)?;
     }
 
-    let mut update_source_handles = JoinSet::new();
-
-    for source in sources {
-        for suite in &source.suites {
-            update_source_handles.spawn(
+    let mut tasks: FuturesOrdered<_> = sources
+        .iter()
+        .flat_map(|source| source.suites.iter().map(move |suite| (source, suite)))
+        .map(|(source, suite)| {
+            tokio::spawn(
                 update_source(
                     context.clone(),
                     client.clone(),
@@ -149,15 +151,13 @@ async fn update_sources(
                     source.signed_by.clone(),
                 )
                 .in_current_span(),
-            );
-        }
-    }
+            )
+        })
+        .collect();
 
     let mut updated_sources = vec![];
-    while let Some(update_source_handle) = update_source_handles.join_next().await {
-        let updated_source =
-            update_source_handle.map_err(CreatePackageIndexError::TaskFailed)??;
-        updated_sources.push(updated_source);
+    while let Some(result) = tasks.next().await {
+        updated_sources.push(result.map_err(CreatePackageIndexError::TaskFailed)??);
     }
 
     Ok(updated_sources)
@@ -199,7 +199,8 @@ async fn update_source(
             })
         })?;
 
-    let mut get_package_list_handles = JoinSet::new();
+    let acquire_by_hash = release.acquire_by_hash.unwrap_or_default();
+    let mut get_package_list_tasks = FuturesOrdered::new();
 
     for component in components {
         let package_index = format!("{component}/binary-{arch}/Packages.gz");
@@ -216,25 +217,24 @@ async fn update_source(
                 package_index,
             ))?;
 
-        get_package_list_handles.spawn(
+        get_package_list_tasks.push_back(tokio::spawn(
             get_package_list(
                 context.clone(),
                 client.clone(),
                 repository_uri.clone(),
-                release.acquire_by_hash.unwrap_or_default(),
+                acquire_by_hash,
                 suite.clone(),
                 component.clone(),
                 arch.clone(),
                 package_index_release_hash.hash.clone(),
             )
             .in_current_span(),
-        );
+        ));
     }
 
     let mut updated_package_indexes = vec![];
-    while let Some(get_package_list_handle) = get_package_list_handles.join_next().await {
-        updated_package_indexes
-            .push(get_package_list_handle.map_err(CreatePackageIndexError::TaskFailed)??);
+    while let Some(result) = get_package_list_tasks.next().await {
+        updated_package_indexes.push(result.map_err(CreatePackageIndexError::TaskFailed)??);
     }
 
     Ok(UpdatedSource {
@@ -511,14 +511,14 @@ async fn get_package_list(
 async fn build_package_index(
     updated_sources: Vec<UpdatedPackageIndex>,
 ) -> BuildpackResult<PackageIndex> {
-    let mut get_packages_handles = JoinSet::new();
-    for update_source in updated_sources {
-        get_packages_handles.spawn(read_packages(update_source).in_current_span());
-    }
+    let mut tasks: FuturesOrdered<_> = updated_sources
+        .into_iter()
+        .map(|source| tokio::spawn(read_packages(source).in_current_span()))
+        .collect();
 
     let mut package_index = PackageIndex::default();
-    while let Some(get_package_handle) = get_packages_handles.join_next().await {
-        let packages = get_package_handle.map_err(CreatePackageIndexError::TaskFailed)??;
+    while let Some(result) = tasks.next().await {
+        let packages = result.map_err(CreatePackageIndexError::TaskFailed)??;
         for package in packages {
             package_index.add_package(package);
         }
