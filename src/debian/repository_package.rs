@@ -145,9 +145,9 @@ impl RepositoryPackage {
 pub(crate) enum ParseRepositoryPackageError {
     MissingPackageName,
     MissingVersion(String),
+    InvalidVersion(String, String),
     MissingFilename(String),
     MissingSha256(String),
-    InvalidVersion(String, String),
 }
 
 impl Display for ParseRepositoryPackageError {
@@ -168,6 +168,15 @@ impl Display for ParseRepositoryPackageError {
                     version_key = style::value(VERSION_KEY)
                 )
             }
+            ParseRepositoryPackageError::InvalidVersion(package_name, version_string) => {
+                write!(
+                    f,
+                    "Package {package_name} has an invalid {version_key} value of {version_string}.",
+                    package_name = style::value(package_name),
+                    version_key = style::value(VERSION_KEY),
+                    version_string = style::value(version_string)
+                )
+            }
             ParseRepositoryPackageError::MissingFilename(package_name) => {
                 write!(
                     f,
@@ -182,15 +191,6 @@ impl Display for ParseRepositoryPackageError {
                     "Package {package_name} is missing the required {sha256_key} key.",
                     package_name = style::value(package_name),
                     sha256_key = style::value(SHA256_KEY)
-                )
-            }
-            ParseRepositoryPackageError::InvalidVersion(package_name, version_string) => {
-                write!(
-                    f,
-                    "Package {package_name} has an invalid {version_key} value of {version_string}.",
-                    package_name = style::value(package_name),
-                    version_key = style::value(VERSION_KEY),
-                    version_string = style::value(version_string)
                 )
             }
         }
