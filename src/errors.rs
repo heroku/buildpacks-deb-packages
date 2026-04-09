@@ -1439,6 +1439,10 @@ mod tests {
                 vec![
                     ParseRepositoryPackageError::MissingPackageName,
                     ParseRepositoryPackageError::MissingVersion("package-a".to_string()),
+                    ParseRepositoryPackageError::InvalidVersion(
+                        "package-a2".to_string(),
+                        "not!valid".to_string(),
+                    ),
                     ParseRepositoryPackageError::MissingFilename("package-b".to_string()),
                     ParseRepositoryPackageError::MissingSha256("package-c".to_string()),
                 ],
