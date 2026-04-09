@@ -1,29 +1,17 @@
 use crate::debian::{RepositoryUri, SourceOrder};
 use bullet_stream::style;
 use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
-use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-fn serialize_version<S: serde::Serializer>(
-    version: &debversion::Version,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    serializer.serialize_str(&version.to_string())
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, Hash, Serialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub(crate) struct RepositoryPackage {
     pub(crate) repository_uri: RepositoryUri,
-    #[serde(skip)]
     pub(crate) source_order: SourceOrder,
     pub(crate) name: String,
-    #[serde(serialize_with = "serialize_version")]
     pub(crate) version: debversion::Version,
-    #[serde(skip)]
     pub(crate) filename: String,
-    #[serde(skip)]
     pub(crate) sha256sum: String,
     pub(crate) depends: Option<String>,
     pub(crate) pre_depends: Option<String>,
