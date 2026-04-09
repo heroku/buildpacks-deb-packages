@@ -197,7 +197,23 @@ static PROVIDES_KEY: &str = "Provides";
 mod test {
     use std::collections::HashSet;
 
-    use crate::debian::{RepositoryPackage, RepositoryUri, SourceOrder};
+    use crate::debian::{
+        ParseRepositoryPackageError, RepositoryPackage, RepositoryUri, SourceOrder,
+    };
+
+    #[test]
+    fn test_parse_with_invalid_version() {
+        let result = RepositoryPackage::parse_parallel(
+            RepositoryUri::from("test"),
+            SourceOrder::new(0, 0, 0),
+            "Package: test-pkg\nVersion: not!valid\nFilename: test.deb\nSHA256: abc123",
+        );
+        assert!(matches!(
+            result,
+            Err(ParseRepositoryPackageError::InvalidVersion(name, version))
+                if name == "test-pkg" && version == "not!valid"
+        ));
+    }
 
     fn create_repository_package(
         depends: Option<&str>,
