@@ -3361,6 +3361,9 @@ mod tests {
     }
 
     fn create_reqwest_error() -> reqwest::Error {
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .ok();
         async_runtime().block_on(async { reqwest::get("https://test/error").await.unwrap_err() })
     }
 
