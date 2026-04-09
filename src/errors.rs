@@ -3367,7 +3367,7 @@ mod tests {
     fn repository_package(package_name: &str) -> RepositoryPackage {
         RepositoryPackage {
             name: package_name.to_string(),
-            version: "1.0.0".to_string(),
+            version: "1.0.0".parse().unwrap(),
             filename: format!("{package_name}.tgz"),
             repository_uri: RepositoryUri::from("https://test/path/to/repository"),
             source_order: SourceOrder::new(0, 0, 0),
