@@ -4,6 +4,14 @@ use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
+
+fn serialize_version<S: serde::Serializer>(
+    version: &debversion::Version,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&version.to_string())
+}
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash, Serialize)]
 pub(crate) struct RepositoryPackage {
@@ -11,7 +19,8 @@ pub(crate) struct RepositoryPackage {
     #[serde(skip)]
     pub(crate) source_order: SourceOrder,
     pub(crate) name: String,
-    pub(crate) version: String,
+    #[serde(serialize_with = "serialize_version")]
+    pub(crate) version: debversion::Version,
     #[serde(skip)]
     pub(crate) filename: String,
     #[serde(skip)]
@@ -59,12 +68,17 @@ impl RepositoryPackage {
             repository_uri,
             source_order,
             name: package_name.clone(),
-            version: values
-                .get(VERSION_KEY)
-                .map(|v| v.trim().to_string())
-                .ok_or(ParseRepositoryPackageError::MissingVersion(
-                    package_name.clone(),
-                ))?,
+            version: {
+                let version_string = values.get(VERSION_KEY).map(|v| v.trim()).ok_or(
+                    ParseRepositoryPackageError::MissingVersion(package_name.clone()),
+                )?;
+                debversion::Version::from_str(version_string).map_err(|_| {
+                    ParseRepositoryPackageError::InvalidVersion(
+                        package_name.clone(),
+                        version_string.to_string(),
+                    )
+                })?
+            },
             filename: values
                 .get(FILENAME_KEY)
                 .map(|v| v.trim().to_string())
@@ -133,6 +147,7 @@ pub(crate) enum ParseRepositoryPackageError {
     MissingVersion(String),
     MissingFilename(String),
     MissingSha256(String),
+    InvalidVersion(String, String),
 }
 
 impl Display for ParseRepositoryPackageError {
@@ -169,6 +184,15 @@ impl Display for ParseRepositoryPackageError {
                     sha256_key = style::value(SHA256_KEY)
                 )
             }
+            ParseRepositoryPackageError::InvalidVersion(package_name, version_string) => {
+                write!(
+                    f,
+                    "Package {package_name} has an invalid {version_key} value of {version_string}.",
+                    package_name = style::value(package_name),
+                    version_key = style::value(VERSION_KEY),
+                    version_string = style::value(version_string)
+                )
+            }
         }
     }
 }
@@ -196,7 +220,7 @@ mod test {
             repository_uri: RepositoryUri::from("test-repository"),
             source_order: SourceOrder::new(0, 0, 0),
             name: "test-name".to_string(),
-            version: "test-version".to_string(),
+            version: "1.0.0".parse().unwrap(),
             filename: "test-filename".to_string(),
             sha256sum: "test-sha256sum".to_string(),
             depends: depends.map(ToString::to_string),
