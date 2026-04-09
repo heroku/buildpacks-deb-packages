@@ -978,7 +978,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1815,8 +1815,7 @@ checksum = "48f5d2a454e16a5ea0f4ced81bd44e4cfc7bd3a507b61887c99fd3538b28e4af"
 [[package]]
 name = "libcnb"
 version = "0.30.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6291b7e78d27535d7fdf015f20df0fd1d17a98af0b7fe48d8c91418e620cdaf1"
+source = "git+https://github.com/heroku/libcnb.rs?branch=cross-compile-cxx-ar-env-vars#636e4ea479af4561ac2c2c373d2a095ff2559acf"
 dependencies = [
  "libcnb-common",
  "libcnb-data",
@@ -1836,8 +1835,7 @@ dependencies = [
 [[package]]
 name = "libcnb-common"
 version = "0.30.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4cbed66e23c39424feb481c65d699c5575762c4cc7415ec781ae611107f6a1f"
+source = "git+https://github.com/heroku/libcnb.rs?branch=cross-compile-cxx-ar-env-vars#636e4ea479af4561ac2c2c373d2a095ff2559acf"
 dependencies = [
  "serde",
  "thiserror 2.0.18",
@@ -1847,8 +1845,7 @@ dependencies = [
 [[package]]
 name = "libcnb-data"
 version = "0.30.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0331b1f367939fbef2746966a6b0ad2aa49beea42c45c4132843e86c4a454407"
+source = "git+https://github.com/heroku/libcnb.rs?branch=cross-compile-cxx-ar-env-vars#636e4ea479af4561ac2c2c373d2a095ff2559acf"
 dependencies = [
  "fancy-regex",
  "libcnb-proc-macros",
@@ -1861,8 +1858,7 @@ dependencies = [
 [[package]]
 name = "libcnb-package"
 version = "0.30.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4821eaaf3d992aca1cf28c20a51f0ca521876c000544950f9bdb59fc5bb6fb86"
+source = "git+https://github.com/heroku/libcnb.rs?branch=cross-compile-cxx-ar-env-vars#636e4ea479af4561ac2c2c373d2a095ff2559acf"
 dependencies = [
  "cargo_metadata",
  "ignore",
@@ -1878,8 +1874,7 @@ dependencies = [
 [[package]]
 name = "libcnb-proc-macros"
 version = "0.30.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c09089d90fd4938d46c1db934fe561c5ff0e1538b7e96dde8428fd9bc111fd0"
+source = "git+https://github.com/heroku/libcnb.rs?branch=cross-compile-cxx-ar-env-vars#636e4ea479af4561ac2c2c373d2a095ff2559acf"
 dependencies = [
  "cargo_metadata",
  "fancy-regex",
@@ -1890,8 +1885,7 @@ dependencies = [
 [[package]]
 name = "libcnb-test"
 version = "0.30.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40699e3254f64a9ac3747a442bce2a35ce7941ada284b39cdb00c6dae5d9945c"
+source = "git+https://github.com/heroku/libcnb.rs?branch=cross-compile-cxx-ar-env-vars#636e4ea479af4561ac2c2c373d2a095ff2559acf"
 dependencies = [
  "fastrand",
  "fs_extra",
@@ -2035,7 +2029,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2849,7 +2843,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2906,7 +2900,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3056,7 +3050,7 @@ dependencies = [
  "sha1collisiondetection",
  "sha2 0.10.9",
  "sha3",
- "thiserror 2.0.18",
+ "thiserror 1.0.69",
  "twofish",
  "typenum",
  "x25519-dalek",
@@ -3214,7 +3208,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3304,7 +3298,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3313,7 +3307,7 @@ version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8c27177b12a6399ffc08b98f76f7c9a1f4fe9fc967c784c5a071fa8d93cf7e1"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3965,7 +3959,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

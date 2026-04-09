@@ -1,0 +1,51 @@
+name: Test Cross-Compile Fix
+
+on:
+  push:
+    branches:
+      - test-libcnb-cross-compile-fix
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  PACKAGE_DIR: ./packaged
+
+jobs:
+  cross-compile:
+    name: Cross-compile (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-unknown-linux-musl
+          - x86_64-unknown-linux-musl
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Update Rust toolchain
+        run: rustup update
+
+      - name: Disable man-db auto-update
+        run: sudo rm -f /var/lib/man-db/auto-update
+
+      - name: Install cross-compile tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends musl-tools
+          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-musl" ]]; then
+            sudo apt-get install --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
+          fi
+          rustup target add "${{ matrix.target }}"
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+      - name: Install libcnb-cargo from PR branch
+        run: cargo install --locked --git https://github.com/heroku/libcnb.rs --branch cross-compile-cxx-ar-env-vars libcnb-cargo
+
+      - name: Package buildpack
+        run: cargo libcnb package --release --target "${{ matrix.target }}"
