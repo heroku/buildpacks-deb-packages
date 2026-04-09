@@ -2,7 +2,6 @@ use crate::debian::{RepositoryPackage, SourceOrder};
 use indexmap::{IndexMap, IndexSet};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PackageResolutionKey {
@@ -11,10 +10,9 @@ struct PackageResolutionKey {
 }
 
 impl PackageResolutionKey {
-    fn new(version: &str, source_order: SourceOrder) -> Self {
+    fn new(version: debversion::Version, source_order: SourceOrder) -> Self {
         Self {
-            version: debversion::Version::from_str(version)
-                .expect("Packages should always have a valid debian version"),
+            version,
             source_order,
         }
     }
@@ -68,7 +66,7 @@ impl PackageIndex {
         // NOTE: If a duplicate (same version + source order) is inserted, it silently
         // overwrites the previous entry. This shouldn't occur in practice since a given
         // source/suite/component can't produce two entries with the same package name and version.
-        let key = PackageResolutionKey::new(&package.version, package.source_order);
+        let key = PackageResolutionKey::new(package.version.clone(), package.source_order);
         self.name_to_repository_packages
             .entry(package.name.clone())
             .or_default()
@@ -116,7 +114,7 @@ mod test {
             repository_uri: RepositoryUri::from("test-repository"),
             source_order: SourceOrder::new(0, 0, 0),
             name: "test-name".to_string(),
-            version: "test-version".to_string(),
+            version: "1.0.0".parse().unwrap(),
             filename: "test-filename".to_string(),
             sha256sum: "test-sha256sum".to_string(),
             depends: None,
@@ -128,7 +126,7 @@ mod test {
     fn create_repository_package(name: &str, version: &str) -> RepositoryPackage {
         RepositoryPackage {
             name: name.to_string(),
-            version: version.to_string(),
+            version: version.parse().unwrap(),
             ..default_test_repository_package()
         }
     }
@@ -141,7 +139,7 @@ mod test {
     ) -> RepositoryPackage {
         RepositoryPackage {
             name: name.to_string(),
-            version: version.to_string(),
+            version: version.parse().unwrap(),
             repository_uri: RepositoryUri::from(repository_uri),
             source_order,
             ..default_test_repository_package()
@@ -155,7 +153,7 @@ mod test {
     ) -> RepositoryPackage {
         RepositoryPackage {
             name: name.to_string(),
-            version: version.to_string(),
+            version: version.parse().unwrap(),
             provides: Some(provides.to_string()),
             ..default_test_repository_package()
         }
