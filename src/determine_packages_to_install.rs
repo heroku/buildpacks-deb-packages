@@ -439,8 +439,6 @@ impl From<Control> for SystemPackage {
 mod test {
     use super::*;
 
-    use std::str::FromStr;
-
     use bon::builder;
 
     use crate::debian::{RepositoryUri, SourceOrder};
@@ -774,10 +772,7 @@ mod test {
             .version("1.2.3-2ubuntu0.22.04.2")
             .call();
 
-        assert!(
-            debversion::Version::from_str(package_v0.version.as_str()).unwrap()
-                < debversion::Version::from_str(package_v1.version.as_str()).unwrap()
-        );
+        assert!(package_v0.version < package_v1.version);
 
         let (new_packages_marked_for_install, package_notifications) = test_install_state()
             .with_package_index(vec![&package_v0, &package_v1])
@@ -1056,7 +1051,7 @@ mod test {
                 },
                 PackageNotification::AlreadyInstalledOnSystem {
                     system_package_name: libvips42t64.name.clone(),
-                    system_package_version: libvips42t64.version.clone(),
+                    system_package_version: libvips42t64.version.to_string(),
                 }
             ])
         );
@@ -1202,7 +1197,7 @@ mod test {
         };
         RepositoryPackage {
             name: name.to_string(),
-            version: version.unwrap_or(DEFAULT_VERSION).to_string(),
+            version: version.unwrap_or(DEFAULT_VERSION).parse().unwrap(),
             provides: provides.map(|vs| vs.join(",")),
             repository_uri: RepositoryUri::from(""),
             source_order: SourceOrder::new(0, 0, 0),
