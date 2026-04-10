@@ -443,7 +443,7 @@ mod test {
 
     use bon::builder;
 
-    use crate::debian::RepositoryUri;
+    use crate::debian::{RepositoryUri, SourceOrder};
 
     #[test]
     fn install_package_already_on_the_system() {
@@ -1205,6 +1205,7 @@ mod test {
             version: version.unwrap_or(DEFAULT_VERSION).to_string(),
             provides: provides.map(|vs| vs.join(",")),
             repository_uri: RepositoryUri::from(""),
+            source_order: SourceOrder::new(0, 0, 0),
             sha256sum: String::new(),
             depends: depends.map(join_deps),
             pre_depends: pre_depends.map(join_deps),

@@ -7,6 +7,7 @@ pub(crate) use package_name::*;
 pub(crate) use repository_package::*;
 pub(crate) use repository_uri::*;
 pub(crate) use source::*;
+pub(crate) use source_order::*;
 
 mod architecture_name;
 mod distro;
@@ -17,3 +18,4 @@ mod package_name;
 mod repository_package;
 mod repository_uri;
 mod source;
+mod source_order;

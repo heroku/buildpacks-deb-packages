@@ -1039,7 +1039,7 @@ mod tests {
     use crate::config::download_url::DownloadUrl;
     use crate::debian::{
         ParsePackageNameError, ParseRepositoryPackageError, RepositoryPackage, RepositoryUri,
-        UnsupportedArchitectureNameError,
+        SourceOrder, UnsupportedArchitectureNameError,
     };
     use anyhow::anyhow;
     use bullet_stream::strip_ansi;
@@ -3370,6 +3370,7 @@ mod tests {
             version: "1.0.0".to_string(),
             filename: format!("{package_name}.tgz"),
             repository_uri: RepositoryUri::from("https://test/path/to/repository"),
+            source_order: SourceOrder::new(0, 0, 0),
             sha256sum: String::new(),
             depends: None,
             pre_depends: None,
