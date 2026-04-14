@@ -21,6 +21,7 @@ use reqwest_middleware::ClientBuilder;
 use reqwest_retry::RetryTransientMiddleware;
 use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_tracing::{SpanBackendWithUrl, TracingMiddleware};
+use rustls::crypto::ring::default_provider;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -71,6 +72,10 @@ impl Buildpack for DebianPackagesBuildpack {
     }
 
     fn build(&self, context: BuildContext<Self>) -> libcnb::Result<BuildResult, Self::Error> {
+        default_provider()
+            .install_default()
+            .expect("Should be able to install the default rustls crypto provider");
+
         // This buildpack does a lot of async work, so the context needs to be sharable
         // across async boundaries.
         let context = Arc::new(context);
