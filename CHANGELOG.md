@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- When the same package version exists in multiple repositories, the package from the first-declared source is now consistently preferred. ([#187](https://github.com/heroku/buildpacks-deb-packages/pull/187))
-
 ## [1.0.0] - 2026-04-03
 
 ### Added
@@ -24,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Empty package index files no longer cause a parse error. ([#177](https://github.com/heroku/buildpacks-deb-packages/pull/177))
+- When the same package version exists in multiple repositories, the package from the first-declared source is now consistently preferred. ([#187](https://github.com/heroku/buildpacks-deb-packages/pull/187))
 
 ## [0.3.0] - 2025-12-08
 
