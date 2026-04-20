@@ -1,20 +1,17 @@
 use crate::debian::{RepositoryUri, SourceOrder};
 use bullet_stream::style;
 use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
-use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 
-#[derive(Debug, Eq, PartialEq, Clone, Hash, Serialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub(crate) struct RepositoryPackage {
     pub(crate) repository_uri: RepositoryUri,
-    #[serde(skip)]
     pub(crate) source_order: SourceOrder,
     pub(crate) name: String,
-    pub(crate) version: String,
-    #[serde(skip)]
+    pub(crate) version: debversion::Version,
     pub(crate) filename: String,
-    #[serde(skip)]
     pub(crate) sha256sum: String,
     pub(crate) depends: Option<String>,
     pub(crate) pre_depends: Option<String>,
@@ -59,12 +56,17 @@ impl RepositoryPackage {
             repository_uri,
             source_order,
             name: package_name.clone(),
-            version: values
-                .get(VERSION_KEY)
-                .map(|v| v.trim().to_string())
-                .ok_or(ParseRepositoryPackageError::MissingVersion(
-                    package_name.clone(),
-                ))?,
+            version: {
+                let version_string = values.get(VERSION_KEY).map(|v| v.trim()).ok_or(
+                    ParseRepositoryPackageError::MissingVersion(package_name.clone()),
+                )?;
+                debversion::Version::from_str(version_string).map_err(|_| {
+                    ParseRepositoryPackageError::InvalidVersion(
+                        package_name.clone(),
+                        version_string.to_string(),
+                    )
+                })?
+            },
             filename: values
                 .get(FILENAME_KEY)
                 .map(|v| v.trim().to_string())
@@ -131,6 +133,7 @@ impl RepositoryPackage {
 pub(crate) enum ParseRepositoryPackageError {
     MissingPackageName,
     MissingVersion(String),
+    InvalidVersion(String, String),
     MissingFilename(String),
     MissingSha256(String),
 }
@@ -151,6 +154,15 @@ impl Display for ParseRepositoryPackageError {
                     "Package {package_name} is missing the required {version_key} key.",
                     package_name = style::value(package_name),
                     version_key = style::value(VERSION_KEY)
+                )
+            }
+            ParseRepositoryPackageError::InvalidVersion(package_name, version_string) => {
+                write!(
+                    f,
+                    "Package {package_name} has an invalid {version_key} value of {version_string}.",
+                    package_name = style::value(package_name),
+                    version_key = style::value(VERSION_KEY),
+                    version_string = style::value(version_string)
                 )
             }
             ParseRepositoryPackageError::MissingFilename(package_name) => {
@@ -185,7 +197,23 @@ static PROVIDES_KEY: &str = "Provides";
 mod test {
     use std::collections::HashSet;
 
-    use crate::debian::{RepositoryPackage, RepositoryUri, SourceOrder};
+    use crate::debian::{
+        ParseRepositoryPackageError, RepositoryPackage, RepositoryUri, SourceOrder,
+    };
+
+    #[test]
+    fn test_parse_with_invalid_version() {
+        let result = RepositoryPackage::parse_parallel(
+            RepositoryUri::from("test"),
+            SourceOrder::new(0, 0, 0),
+            "Package: test-pkg\nVersion: not!valid\nFilename: test.deb\nSHA256: abc123",
+        );
+        assert!(matches!(
+            result,
+            Err(ParseRepositoryPackageError::InvalidVersion(name, version))
+                if name == "test-pkg" && version == "not!valid"
+        ));
+    }
 
     fn create_repository_package(
         depends: Option<&str>,
@@ -196,7 +224,7 @@ mod test {
             repository_uri: RepositoryUri::from("test-repository"),
             source_order: SourceOrder::new(0, 0, 0),
             name: "test-name".to_string(),
-            version: "test-version".to_string(),
+            version: "1.0.0".parse().unwrap(),
             filename: "test-filename".to_string(),
             sha256sum: "test-sha256sum".to_string(),
             depends: depends.map(ToString::to_string),
