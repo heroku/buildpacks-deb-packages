@@ -835,7 +835,7 @@ fn custom_deb_url_for_jammy_distro() {
     });
 }
 
-const DEFAULT_BUILDER: &str = "heroku/builder:24";
+const DEFAULT_BUILDER: &str = "heroku/builder:26";
 
 fn get_integration_test_builder() -> String {
     std::env::var("INTEGRATION_TEST_CNB_BUILDER").unwrap_or(DEFAULT_BUILDER.to_string())

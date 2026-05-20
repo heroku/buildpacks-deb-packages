@@ -34,7 +34,7 @@ This buildpack is compatible with the following environments:
 To include this buildpack in your application:
 
 ```shell
-pack build my-app --builder heroku/builder:24 --buildpack heroku/deb-packages
+pack build my-app --builder heroku/builder:26 --buildpack heroku/deb-packages
 ```
 
 And then run the image:
