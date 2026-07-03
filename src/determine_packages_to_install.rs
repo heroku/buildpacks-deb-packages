@@ -389,8 +389,8 @@ impl Display for PackageNotification {
                     package = style::value(&installed_package.name),
                     name_with_version = style::value(format!(
                         "{name}@{version}",
-                        name = &installed_package.name,
-                        version = &installed_package.version
+                        name = installed_package.name,
+                        version = installed_package.version
                     )),
                     installed_by = style::value(installed_by),
                 )
@@ -405,8 +405,8 @@ impl Display for PackageNotification {
                     package = style::value(requested_package),
                     name_with_version = style::value(format!(
                         "{name}@{version}",
-                        name = &implementor.name,
-                        version = &implementor.version
+                        name = implementor.name,
+                        version = implementor.version
                     )),
                 )
             }

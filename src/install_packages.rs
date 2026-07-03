@@ -554,7 +554,7 @@ async fn rewrite_package_config(package_config: &Path, install_path: &Path) -> B
 fn build_download_url(repository_package: &RepositoryPackage) -> String {
     format!(
         "{}/{}",
-        &repository_package.repository_uri, &repository_package.filename
+        repository_package.repository_uri, repository_package.filename
     )
 }
 
