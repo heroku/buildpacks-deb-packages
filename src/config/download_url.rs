@@ -12,7 +12,7 @@ impl DownloadUrl {
             .path_segments()
             .and_then(|mut paths| paths.next_back())
             .and_then(|path| path.strip_suffix(".deb"))
-            .and_then(|path| if path.is_empty() { None } else { Some(path) })
+            .filter(|&path| !path.is_empty())
     }
 }
 

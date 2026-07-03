@@ -261,7 +261,7 @@ async fn get_release(
 ) -> BuildpackResult<UpdatedReleaseFile> {
     info!({ RELEASE_URI } = %remove_url_credentials(&uri), { RELEASE_SUITE } = %suite, "release info");
 
-    let release_file_url = format!("{}/dists/{suite}/InRelease", &uri);
+    let release_file_url = format!("{uri}/dists/{suite}/InRelease");
 
     let response = client
         .get(&release_file_url)
@@ -389,15 +389,9 @@ async fn get_package_list(
     );
 
     let package_index_url = if acquire_by_hash {
-        format!(
-            "{}/dists/{suite}/{component}/binary-{arch}/by-hash/SHA256/{}",
-            &repository_uri, hash
-        )
+        format!("{repository_uri}/dists/{suite}/{component}/binary-{arch}/by-hash/SHA256/{hash}")
     } else {
-        format!(
-            "{}/dists/{suite}/{component}/binary-{arch}/Packages.gz",
-            &repository_uri
-        )
+        format!("{repository_uri}/dists/{suite}/{component}/binary-{arch}/Packages.gz")
     };
 
     // it would be nice to use the url as the layer name but urls don't make for good file names

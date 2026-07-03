@@ -156,10 +156,10 @@ impl Buildpack for DebianPackagesBuildpack {
         );
 
         print::bullet("Distribution Info");
-        print::sub_bullet(format!("Name: {}", &distro.name));
-        print::sub_bullet(format!("Version: {}", &distro.version));
-        print::sub_bullet(format!("Codename: {}", &distro.codename));
-        print::sub_bullet(format!("Architecture: {}", &distro.architecture));
+        print::sub_bullet(format!("Name: {}", distro.name));
+        print::sub_bullet(format!("Version: {}", distro.version));
+        print::sub_bullet(format!("Codename: {}", distro.codename));
+        print::sub_bullet(format!("Architecture: {}", distro.architecture));
 
         let package_index =
             runtime.block_on(create_package_index(&context, &client, &source_list))?;
