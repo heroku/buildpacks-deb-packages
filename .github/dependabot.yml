@@ -11,11 +11,18 @@ updates:
     groups:
       libcnb:
         patterns:
-          - "libcnb*"
+          - "libcnb"
+          - "libcnb-*"
+          - "libherokubuildpack"
       rust-dependencies:
         update-types:
           - "minor"
           - "patch"
+        # Work around: https://github.com/dependabot/dependabot-core/issues/11093
+        exclude-patterns:
+          - "libcnb"
+          - "libcnb-*"
+          - "libherokubuildpack"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
