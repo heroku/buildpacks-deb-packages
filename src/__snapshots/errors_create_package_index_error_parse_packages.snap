@@ -8,6 +8,7 @@ source: src/errors.rs
 ! Parsing errors:
 ! - There's an entry that's missing the required `Package` key.
 ! - Package `package-a` is missing the required `Version` key.
+! - Package `package-a2` has an invalid `Version` value of `not!valid`.
 ! - Package `package-b` is missing the required `Filename` key.
 ! - Package `package-c` is missing the required `SHA256` key.
 !

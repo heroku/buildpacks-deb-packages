@@ -1439,6 +1439,10 @@ mod tests {
                 vec![
                     ParseRepositoryPackageError::MissingPackageName,
                     ParseRepositoryPackageError::MissingVersion("package-a".to_string()),
+                    ParseRepositoryPackageError::InvalidVersion(
+                        "package-a2".to_string(),
+                        "not!valid".to_string(),
+                    ),
                     ParseRepositoryPackageError::MissingFilename("package-b".to_string()),
                     ParseRepositoryPackageError::MissingSha256("package-c".to_string()),
                 ],
@@ -1725,7 +1729,7 @@ mod tests {
     fn repository_package(package_name: &str) -> RepositoryPackage {
         RepositoryPackage {
             name: package_name.to_string(),
-            version: "1.0.0".to_string(),
+            version: "1.0.0".parse().unwrap(),
             filename: format!("{package_name}.tgz"),
             repository_uri: RepositoryUri::from("https://test/path/to/repository"),
             source_order: SourceOrder::new(0, 0, 0),
