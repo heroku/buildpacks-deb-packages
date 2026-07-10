@@ -1,0 +1,12 @@
+---
+source: src/errors.rs
+---
+! Error parsing `/path/to/project.toml` with invalid key
+!
+! The Heroku .deb Packages buildpack reads the configuration from `/path/to/project.toml` to complete the build but the configuration for the key `[com.heroku.buildpacks.deb-packages]` isn't the correct type. The value of this key must be a TOML table.
+!
+! Suggestions:
+! - See the buildpack documentation for the proper usage for this configuration at https://github.com/heroku/buildpacks-deb-packages#configuration
+! - See the TOML documentation for more details on the TOML table type at https://toml.io/en/v1.0.0
+!
+! Use the debug information above to troubleshoot and retry your build.

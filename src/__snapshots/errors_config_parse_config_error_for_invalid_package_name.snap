@@ -1,0 +1,13 @@
+---
+source: src/errors.rs
+---
+! Error parsing `/path/to/project.toml` with invalid package name
+!
+! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to complete the build but we found an invalid package name `invalid!package!name` in the key `[com.heroku.buildpacks.deb-packages]`.
+!
+! Package names must consist only of lowercase letters (a-z), digits (0-9), plus (+) and minus (-) signs, and periods (.). Names must be at least two characters long and must start with an alphanumeric character. See https://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-source
+!
+! Suggestions:
+! - Verify the package name is correct and exists for the target distribution at https://packages.ubuntu.com/
+!
+! Use the debug information above to troubleshoot and retry your build.

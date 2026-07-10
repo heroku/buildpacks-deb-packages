@@ -36,6 +36,7 @@ tracing = "0.1"
 walkdir = "2"
 
 [dev-dependencies]
+insta = { version = "1", features = ["filters"] }
 libcnb-test = "=0.31.0"
 regex = "1"
 tempfile = "3"

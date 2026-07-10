@@ -1,0 +1,17 @@
+---
+source: src/errors.rs
+---
+- Debug Info:
+  - connection reset
+
+! Failed to download package
+!
+! An unexpected I/O error occured while downloading the package at https://example.com/custom-package.deb to `/path/to/layer/custom-package.deb`. This error can occur due to an unstable network connection or an issue with the site this packages is hosted at.
+!
+! Suggestions:
+! - Check if https://example.com/custom-package.deb can be downloaded locally or if there's an error.
+!
+! Use the debug information above to troubleshoot and retry your build.
+!
+! If the issue persists and you think you found a bug in the buildpack, reproduce the issue locally with a minimal example. Open an issue in the buildpack's GitHub repository and include the details here:
+! https://github.com/heroku/buildpacks-deb-packages/issues/new

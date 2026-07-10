@@ -1,0 +1,35 @@
+---
+source: src/errors.rs
+---
+- Debug Info:
+  - Missing or invalid "signed_by" field for the following custom source:
+    [[com.heroku.buildpacks.deb-packages.sources]]
+    uri = "http://archive.ubuntu.com/ubuntu"
+    suites = ["main"]
+    components = ["multiverse"]
+    arch = ["amd64", "arm64"]
+
+! Error parsing `/path/to/project.toml` with invalid custom source
+!
+! The Heroku .deb Packages buildpack reads configuration from `/path/to/project.toml` to \
+! complete the build but we found an invalid custom source in the \
+! key `[com.heroku.buildpacks.deb-packages]`.
+!
+! Custom sources must be in the following format:
+!
+! [[com.heroku.buildpacks.deb-packages.sources]]
+! uri = "<url_of_debian_repository> (e.g.; http://archive.ubuntu.com/ubuntu)"
+! suites = ["<suite> (e.g.; jammy)"]
+! components = ["<component> (e.g.; main)"]
+! arch = ["<architecture> (e.g.; amd64 or arm64)"]
+! signed_by = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+! <ASCII-armored GPG key>
+! -----END PGP PUBLIC KEY BLOCK-----
+!
+! Suggestions:
+! - See the buildpack documentation for the proper usage for this configuration at \
+! https://github.com/heroku/buildpacks-deb-packages#configuration
+! - See the TOML documentation for more details on the TOML array of tables type \
+! at https://toml.io/en/v1.0.0
+!
+! Use the debug information above to troubleshoot and retry your build.
