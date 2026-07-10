@@ -500,6 +500,14 @@ fn create_snapshot_filters() -> Vec<(String, String)> {
     // - Reusing cache layer 'heroku/deb-packages:0d7890e3ad86a9ebafdd72f64499f94aa395cd89...'
     filters.push((r"((?:Adding|Reusing) cache layer 'heroku/deb-packages:)[0-9a-f]+'", "${1}<layer-hash>'"));
 
+    // [deb-packages] Package versions which drift as Ubuntu publishes updates. e.g.;
+    // - `curl@8.5.0-2ubuntu10.8` -> `curl@<version>`
+    filters.push((r"`([a-z0-9][a-z0-9.+-]*)@\d[^`]*`", "`${1}@<version>`"));
+
+    // [deb-packages] Package versions embedded in .deb download filenames. e.g.;
+    // - curl_8.5.0-2ubuntu10.8_amd64.deb -> curl_<version>_amd64.deb
+    filters.push((r"([a-z0-9][a-z0-9.+-]*)_[^_/]+_(amd64|arm64|all)\.deb", "${1}_<version>_${2}.deb"));
+
     filters.into_iter().map(|(matcher, replacement)| (matcher.to_string(), replacement.to_string())).collect()
 }
 

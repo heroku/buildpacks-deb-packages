@@ -41,28 +41,28 @@ heroku/deb-packages <buildpack-version>
 
 - Collecting system install information
 - Determining install requirements for requested package `libgwenhywfar79`
-  - Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.10.2-2.1build4`
-  - Adding `libgwenhywfar79t64@5.10.2-2.1build4` [from libgwenhywfar79]
-  - Adding `libgwenhywfar-data@5.10.2-2.1build4` [from libgwenhywfar79t64 ← libgwenhywfar79]
+  - Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@<version>`
+  - Adding `libgwenhywfar79t64@<version>` [from libgwenhywfar79]
+  - Adding `libgwenhywfar-data@<version>` [from libgwenhywfar79t64 ← libgwenhywfar79]
 - Determining install requirements for requested package `libgwenhywfar-data`
-  - Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.10.2-2.1build4` was already installed as a dependency of `libgwenhywfar79`
+  - Skipping `libgwenhywfar-data` because `libgwenhywfar-data@<version>` was already installed as a dependency of `libgwenhywfar79`
 - Determining install requirements for requested package `xmlsec1`
-  - Adding `xmlsec1@1.2.39-5build2`
+  - Adding `xmlsec1@<version>`
 - Determining install requirements for requested package `wget`
-  - Skipping `wget` because `wget@1.21.4-1ubuntu4.1` is already installed on the system
+  - Skipping `wget` because `wget@<version>` is already installed on the system
 - Determining install requirements for requested package `libvips`
-  - Virtual package `libvips` is provided by `libvips42t64@8.15.1-1.1build4`
-  - Skipping `libvips42t64` because `libvips42t64@8.15.1-1.1build4` is already installed on the system
+  - Virtual package `libvips` is provided by `libvips42t64@<version>`
+  - Skipping `libvips42t64` because `libvips42t64@<version>` is already installed on the system
 - Determining install requirements for requested package `curl`
-  - Adding `curl@8.5.0-2ubuntu10.8` (forced)
+  - Adding `curl@<version>` (forced)
 
 ### Installing packages
 
 - Requesting packages
-  - `libgwenhywfar79t64@5.10.2-2.1build4` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_5.10.2-2.1build4_arm64.deb
-  - `libgwenhywfar-data@5.10.2-2.1build4` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.10.2-2.1build4_all.deb
-  - `xmlsec1@1.2.39-5build2` from http://ports.ubuntu.com/ubuntu-ports/pool/main/x/xmlsec1/xmlsec1_1.2.39-5build2_arm64.deb
-  - `curl@8.5.0-2ubuntu10.8` from http://ports.ubuntu.com/ubuntu-ports/pool/main/c/curl/curl_8.5.0-2ubuntu10.8_arm64.deb
+  - `libgwenhywfar79t64@<version>` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_<version>_arm64.deb
+  - `libgwenhywfar-data@<version>` from http://ports.ubuntu.com/ubuntu-ports/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_<version>_all.deb
+  - `xmlsec1@<version>` from http://ports.ubuntu.com/ubuntu-ports/pool/main/x/xmlsec1/xmlsec1_<version>_arm64.deb
+  - `curl@<version>` from http://ports.ubuntu.com/ubuntu-ports/pool/main/c/curl/curl_<version>_arm64.deb
   - Downloading ... (<time_elapsed>)
 - Installation complete
 - Done (finished in <time_elapsed>)
@@ -133,28 +133,28 @@ heroku/deb-packages <buildpack-version>
 
 - Collecting system install information
 - Determining install requirements for requested package `libgwenhywfar79`
-  - Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.10.2-2.1build4`
-  - Adding `libgwenhywfar79t64@5.10.2-2.1build4` [from libgwenhywfar79]
-  - Adding `libgwenhywfar-data@5.10.2-2.1build4` [from libgwenhywfar79t64 ← libgwenhywfar79]
+  - Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@<version>`
+  - Adding `libgwenhywfar79t64@<version>` [from libgwenhywfar79]
+  - Adding `libgwenhywfar-data@<version>` [from libgwenhywfar79t64 ← libgwenhywfar79]
 - Determining install requirements for requested package `libgwenhywfar-data`
-  - Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.10.2-2.1build4` was already installed as a dependency of `libgwenhywfar79`
+  - Skipping `libgwenhywfar-data` because `libgwenhywfar-data@<version>` was already installed as a dependency of `libgwenhywfar79`
 - Determining install requirements for requested package `xmlsec1`
-  - Adding `xmlsec1@1.2.39-5build2`
+  - Adding `xmlsec1@<version>`
 - Determining install requirements for requested package `wget`
-  - Skipping `wget` because `wget@1.21.4-1ubuntu4.1` is already installed on the system
+  - Skipping `wget` because `wget@<version>` is already installed on the system
 - Determining install requirements for requested package `libvips`
-  - Virtual package `libvips` is provided by `libvips42t64@8.15.1-1.1build4`
-  - Skipping `libvips42t64` because `libvips42t64@8.15.1-1.1build4` is already installed on the system
+  - Virtual package `libvips` is provided by `libvips42t64@<version>`
+  - Skipping `libvips42t64` because `libvips42t64@<version>` is already installed on the system
 - Determining install requirements for requested package `curl`
-  - Adding `curl@8.5.0-2ubuntu10.8` (forced)
+  - Adding `curl@<version>` (forced)
 
 ### Installing packages
 
 - Restoring packages from cache
-  - `libgwenhywfar79t64@5.10.2-2.1build4`
-  - `libgwenhywfar-data@5.10.2-2.1build4`
-  - `xmlsec1@1.2.39-5build2`
-  - `curl@8.5.0-2ubuntu10.8`
+  - `libgwenhywfar79t64@<version>`
+  - `libgwenhywfar-data@<version>`
+  - `xmlsec1@<version>`
+  - `curl@<version>`
 - Installation complete
 - Done (finished in <time_elapsed>)
 ===> EXPORTING

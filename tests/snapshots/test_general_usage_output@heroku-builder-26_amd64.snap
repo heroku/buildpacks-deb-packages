@@ -45,28 +45,28 @@ heroku/deb-packages <buildpack-version>
 
 - Collecting system install information
 - Determining install requirements for requested package `libgwenhywfar79`
-  - Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@5.14.1-2`
-  - Adding `libgwenhywfar79t64@5.14.1-2` [from libgwenhywfar79]
-  - Adding `libgwenhywfar-data@5.14.1-2` [from libgwenhywfar79t64 ← libgwenhywfar79]
+  - Virtual package `libgwenhywfar79` is provided by `libgwenhywfar79t64@<version>`
+  - Adding `libgwenhywfar79t64@<version>` [from libgwenhywfar79]
+  - Adding `libgwenhywfar-data@<version>` [from libgwenhywfar79t64 ← libgwenhywfar79]
 - Determining install requirements for requested package `libgwenhywfar-data`
-  - Skipping `libgwenhywfar-data` because `libgwenhywfar-data@5.14.1-2` was already installed as a dependency of `libgwenhywfar79`
+  - Skipping `libgwenhywfar-data` because `libgwenhywfar-data@<version>` was already installed as a dependency of `libgwenhywfar79`
 - Determining install requirements for requested package `xmlsec1`
-  - Adding `xmlsec1@1.3.9-1`
+  - Adding `xmlsec1@<version>`
 - Determining install requirements for requested package `wget`
-  - Skipping `wget` because `wget@1.25.0-2ubuntu4` is already installed on the system
+  - Skipping `wget` because `wget@<version>` is already installed on the system
 - Determining install requirements for requested package `libvips`
-  - Virtual package `libvips` is provided by `libvips42t64@8.18.0-1build1`
-  - Skipping `libvips42t64` because `libvips42t64@8.18.0-1build1` is already installed on the system
+  - Virtual package `libvips` is provided by `libvips42t64@<version>`
+  - Skipping `libvips42t64` because `libvips42t64@<version>` is already installed on the system
 - Determining install requirements for requested package `curl`
-  - Adding `curl@8.18.0-1ubuntu2` (forced)
+  - Adding `curl@<version>` (forced)
 
 ### Installing packages
 
 - Requesting packages
-  - `libgwenhywfar79t64@5.14.1-2` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_5.14.1-2_amd64.deb
-  - `libgwenhywfar-data@5.14.1-2` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_5.14.1-2_all.deb
-  - `xmlsec1@1.3.9-1` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_1.3.9-1_amd64.deb
-  - `curl@8.18.0-1ubuntu2` from http://archive.ubuntu.com/ubuntu/pool/main/c/curl/curl_8.18.0-1ubuntu2_amd64.deb
+  - `libgwenhywfar79t64@<version>` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar79t64_<version>_amd64.deb
+  - `libgwenhywfar-data@<version>` from http://archive.ubuntu.com/ubuntu/pool/universe/libg/libgwenhywfar/libgwenhywfar-data_<version>_all.deb
+  - `xmlsec1@<version>` from http://archive.ubuntu.com/ubuntu/pool/main/x/xmlsec1/xmlsec1_<version>_amd64.deb
+  - `curl@<version>` from http://archive.ubuntu.com/ubuntu/pool/main/c/curl/curl_<version>_amd64.deb
   - Downloading ... (<time_elapsed>)
 - Installation complete
 - Done (finished in <time_elapsed>)
