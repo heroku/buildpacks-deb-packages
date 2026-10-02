@@ -684,13 +684,11 @@ mod test {
     }
 
     fn split_into_paths(env_var: Option<&OsString>) -> Vec<PathBuf> {
-        env_var
-            .map(|v| {
-                v.to_string_lossy()
-                    .split(':')
-                    .map(PathBuf::from)
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default()
+        env_var.map_or_default(|v| {
+            v.to_string_lossy()
+                .split(':')
+                .map(PathBuf::from)
+                .collect::<Vec<_>>()
+        })
     }
 }
