@@ -78,13 +78,12 @@ impl PackageIndex {
     pub(crate) fn get_providers(&self, package: &str) -> IndexSet<&str> {
         self.virtual_package_to_implementing_packages
             .get(package)
-            .map(|provides| {
+            .map_or_default(|provides| {
                 provides
                     .iter()
                     .map(|provide| provide.name.as_str())
                     .collect()
             })
-            .unwrap_or_default()
     }
 
     pub(crate) fn get_package_names(&self) -> IndexSet<&str> {
