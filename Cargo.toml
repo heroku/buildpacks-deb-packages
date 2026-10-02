@@ -1,7 +1,7 @@
 [package]
 name = "buildpacks-deb-packages"
 edition = "2024"
-rust-version = "1.98"
+rust-version = "1.99"
 
 [dependencies]
 anyhow = "1"
